@@ -105,13 +105,13 @@ function extractFormAction(html: string): string {
 
 function decodeHtmlEntities(s: string): string {
   return s
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, c) => String.fromCharCode(Number.parseInt(c, 16)))
-    .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(Number(c)))
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'");
+    .replaceAll(/&#x([0-9a-fA-F]+);/g, (_, c) => String.fromCodePoint(Number.parseInt(c, 16)))
+    .replaceAll(/&#(\d+);/g, (_, c) => String.fromCodePoint(Number(c)))
+    .replaceAll('&amp;', '&')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&apos;', "'");
 }
 
 // Extract all submittable fields from an HTML form (inputs + selects)

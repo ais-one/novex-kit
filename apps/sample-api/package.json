@@ -41,9 +41,5 @@
     "csv-parse": "^6.2.1",
     "fido2-lib": "^3.5.9",
     "pdfkit": "^0.18.0"
-  },
-  "devDependencies": {
-    "oidc-provider": "^9.8.2",
-    "saml-idp": "^1.2.1"
   }
 }
