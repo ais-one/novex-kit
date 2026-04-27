@@ -158,7 +158,7 @@ async function getOidcTokens(): Promise<{ access_token: string; refresh_token: s
 
 // ─── Test servers lifecycle ───────────────────────────────────────────────────
 
-describe.skip('OIDC integration', () => {
+describe.only('OIDC integration', () => {
   let oidcServer: http.Server;
   let appServer: http.Server;
 
@@ -202,6 +202,10 @@ describe.skip('OIDC integration', () => {
       },
 
       pkce: { required: () => false },
+      // biome-ignore lint/suspicious/noExplicitAny: oidc-provider has no @types package
+      async issueRefreshToken(_ctx: unknown, client: any) {
+        return client.grantTypeAllowed('refresh_token');
+      },
       scopes: ['openid', 'profile', 'email', 'offline_access'],
       claims: {
         openid: ['sub'],
@@ -253,10 +257,19 @@ describe.skip('OIDC integration', () => {
       assert.ok(location.startsWith(OIDC_CALLBACK), `Expected callback redirect, got: ${location}`);
       assert.ok(location.includes('#'), 'Expected token hash fragment in redirect URL');
     });
+
+    it.only('redirects with error fragment when authorization code is invalid', async () => {
+      const { status, headers } = await httpRequest(`${APP_BASE_URL}/api/oidc/auth?code=invalid-code-xyz`);
+      assert.strictEqual(status, 302);
+      const location = (headers.location as string) ?? '';
+      // Controller redirects even on token error — no access_token in fragment
+      assert.ok(location.includes('#'), 'Expected hash fragment in redirect URL');
+      assert.ok(!location.includes('access_token='), 'Should not contain a valid access_token');
+    });
   });
 
   describe('OIDC — GET /api/oidc/refresh', () => {
-    it.only('returns new access_token and refresh_token when refresh token is valid', async () => {
+    it.only('returns new access_token and refresh_token when token is provided via query param', async () => {
       const { refresh_token } = await getOidcTokens();
       const { status, body } = await httpRequest(
         `${APP_BASE_URL}/api/oidc/refresh?refresh_token=${encodeURIComponent(refresh_token)}`,
@@ -265,6 +278,24 @@ describe.skip('OIDC integration', () => {
       const tokens = JSON.parse(body) as { access_token: string; refresh_token: string };
       assert.ok(tokens.access_token, 'Response should contain access_token');
       assert.ok(tokens.refresh_token, 'Response should contain refresh_token');
+    });
+
+    it.only('returns new access_token and refresh_token when token is provided via request header', async () => {
+      const { refresh_token } = await getOidcTokens();
+      const { status, body } = await httpRequest(`${APP_BASE_URL}/api/oidc/refresh`, {
+        headers: { refresh_token },
+      });
+      assert.strictEqual(status, 200);
+      const tokens = JSON.parse(body) as { access_token: string; refresh_token: string };
+      assert.ok(tokens.access_token, 'Response should contain access_token');
+      assert.ok(tokens.refresh_token, 'Response should contain refresh_token');
+    });
+
+    it.only('returns 200 without access_token when refresh token is invalid', async () => {
+      const { status, body } = await httpRequest(`${APP_BASE_URL}/api/oidc/refresh?refresh_token=invalid-token-xyz`);
+      assert.strictEqual(status, 200);
+      const tokens = JSON.parse(body) as { access_token?: string };
+      assert.ok(!tokens.access_token, 'Should not return access_token for invalid refresh token');
     });
   });
 }); // OIDC integration

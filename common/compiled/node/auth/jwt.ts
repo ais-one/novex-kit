@@ -70,7 +70,13 @@ export const createToken = async user => {
   let roles = tenantData?.roles ?? [];
   if (roles.length === 0) {
     const fgaRoles = await fga.listUserRoles(sub);
-    roles = fgaRoles.length > 0 ? fgaRoles : (user.roles ?? '').split(',').filter(Boolean);
+    const rawRoles = user.roles ?? '';
+    roles =
+      fgaRoles.length > 0
+        ? fgaRoles
+        : Array.isArray(rawRoles)
+          ? rawRoles.filter(Boolean)
+          : rawRoles.split(',').filter(Boolean);
   }
 
   const keys = AUTH_USER_FIELDS_JWT_PAYLOAD.split(',');
