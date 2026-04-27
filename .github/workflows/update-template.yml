@@ -7,7 +7,7 @@ name: Sync Upstream Template
 #   2. Adds the upstream template as a git remote and fetches it.
 #   3. Merges upstream into the working tree (--no-commit) — handles additions,
 #      modifications, and deletions. Conflict markers are left for the PR reviewer.
-#   4. Restores apps/ and scripts/ from HEAD so local customisations are preserved.
+#   4. Restores apps/, scripts/, local-*.yml workflows, and local-* actions from HEAD so local customisations are preserved.
 #   5. If any files changed, opens a PR on branch chore/sync-upstream for review.
 #
 # Trigger: run manually via workflow_dispatch.
@@ -67,30 +67,36 @@ jobs:
           token: ${{ secrets.SYNC_TOKEN }}
           ref: ${{ github.event.inputs.ref }}
 
-      - name: Add upstream remote
-        run: git remote add upstream ${{ env.UPSTREAM_URL }}
-
-      - name: Fetch upstream
-        run: git fetch upstream
-
       # Merge upstream into the working tree without committing.
-      # apps/ and scripts/ are protected via a temporary .gitattributes merge=ours
-      # driver so git never touches those paths during the merge.
-      # Additions, modifications, and deletions from upstream are all handled
-      # natively. Merge conflicts are left as conflict markers for the PR reviewer.
+      # apps/ and scripts/ are protected via .git/info/attributes (never tracked,
+      # no restore needed) so git never touches those paths during the merge.
+      # Conflicts outside protected folders are auto-resolved in favour of upstream
+      # (-X theirs); the PR diff is the review mechanism.
       - name: Merge upstream changes (exclude apps/ scripts/)
+        env:
+          SYNC_BRANCH: chore/sync-upstream
+          UPSTREAM_BRANCH: ${{ github.event.inputs.upstream_branch || 'main' }}
         run: |
+          git remote add upstream ${{ env.UPSTREAM_URL }}
+          git fetch upstream
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config merge.ours.driver true
-          printf 'apps/** merge=ours\nscripts/** merge=ours\n' >> .gitattributes
-          git merge upstream/${{ github.event.inputs.upstream_branch || 'main' }} --no-commit --no-ff --allow-unrelated-histories || true
-          if git ls-files --error-unmatch .gitattributes > /dev/null 2>&1; then
-            git checkout HEAD -- .gitattributes
-          else
-            git rm --cached -f .gitattributes 2>/dev/null || true
-            rm -f .gitattributes
-          fi
+          printf 'apps/** merge=ours\nscripts/** merge=ours\n.github/workflows/local-*.yml merge=ours\n.github/actions/local-** merge=ours\n' >> .git/info/attributes
+          git checkout -B "$SYNC_BRANCH"
+          git merge upstream/"$UPSTREAM_BRANCH" --no-commit --no-ff --allow-unrelated-histories -X theirs || true
+
+      # Explicitly remove files that were deleted in upstream but still exist in HEAD,
+      # outside the protected folders. The merge step alone does not guarantee this when
+      # it exits with conflicts and the index is left in a partial state.
+      - name: Remove upstream-deleted files (outside protected folders)
+        env:
+          UPSTREAM_BRANCH: ${{ github.event.inputs.upstream_branch || 'main' }}
+        run: |
+          comm -23 \
+            <(git ls-tree -r --name-only HEAD | grep -v -E '^(apps|scripts)/|^\.github/(workflows/local-|actions/local-)' | sort) \
+            <(git ls-tree -r --name-only upstream/"$UPSTREAM_BRANCH" | grep -v -E '^(apps|scripts)/|^\.github/(workflows/local-|actions/local-)' | sort) \
+          | xargs -r git rm -f --
 
       # # Alternative: file-copy approach (does not handle upstream deletions natively)
       # # Checkout reference:
@@ -110,23 +116,21 @@ jobs:
       #       | grep -E '^\.github/(workflows|actions)/' \
       #       | xargs -r git rm -f --
 
-      - name: Check for changes
-        id: changes
-        run: |
-          if git diff --staged --quiet && git diff --quiet; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "has_changes=false"
-          else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "has_changes=true"
-          fi
+      # - name: Check for changes
+      #   id: changes
+      #   run: |
+      #     if git diff --staged --quiet && git diff --quiet; then
+      #       echo "has_changes=false" >> $GITHUB_OUTPUT
+      #       echo "has_changes=false"
+      #     else
+      #       echo "has_changes=true" >> $GITHUB_OUTPUT
+      #       echo "has_changes=true"
+      #     fi
 
       - name: Push sync branch
-        if: steps.changes.outputs.has_changes == 'true'
         env:
           SYNC_BRANCH: chore/sync-upstream
         run: |
-          git checkout -B "$SYNC_BRANCH"
           git add -A
           git commit -m "chore: sync from upstream template"
           git push origin "$SYNC_BRANCH" --force

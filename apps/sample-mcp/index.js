@@ -5,8 +5,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import express from 'express';
-import { z } from 'zod';
 
+import initPrompts from './prompts/index.js';
+import initResources from './resources/index.js';
 import initTools from './tools/index.js';
 
 const app = express();
@@ -22,72 +23,9 @@ function createMcpServer(initialHeaders) {
     version: '1.0.0',
   });
 
-  // --- Tool: add ---
-  server.tool('add', 'Add two numbers', { a: z.number(), b: z.number() }, async ({ a, b }) => ({
-    content: [{ type: 'text', text: String(a + b) }],
-  }));
-
-  // --- Tool: greet ---
-  server.tool('greet', 'Return a greeting', { name: z.string() }, async ({ name }) => ({
-    content: [{ type: 'text', text: `Hello, ${name}! 👋` }],
-  }));
-
-  // --- Tool: random ---
-  server.tool(
-    'random',
-    'Return a random number between min and max',
-    { min: z.number(), max: z.number() },
-    async ({ min, max }) => ({
-      content: [
-        {
-          type: 'text',
-          text: String(Math.floor(Math.random() * (max - min + 1)) + min),
-        },
-      ],
-    }),
-  );
-
   initTools(server, initialHeaders);
-
-  // --- Resource ---
-  server.resource('server-info', 'info://server', { mimeType: 'text/plain' }, async () => ({
-    contents: [
-      {
-        uri: 'info://server',
-        text: 'My Remote MCP Server v1.0 — Streamable HTTP',
-      },
-    ],
-  }));
-
-  // server.resource('config', 'config://app', async uri => {
-  //   return {
-  //     contents: [{ uri: uri.href, text: 'App configuration here' }],
-  //   };
-  // });
-
-  // server.resource(
-  //   'user-profile',
-  //   new ResourceTemplate('users://{userId}/profile', { list: undefined }),
-  //   async (uri, { userId }) => {
-  //     return {
-  //       contents: [{ uri: uri.href, text: `Profile data for user ${userId}` }],
-  //     };
-  //   },
-  // );
-
-  // server.prompt('review-code', { code: z.string() }, ({ code }) => {
-  //   return {
-  //     messages: [
-  //       {
-  //         role: 'user',
-  //         content: {
-  //           type: 'text',
-  //           text: `Please review this code:\n\n${code}`,
-  //         },
-  //       },
-  //     ],
-  //   };
-  // });
+  initResources(server);
+  initPrompts(server);
 
   return server;
 }

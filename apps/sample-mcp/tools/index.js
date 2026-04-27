@@ -1,6 +1,16 @@
 import { z } from 'zod';
 
+// --- Mock data — replace with real DB queries keyed by telegram_id ---
+const USER_REPORTS = {
+  tg_123: [1, 2, 5, 7],
+  tg_456: [2, 3, 7],
+};
+
 export default function initTools(server, initialHeaders) {
+  server.tool('add', 'Add two numbers', { a: z.number(), b: z.number() }, async ({ a, b }) => ({
+    content: [{ type: 'text', text: String(a + b) }],
+  }));
+
   server.registerTool(
     'echo',
     {
@@ -53,6 +63,71 @@ export default function initTools(server, initialHeaders) {
             // ${authHeader.slice(0,10)}
           },
         ],
+      };
+    },
+  );
+
+  // --- Report tools ---
+
+  server.registerTool(
+    'get_available_reports',
+    {
+      title: 'Get Available Reports',
+      description: 'Returns the list of report IDs available for a given Telegram user ID',
+      inputSchema: { telegram_id: z.string() },
+    },
+    async ({ telegram_id }) => {
+      const reports = USER_REPORTS[telegram_id] ?? [];
+      if (reports.length === 0) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: `No reports found for telegram_id: ${telegram_id}` }],
+        };
+      }
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ telegram_id, available_reports: reports }) }],
+      };
+    },
+  );
+
+  server.registerTool(
+    'generate_reports',
+    {
+      title: 'Generate Reports',
+      description: 'Validates the selected report IDs and date range for the user, then generates the reports',
+      inputSchema: {
+        telegram_id: z.string(),
+        report_ids: z.array(z.number()),
+        start_date: z.string().date(),
+        end_date: z.string().date(),
+      },
+    },
+    async ({ telegram_id, report_ids, start_date, end_date }) => {
+      const allowed = USER_REPORTS[telegram_id] ?? [];
+      const invalid = report_ids.filter(id => !allowed.includes(id));
+      if (invalid.length) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: `Reports not available for your account: ${invalid.join(', ')}` }],
+        };
+      }
+
+      if (new Date(start_date) > new Date(end_date)) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: 'start_date must not be after end_date.' }],
+        };
+      }
+
+      // Replace with real report engine — returns file URLs or base64 payloads
+      const files = report_ids.map(id => ({
+        report_id: id,
+        filename: `report_${id}_${start_date}_${end_date}.pdf`,
+        url: `https://reports.example.com/${telegram_id}/report_${id}.pdf`,
+      }));
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ success: true, files }) }],
       };
     },
   );

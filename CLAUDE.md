@@ -250,6 +250,31 @@ git pull upstream <branch or tag> --no-rebase
 # resolve any template-related merge conflicts
 ```
 
+### Protected paths during sync
+
+The following paths are never overwritten or deleted by the upstream sync workflow:
+
+| Path | Purpose |
+|---|---|
+| `apps/**` | All backend and frontend apps |
+| `scripts/**` | Local deployment and tooling scripts |
+| `.github/workflows/local-*.yml` | Downstream-only GitHub Actions workflows |
+| `.github/actions/local-**` | Downstream-only composite/reusable actions |
+
+**Adding your own workflows or actions:** name them with the `local-` prefix — workflows as `local-deploy.yml`, actions as a folder `local-my-action/` containing `action.yml`. They will be preserved across all future template syncs. Files without this prefix are treated as template-owned and may be updated or removed by the sync.
+
+To protect additional paths (e.g., a custom `docs/` folder), add a `merge=ours` rule to `.gitattributes`:
+
+```
+docs/** merge=ours
+```
+
+and configure the driver once per clone:
+
+```bash
+git config merge.ours.driver true
+```
+
 ## Docker / Podman
 
 ```bash
