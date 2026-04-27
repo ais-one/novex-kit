@@ -45,7 +45,12 @@ const idpCert = readFileSync(certPath, 'utf8');
   SAML_JWT_MAP: { id: 'nameID', groups: 'groups' },
 };
 
+// Provide a JWT secret and user-id field so createToken works in the RelayState test
+process.env.JWT_SECRET ||= 'test-saml-integration-key-min32ch';
+process.env.AUTH_USER_FIELD_ID_FOR_JWT ||= 'sub';
+
 const { login, auth } = await import('@common/node/auth/controllers/saml');
+const { setup: jwtSetup } = await import('@common/node/auth/jwt');
 
 // ─── HTTP helper ──────────────────────────────────────────────────────────────
 
@@ -98,6 +103,17 @@ function extractFormAction(html: string): string {
   return html.match(/<form[^>]*action=["']([^"']+)["']/i)?.[1] ?? '';
 }
 
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replaceAll(/&#x([0-9a-fA-F]+);/g, (_, c) => String.fromCodePoint(Number.parseInt(c, 16)))
+    .replaceAll(/&#(\d+);/g, (_, c) => String.fromCodePoint(Number(c)))
+    .replaceAll('&amp;', '&')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&apos;', "'");
+}
+
 // Extract all submittable fields from an HTML form (inputs + selects)
 function extractAllFormFields(html: string): Record<string, string> {
   const fields: Record<string, string> = {};
@@ -106,7 +122,7 @@ function extractAllFormFields(html: string): Record<string, string> {
     const type = /\btype=["']([^"']+)["']/i.exec(tag)?.[1]?.toLowerCase();
     if (type === 'submit' || type === 'button' || type === 'reset' || type === 'image') continue;
     const name = /\bname=["']([^"']+)["']/i.exec(tag)?.[1];
-    const value = /\bvalue=["']([^"']*?)["']/i.exec(tag)?.[1] ?? '';
+    const value = decodeHtmlEntities(/\bvalue=["']([^"']*?)["']/i.exec(tag)?.[1] ?? '');
     if (name) fields[name] = value;
   }
   // selects: use first option as the default submitted value
@@ -149,18 +165,24 @@ async function getSamlResponseHtml(relayState = ''): Promise<string> {
   const formAction = extractFormAction(idpFormRes.body);
   const formFields = extractAllFormFields(idpFormRes.body);
   if (!formFields._authnRequest) throw new Error('Could not find _authnRequest in saml-idp form');
+  if (!formAction) throw new Error(`Could not find form action. Form fields: ${Object.keys(formFields).join(', ')}`);
 
-  // Step 3: POST all form fields to /signin → samlresponse.hbs with signed SAMLResponse
+  // Step 3: POST all form fields to /signin → follow redirect to samlresponse.hbs with signed SAMLResponse
   const signInUrl = new URL(formAction, IDP_URL).toString();
-  return (await session.post(signInUrl, new URLSearchParams(formFields).toString())).body;
+  const postRes = await session.post(signInUrl, new URLSearchParams(formFields).toString());
+  if ([301, 302, 303].includes(postRes.status) && postRes.headers.location) {
+    return (await session.follow(new URL(postRes.headers.location as string, IDP_URL).toString())).body;
+  }
+  return postRes.body;
 }
 
 // ─── Test server + saml-idp process lifecycle ─────────────────────────────────
 
-describe.skip('SAML integration', () => {
+describe.only('SAML integration', () => {
   let appServer: http.Server;
   // biome-ignore lint/suspicious/noExplicitAny: child process type
   let idpProcess: any;
+  const idpOutput: string[] = [];
 
   before(async () => {
     idpProcess = spawn(
@@ -182,10 +204,16 @@ describe.skip('SAML integration', () => {
         '--issuer',
         `${IDP_URL}/metadata`,
       ],
-      { stdio: 'pipe' },
+      { stdio: ['pipe', 'pipe', 'pipe'] },
     );
 
+    idpProcess.stdout?.on('data', (d: Buffer) => idpOutput.push(d.toString()));
+    idpProcess.stderr?.on('data', (d: Buffer) => idpOutput.push(d.toString()));
     await waitForUrl(`${IDP_URL}/metadata`);
+
+    // Wire up an in-memory keyv store so createToken can persist refresh tokens
+    const inMemoryTokenStore = new Map<string, string>();
+    jwtSetup('keyv', 'knex1', (name: string) => (name === 'keyv' ? inMemoryTokenStore : null));
 
     const app = express();
     app.use(express.urlencoded({ extended: false }));
@@ -223,7 +251,10 @@ describe.skip('SAML integration', () => {
       const r1 = /name=["']SAMLResponse["'][^>]*value=["']([^"']*?)["']/i;
       const r2 = /value=["']([^"']*?)["'][^>]*name=["']SAMLResponse["']/i;
       const samlResponse = (samlFormHtml.match(r1) ?? samlFormHtml.match(r2))?.[1] ?? '';
-      assert.ok(samlResponse, 'Expected SAMLResponse hidden input in IdP auto-submit form');
+      assert.ok(
+        samlResponse,
+        `Expected SAMLResponse hidden input in IdP auto-submit form. Got status body snippet: ${samlFormHtml.slice(0, 500)}`,
+      );
 
       const { status, body } = await httpRequest(`${APP_BASE_URL}/api/saml/callback`, {
         method: 'POST',
@@ -234,6 +265,44 @@ describe.skip('SAML integration', () => {
       const data = JSON.parse(body) as { authenticated: boolean; user: { sub: unknown; roles: unknown } };
       assert.strictEqual(data.authenticated, true);
       assert.ok(data.user, 'Response should contain user object');
+    });
+  });
+
+  describe('SAML — POST /api/saml/callback with RelayState', () => {
+    it.only('redirects to RelayState URL with access and refresh tokens in hash fragment', async () => {
+      const relayState = `${APP_BASE_URL}/dashboard`;
+      const samlFormHtml = await getSamlResponseHtml(relayState);
+      const formFields = extractAllFormFields(samlFormHtml);
+      assert.ok(
+        formFields.SAMLResponse,
+        `Expected SAMLResponse in IdP auto-submit form. Got: ${samlFormHtml.slice(0, 300)}`,
+      );
+
+      const { status, headers } = await httpRequest(`${APP_BASE_URL}/api/saml/callback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ SAMLResponse: formFields.SAMLResponse, RelayState: relayState }).toString(),
+      });
+      assert.strictEqual(status, 302);
+      const location = (headers.location as string) ?? '';
+      assert.ok(location.startsWith(relayState), `Expected redirect to RelayState URL, got: ${location}`);
+      assert.ok(location.includes('#'), 'Expected token hash fragment in redirect URL');
+    });
+  });
+
+  describe('SAML — POST /api/saml/callback with invalid SAMLResponse', () => {
+    it.only('returns error JSON when SAMLResponse cannot be validated', async () => {
+      const { status, body } = await httpRequest(`${APP_BASE_URL}/api/saml/callback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          SAMLResponse: Buffer.from('<saml>invalid</saml>').toString('base64'),
+        }).toString(),
+      });
+      assert.strictEqual(status, 200);
+      const data = JSON.parse(body) as { message: string; note: string };
+      assert.ok(data.message, 'Expected error message in response');
+      assert.ok(data.note, 'Expected note about signature validation');
     });
   });
 }); // SAML integration
