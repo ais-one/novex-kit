@@ -71,12 +71,8 @@ export const createToken = async user => {
   if (roles.length === 0) {
     const fgaRoles = await fga.listUserRoles(sub);
     const rawRoles = user.roles ?? '';
-    roles =
-      fgaRoles.length > 0
-        ? fgaRoles
-        : Array.isArray(rawRoles)
-          ? rawRoles.filter(Boolean)
-          : rawRoles.split(',').filter(Boolean);
+    const legacyRoles = Array.isArray(rawRoles) ? rawRoles.filter(Boolean) : rawRoles.split(',').filter(Boolean);
+    roles = fgaRoles.length > 0 ? fgaRoles : legacyRoles;
   }
 
   const keys = AUTH_USER_FIELDS_JWT_PAYLOAD.split(',');

@@ -105,7 +105,7 @@ function extractFormAction(html: string): string {
 
 function decodeHtmlEntities(s: string): string {
   return s
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, c) => String.fromCharCode(parseInt(c, 16)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, c) => String.fromCharCode(Number.parseInt(c, 16)))
     .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(Number(c)))
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
