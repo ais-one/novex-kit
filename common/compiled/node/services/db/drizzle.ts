@@ -6,7 +6,7 @@ import * as schema from './schema.ts';
 export default class StoreDrizzle {
   private _pool: Pool | null = null;
   private _db: NodePgDatabase<typeof schema> | null = null;
-  private _connectionString: string | null = null;
+  private readonly _connectionString: string | null = null;
   name: string;
 
   constructor(optionName?: string) {
@@ -27,7 +27,7 @@ export default class StoreDrizzle {
         min: 2,
         max: 10,
       });
-      this._pool.on('error', err => logger.error(`pg pool error(${this.name}): ${err.message}`));
+      this._pool.on('error', (err: Error) => logger.error(`pg pool error(${this.name}): ${err.message}`));
       this._db = drizzle(this._pool, { schema });
       // Verify connectivity
       await this._pool.query('SELECT 1');

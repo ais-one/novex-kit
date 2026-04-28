@@ -45,6 +45,14 @@ export const auditMiddleware = (db: AnyDb) => {
 
 type RecordId = number | string | Record<string, number | string>;
 
+function buildTuples(ids: Record<string, number | string>[], keys: string[]): string {
+  return ids.map(id => `(${keys.map(k => `'${id[k]}'`).join(', ')})`).join(', ');
+}
+
+function buildColList(keys: string[]): string {
+  return keys.map(k => `"${k}"`).join(', ');
+}
+
 /**
  * Hard-delete records from a table, writing a deletion audit log entry for each row.
  *
@@ -69,12 +77,9 @@ export const hardDelete = async (
   let records: Record<string, unknown>[];
   if (isComposite) {
     const keys = Object.keys(ids[0] as Record<string, unknown>);
-    const tuples = (ids as Record<string, number | string>[])
-      .map(id => `(${keys.map(k => `'${id[k]}'`).join(', ')})`)
-      .join(', ');
-    const result = await trx.execute(
-      sql.raw(`SELECT * FROM "${tableName}" WHERE (${keys.map(k => `"${k}"`).join(', ')}) IN (${tuples})`),
-    );
+    const tuples = buildTuples(ids as Record<string, number | string>[], keys);
+    const colList = buildColList(keys);
+    const result = await trx.execute(sql.raw(`SELECT * FROM "${tableName}" WHERE (${colList}) IN (${tuples})`));
     records = result.rows as Record<string, unknown>[];
   } else {
     const idList = (ids as (number | string)[]).join(', ');
@@ -117,12 +122,9 @@ export const hardDelete = async (
   // Perform the actual delete
   if (isComposite) {
     const keys = Object.keys(ids[0] as Record<string, unknown>);
-    const tuples = (ids as Record<string, number | string>[])
-      .map(id => `(${keys.map(k => `'${id[k]}'`).join(', ')})`)
-      .join(', ');
-    await trx.execute(
-      sql.raw(`DELETE FROM "${tableName}" WHERE (${keys.map(k => `"${k}"`).join(', ')}) IN (${tuples})`),
-    );
+    const tuples = buildTuples(ids as Record<string, number | string>[], keys);
+    const colList = buildColList(keys);
+    await trx.execute(sql.raw(`DELETE FROM "${tableName}" WHERE (${colList}) IN (${tuples})`));
   } else {
     const idList = (ids as (number | string)[]).join(', ');
     await trx.execute(sql.raw(`DELETE FROM "${tableName}" WHERE id IN (${idList})`));
