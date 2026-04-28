@@ -25,22 +25,24 @@
  *   await rbac.revokePermission(roleId, permissionId);
  */
 
+import { and, eq } from 'drizzle-orm';
 import type { NextFunction, Request, Response } from 'express';
+import { permissions, rolePermissions, roles, tenants, userTenantRoles } from '../services/db/schema.ts';
 
 let _userServiceName: string;
-// biome-ignore lint/suspicious/noExplicitAny: lookup returns the underlying knex instance
+// biome-ignore lint/suspicious/noExplicitAny: lookup returns the underlying drizzle instance
 let _lookup: ((name: string) => any) | null = null;
 
-const knex = () => _lookup?.(_userServiceName);
+const db = () => _lookup?.(_userServiceName);
 
 import type { TenantEntry, TenantRoleEntry } from './types.ts';
 
 /**
  * Initialise the RBAC service.
- *   userServiceName — service name from SERVICES_CONFIG (e.g. 'knex1')
+ *   userServiceName — service name from SERVICES_CONFIG (e.g. 'drizzle1')
  *   lookup          — services.get — resolves a name to the underlying store instance
  */
-// biome-ignore lint/suspicious/noExplicitAny: lookup returns different service instance types (knex, redis, keyv)
+// biome-ignore lint/suspicious/noExplicitAny: lookup returns different service instance types (drizzle, redis, keyv)
 const setup = (userServiceName: string, lookup: (name: string) => any) => {
   _userServiceName = userServiceName;
   _lookup = lookup;
@@ -52,20 +54,20 @@ const isConfigured = () => _lookup !== null;
 /**
  * Fetch the user's active tenant for embedding in the JWT.
  * Returns tenant_id, tenant_plan, and the coarse roles held in that tenant.
- * Roles are used as the primary source in the JWT roles fallback chain
- * (RBAC → FGA → legacy DB column).
- *
- * Preferred tenant falls back to first found when defaultTenantId has no match.
  */
 const getActiveTenant = async (userId: string | number, defaultTenantId?: string | number) => {
   if (!_lookup) return null;
   try {
-    const rows = await knex()('user_tenant_roles as utr')
-      .join('tenants as t', 't.id', 'utr.tenant_id')
-      .join('roles as r', 'r.id', 'utr.role_id')
-      .where('utr.user_id', userId)
-      .where('t.is_active', true)
-      .select('t.id as tenant_id', 't.plan as tenant_plan', 'r.name as role_name');
+    const rows = await db()
+      .select({
+        tenant_id: tenants.id,
+        tenant_plan: tenants.plan,
+        role_name: roles.name,
+      })
+      .from(userTenantRoles)
+      .innerJoin(tenants, eq(tenants.id, userTenantRoles.tenant_id))
+      .innerJoin(roles, eq(roles.id, userTenantRoles.role_id))
+      .where(and(eq(userTenantRoles.user_id, Number(userId)), eq(tenants.is_active, true)));
 
     if (rows.length === 0) return null;
 
@@ -79,7 +81,11 @@ const getActiveTenant = async (userId: string | number, defaultTenantId?: string
     const entries = Object.values(map);
     const preferred = entries.find(e => e.tenant_id === Number(defaultTenantId));
     const entry = preferred ?? entries[0];
-    return { tenant_id: entry.tenant_id, tenant_plan: entry.tenant_plan, roles: [...entry.roles].sort() };
+    return {
+      tenant_id: entry.tenant_id,
+      tenant_plan: entry.tenant_plan,
+      roles: [...entry.roles].sort((a, b) => a.localeCompare(b)),
+    };
   } catch (err) {
     logger.error({ err, userId }, 'rbac: getActiveTenant failed');
     return null;
@@ -88,25 +94,25 @@ const getActiveTenant = async (userId: string | number, defaultTenantId?: string
 
 /**
  * Fetch all tenant memberships for a user with their roles and resolved permissions.
- * Use at request time (e.g. permission middleware) with tenant_id from req.user.
- *
- * Returns null when RBAC is not configured or the user has no active memberships.
  */
 const getUserTenantsData = async (userId: string | number, defaultTenantId?: string | number) => {
   if (!_lookup) return null;
   try {
-    const rows = await knex()('user_tenant_roles as utr')
-      .join('roles as r', 'r.id', 'utr.role_id')
-      .join('tenants as t', 't.id', 'utr.tenant_id')
-      .leftJoin('role_permissions as rp', 'rp.role_id', 'r.id')
-      .leftJoin('permissions as p', 'p.id', 'rp.permission_id')
-      .where('utr.user_id', userId)
-      .where('t.is_active', true)
-      .select('utr.tenant_id', 'r.name as role_name', 'p.name as permission_name');
+    const rows = await db()
+      .select({
+        tenant_id: userTenantRoles.tenant_id,
+        role_name: roles.name,
+        permission_name: permissions.name,
+      })
+      .from(userTenantRoles)
+      .innerJoin(roles, eq(roles.id, userTenantRoles.role_id))
+      .innerJoin(tenants, eq(tenants.id, userTenantRoles.tenant_id))
+      .leftJoin(rolePermissions, eq(rolePermissions.role_id, roles.id))
+      .leftJoin(permissions, eq(permissions.id, rolePermissions.permission_id))
+      .where(and(eq(userTenantRoles.user_id, Number(userId)), eq(tenants.is_active, true)));
 
     if (rows.length === 0) return null;
 
-    // Group rows into { tenantId: { roles: Set, permissions: Set } }
     const map: Record<string, TenantRoleEntry> = {};
     for (const row of rows) {
       const tid = row.tenant_id;
@@ -115,19 +121,18 @@ const getUserTenantsData = async (userId: string | number, defaultTenantId?: str
       if (row.permission_name) map[tid].permissions.add(row.permission_name);
     }
 
-    // Convert Sets to sorted arrays for deterministic JWT payloads
-    const tenants: Record<number, { roles: string[]; permissions: string[] }> = {};
+    const tenantResult: Record<number, { roles: string[]; permissions: string[] }> = {};
     for (const [tid, data] of Object.entries(map)) {
-      tenants[Number(tid)] = {
-        roles: [...data.roles].sort(),
-        permissions: [...data.permissions].sort(),
+      tenantResult[Number(tid)] = {
+        roles: [...data.roles].sort((a, b) => a.localeCompare(b)),
+        permissions: [...data.permissions].sort((a, b) => a.localeCompare(b)),
       };
     }
 
-    const tenantIds = Object.keys(tenants).map(Number);
+    const tenantIds = Object.keys(tenantResult).map(Number);
     const active_tenant = tenantIds.includes(Number(defaultTenantId)) ? Number(defaultTenantId) : tenantIds[0];
 
-    return { active_tenant, tenants };
+    return { active_tenant, tenants: tenantResult };
   } catch (err) {
     logger.error({ err, userId }, 'rbac: getUserTenantsData failed');
     return null;
@@ -136,34 +141,39 @@ const getUserTenantsData = async (userId: string | number, defaultTenantId?: str
 
 /** Assign a role to a user within a tenant (idempotent). */
 const assignRole = async (userId: number, tenantId: number, roleId: number) => {
-  await knex()('user_tenant_roles')
-    .insert({ user_id: userId, tenant_id: tenantId, role_id: roleId })
-    .onConflict(['user_id', 'tenant_id', 'role_id'])
-    .ignore();
+  await db()
+    .insert(userTenantRoles)
+    .values({ user_id: userId, tenant_id: tenantId, role_id: roleId })
+    .onConflictDoNothing();
 };
 
 /** Revoke a role from a user within a tenant. */
 const revokeRole = async (userId: number, tenantId: number, roleId: number) => {
-  await knex()('user_tenant_roles').where({ user_id: userId, tenant_id: tenantId, role_id: roleId }).delete();
+  await db()
+    .delete(userTenantRoles)
+    .where(
+      and(
+        eq(userTenantRoles.user_id, userId),
+        eq(userTenantRoles.tenant_id, tenantId),
+        eq(userTenantRoles.role_id, roleId),
+      ),
+    );
 };
 
 /** Grant a permission to a role (idempotent). */
 const grantPermission = async (roleId: number, permissionId: number) => {
-  await knex()('role_permissions')
-    .insert({ role_id: roleId, permission_id: permissionId })
-    .onConflict(['role_id', 'permission_id'])
-    .ignore();
+  await db().insert(rolePermissions).values({ role_id: roleId, permission_id: permissionId }).onConflictDoNothing();
 };
 
 /** Revoke a permission from a role. */
 const revokePermission = async (roleId: number, permissionId: number) => {
-  await knex()('role_permissions').where({ role_id: roleId, permission_id: permissionId }).delete();
+  await db()
+    .delete(rolePermissions)
+    .where(and(eq(rolePermissions.role_id, roleId), eq(rolePermissions.permission_id, permissionId)));
 };
 
 /**
- * Route middleware — requires the user to hold at least one of the given roles
- * from the flat JWT `roles` array. Works regardless of which source populated it
- * (FGA, RBAC, or the legacy DB column). Use after authUser.
+ * Route middleware — requires the user to hold at least one of the given roles.
  */
 const requireRole =
   (...roles: string[]) =>

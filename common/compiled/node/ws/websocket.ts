@@ -64,9 +64,15 @@ function broadcast(wss: WebSocketServer, payload: unknown): void {
   }
 }
 
+function rawToBuffer(raw: RawData): Buffer {
+  if (Buffer.isBuffer(raw)) return raw;
+  if (Array.isArray(raw)) return Buffer.concat(raw);
+  return Buffer.from(new Uint8Array(raw));
+}
+
 function safeParseJSON(raw: RawData): unknown {
   try {
-    return JSON.parse(raw.toString());
+    return JSON.parse(rawToBuffer(raw).toString('utf8'));
   } catch {
     return null;
   }
@@ -78,7 +84,7 @@ function safeParseJSON2(
   raw: RawData,
   { maxBytes = MAX_BYTES } = {},
 ): { ok: boolean; error: string | null; value: unknown } {
-  const buf = Buffer.isBuffer(raw) ? raw : Array.isArray(raw) ? Buffer.concat(raw) : Buffer.from(raw);
+  const buf = rawToBuffer(raw);
   if (buf.length > maxBytes) {
     return { ok: false, error: 'PAYLOAD_TOO_LARGE', value: null };
   }

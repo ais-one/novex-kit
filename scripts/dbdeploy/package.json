@@ -7,6 +7,9 @@
   "private": true,
   "scripts": {
     "serve": "node serve-db.ts",
+    "seed": "node --env-file=db-sample/.env db-sample/seed.ts",
+    "db:generate": "cd db-sample && drizzle-kit generate",
+    "db:migrate": "cd db-sample && drizzle-kit migrate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

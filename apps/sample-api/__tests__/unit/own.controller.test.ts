@@ -13,7 +13,8 @@ process.env.AUTH_USER_FIELD_GAKEY = 'ga_key';
 process.env.AUTH_USER_FIELD_ID_FOR_JWT = 'id';
 
 // Secret used for signing test JWTs and mocked via getSecret()
-const TEST_SECRET = 'test-jwt-secret-for-unit-tests';
+process.env.JWT_SECRET ||= 'test-jwt-secret-for-unit-tests';
+const TEST_SECRET = process.env.JWT_SECRET;
 
 // Mutable state to control mock behavior per test
 let findUserResult: unknown = null;
