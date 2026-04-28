@@ -146,6 +146,17 @@ export const award = pgTable('award', {
   name: varchar('name', { length: 255 }),
 });
 
+// ─── categories ───────────────────────────────────────────────────────────────
+
+export const categories = pgTable('categories', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: varchar('description', { length: 255 }),
+});
+
+export type Category = typeof categories.$inferSelect;
+export type InsertCategory = typeof categories.$inferInsert;
+
 // ─── t4t_audit_logs ───────────────────────────────────────────────────────────
 
 export const t4tAuditLogs = pgTable(

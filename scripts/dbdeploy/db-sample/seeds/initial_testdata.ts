@@ -37,7 +37,7 @@ export async function seed(db: NodePgDatabase<any>): Promise<void> {
     { code: 'cv', name: 'Civics' },
   ]);
 
-  const students = [...new Array(30)].map((_, idx) => ({
+  const students = Array.from({ length: 30 }, (_, idx) => ({
     firstName: 'first',
     lastName: `last${idx}`,
     avatar: '',

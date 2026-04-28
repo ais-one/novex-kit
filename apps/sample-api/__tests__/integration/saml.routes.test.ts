@@ -91,7 +91,7 @@ class SamlSession {
     if (depth > 8) throw new Error(`Too many redirects from ${url}`);
     const res = await this.get(url);
     if ((res.status === 301 || res.status === 302 || res.status === 303) && res.headers.location) {
-      return this.follow(new URL(res.headers.location as string, url).toString(), depth + 1);
+      return this.follow(new URL(res.headers.location, url).toString(), depth + 1);
     }
     return res;
   }
@@ -100,7 +100,7 @@ class SamlSession {
 // ─── HTML form field helpers ──────────────────────────────────────────────────
 
 function extractFormAction(html: string): string {
-  return html.match(/<form[^>]*action=["']([^"']+)["']/i)?.[1] ?? '';
+  return /<form[^>]*action=["']([^"']+)["']/i.exec(html)?.[1] ?? '';
 }
 
 function decodeHtmlEntities(s: string): string {
@@ -157,7 +157,7 @@ async function getSamlResponseHtml(relayState = ''): Promise<string> {
   // Step 1: GET SP login → redirect to saml-idp SSO URL with SAMLRequest
   const qs = relayState ? `?RelayState=${encodeURIComponent(relayState)}` : '';
   const spLoginRes = await httpRequest(`${APP_BASE_URL}/api/saml/login${qs}`);
-  const idpSsoUrl = spLoginRes.headers.location as string;
+  const idpSsoUrl = spLoginRes.headers.location;
   if (!idpSsoUrl) throw new Error('SP /api/saml/login did not redirect to IdP');
 
   // Step 2: GET IdP SSO URL → user attribute form (no credentials — saml-idp pre-fills a test user)
@@ -171,7 +171,7 @@ async function getSamlResponseHtml(relayState = ''): Promise<string> {
   const signInUrl = new URL(formAction, IDP_URL).toString();
   const postRes = await session.post(signInUrl, new URLSearchParams(formFields).toString());
   if ([301, 302, 303].includes(postRes.status) && postRes.headers.location) {
-    return (await session.follow(new URL(postRes.headers.location as string, IDP_URL).toString())).body;
+    return (await session.follow(new URL(postRes.headers.location, IDP_URL).toString())).body;
   }
   return postRes.body;
 }
@@ -238,7 +238,7 @@ describe.only('SAML integration', () => {
     it.only('redirects to saml-idp SSO endpoint with SAMLRequest', async () => {
       const { status, headers } = await httpRequest(`${APP_BASE_URL}/api/saml/login`);
       assert.strictEqual(status, 302);
-      const location = (headers.location as string) ?? '';
+      const location = headers.location ?? '';
       assert.ok(location.startsWith(`${IDP_URL}/saml/sso`), `Expected saml-idp SSO redirect, got: ${location}`);
       assert.ok(location.includes('SAMLRequest='), 'Expected SAMLRequest param in redirect URL');
     });
@@ -250,7 +250,7 @@ describe.only('SAML integration', () => {
       // Extract SAMLResponse from the IdP's auto-submit form
       const r1 = /name=["']SAMLResponse["'][^>]*value=["']([^"']*?)["']/i;
       const r2 = /value=["']([^"']*?)["'][^>]*name=["']SAMLResponse["']/i;
-      const samlResponse = (samlFormHtml.match(r1) ?? samlFormHtml.match(r2))?.[1] ?? '';
+      const samlResponse = (r1.exec(samlFormHtml) ?? r2.exec(samlFormHtml))?.[1] ?? '';
       assert.ok(
         samlResponse,
         `Expected SAMLResponse hidden input in IdP auto-submit form. Got status body snippet: ${samlFormHtml.slice(0, 500)}`,
@@ -284,7 +284,7 @@ describe.only('SAML integration', () => {
         body: new URLSearchParams({ SAMLResponse: formFields.SAMLResponse, RelayState: relayState }).toString(),
       });
       assert.strictEqual(status, 302);
-      const location = (headers.location as string) ?? '';
+      const location = headers.location ?? '';
       assert.ok(location.startsWith(relayState), `Expected redirect to RelayState URL, got: ${location}`);
       assert.ok(location.includes('#'), 'Expected token hash fragment in redirect URL');
     });

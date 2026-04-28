@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { setScryptHash } from '../../../../common/compiled/node/auth/scrypt.js';
+import { setScryptHash } from '../../../../common/compiled/node/auth/scrypt.ts';
 import { users } from '../../../../common/compiled/node/services/db/schema.ts';
 
 // biome-ignore lint/suspicious/noExplicitAny: schema type not needed for seed scripts
