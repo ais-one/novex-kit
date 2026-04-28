@@ -45,8 +45,13 @@ export const auditMiddleware = (db: AnyDb) => {
 
 type RecordId = number | string | Record<string, number | string>;
 
+function buildTupleRow(id: Record<string, number | string>, keys: string[]): string {
+  const values = keys.map(k => `'${id[k]}'`).join(', ');
+  return `(${values})`;
+}
+
 function buildTuples(ids: Record<string, number | string>[], keys: string[]): string {
-  return ids.map(id => `(${keys.map(k => `'${id[k]}'`).join(', ')})`).join(', ');
+  return ids.map(id => buildTupleRow(id, keys)).join(', ');
 }
 
 function buildColList(keys: string[]): string {
@@ -106,7 +111,10 @@ export const hardDelete = async (
         const keys = Object.keys(ids[0] as Record<string, unknown>);
         return JSON.stringify(Object.fromEntries(keys.map(k => [k, record[k]])));
       }
-    : (record: Record<string, unknown>) => String(record.id);
+    : (record: Record<string, unknown>) => {
+        const id = record.id;
+        return typeof id === 'string' || typeof id === 'number' ? String(id) : JSON.stringify(id);
+      };
 
   // Write audit log entries
   await trx.insert(hardDeleteLog).values(
