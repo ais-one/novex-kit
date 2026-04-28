@@ -23,13 +23,13 @@ import {
 
 const inet = customType<{ data: string }>({
   dataType() {
-    return 'INET';
+    return 'inet';
   },
 });
 
 const textArray = customType<{ data: string[] }>({
   dataType() {
-    return 'TEXT[]';
+    return 'text[]';
   },
 });
 

@@ -56,13 +56,15 @@ export async function seed(db: NodePgDatabase<any>): Promise<void> {
     updated_by: 'someone',
     updated_at: new Date(),
   }));
-  await db.insert(student).values(students);
+  const insertedStudents = await db.insert(student).values(students).returning({ id: student.id });
+  const s1 = insertedStudents[0].id;
+  const s2 = insertedStudents[1].id;
 
   await db.insert(studentSubject).values([
-    { studentId: 1, subjectCode: 'EM', gradeFinal: 'A', gradeDate: new Date('2024-10-01') },
-    { studentId: 1, subjectCode: 'AM', gradeFinal: 'B', gradeDate: new Date('2024-10-01') },
-    { studentId: 1, subjectCode: 'PHY', gradeFinal: 'D', gradeDate: new Date('2024-10-01') },
-    { studentId: 2, subjectCode: 'EM', gradeFinal: 'C', gradeDate: new Date('2024-10-02') },
-    { studentId: 2, subjectCode: 'CHEM', gradeFinal: 'B', gradeDate: new Date('2024-10-02') },
+    { studentId: s1, subjectCode: 'EM', gradeFinal: 'A', gradeDate: new Date('2024-10-01') },
+    { studentId: s1, subjectCode: 'AM', gradeFinal: 'B', gradeDate: new Date('2024-10-01') },
+    { studentId: s1, subjectCode: 'PHY', gradeFinal: 'D', gradeDate: new Date('2024-10-01') },
+    { studentId: s2, subjectCode: 'EM', gradeFinal: 'C', gradeDate: new Date('2024-10-02') },
+    { studentId: s2, subjectCode: 'CHEM', gradeFinal: 'B', gradeDate: new Date('2024-10-02') },
   ]);
 }
