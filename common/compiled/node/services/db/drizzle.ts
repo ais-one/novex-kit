@@ -1,47 +1,46 @@
-import { sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool, type PoolConfig } from 'pg';
+import * as schema from './schema.ts';
 
-/** Wraps a Drizzle ORM connection, opened/closed by the services lifecycle. */
-export default class StoreOrm {
-  _DRIZZLE: PoolConfig | null;
-  _db: ReturnType<typeof drizzle> | null;
+/** Wraps a Drizzle + pg Pool connection, opened/closed by the services lifecycle. */
+export default class StoreDrizzle {
+  private _db: (NodePgDatabase<typeof schema> & { $client: Pool }) | null = null;
+  private readonly _connectionString: string | null;
+  private readonly _poolOptions: Omit<PoolConfig, 'connectionString'>;
   name: string;
 
   constructor(optionName?: string) {
-    const options = optionName ? globalThis.__config?.[optionName] : {};
-    if (options) options.connection = process.env[optionName ?? ''];
-    this._DRIZZLE = options ?? null;
-    this._db = null;
+    this._connectionString = process.env[optionName ?? ''] ?? null;
+    this._poolOptions = optionName ? (globalThis.__config?.[optionName] ?? {}) : {};
     this.name = optionName ?? '';
   }
 
-  /** Connect to the database and verify connectivity with a `SELECT 1`. */
+  /** Connect to the database using a pg Pool and verify with SELECT 1. */
   async open(): Promise<void> {
-    if (!this._DRIZZLE) {
-      logger.info('DRIZZLE property empty or undefined - not started');
+    if (!this._connectionString) {
+      logger.info(`StoreDrizzle(${this.name}): connection string missing — skipping`);
       return;
     }
     try {
-      const client = new Pool(this._DRIZZLE);
-      this._db = drizzle({ client });
-      await this._db
-        .execute(sql`SELECT 1`)
-        .then(() => logger.info(`drizzle CONNECTED(${this.name})`))
-        .catch(err => logger.info(`drizzle ERROR1(${this.name}): ${err.toString()}`));
+      const pool = new Pool({ ...this._poolOptions, connectionString: this._connectionString });
+      this._db = drizzle(pool, { schema });
+      this._db.$client.on('error', (err: Error) => logger.error(`pg pool error(${this.name}): ${err.message}`));
+      await this._db.$client.query('SELECT 1');
+      logger.info(`drizzle CONNECTED(${this.name})`);
     } catch (e) {
-      logger.info(`drizzle ERROR2(${this.name}): ${String(e)}`);
+      logger.error(`drizzle ERROR(${this.name}): ${String(e)}`);
     }
   }
 
-  /** Returns the underlying Drizzle instance, or null if not yet connected. */
-  get(): ReturnType<typeof drizzle> | null {
+  /** Returns the Drizzle instance, or null if not yet connected. */
+  get(): NodePgDatabase<typeof schema> | null {
     return this._db;
   }
 
-  /** Destroy the connection pool and release all resources. */
+  /** Gracefully drain the connection pool. */
   async close(): Promise<void> {
-    if (this._db) await this._db?.$client.end();
+    await this._db?.$client.end();
+    this._db = null;
     logger.info(`drizzle CLOSED(${this.name})`);
   }
 }

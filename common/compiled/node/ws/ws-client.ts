@@ -11,7 +11,9 @@ import WebSocket from 'ws';
 function connect(path: string, token: string, label: string): WebSocket {
   const ws = new WebSocket(`ws://localhost:3000${path}?token=${token}`);
   ws.on('open', () => logger.info(`[${label}] open`));
-  ws.on('message', (d: WebSocket.RawData) => logger.info(`[${label}]`, JSON.parse(d.toString())));
+  ws.on('message', (d: WebSocket.RawData) =>
+    logger.info(`[${label}]`, JSON.parse(Buffer.from(d as Buffer).toString('utf8'))),
+  );
   ws.on('close', (code: number) => logger.info(`[${label}] closed`, { code }));
   ws.on('error', (err: Error) => logger.error(`[${label}] error`, { message: err.message }));
   return ws;

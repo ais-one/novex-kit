@@ -2,17 +2,15 @@ import type { Server as HttpServer } from 'node:http';
 import type { Server as HttpsServer } from 'node:https';
 import type { Application } from 'express';
 import Wss from '../ws/index.ts';
-import StoreOrm from './db/drizzle.ts';
+import StoreDrizzle from './db/drizzle.ts';
 import StoreKeyV from './db/keyv.ts';
 import StoreKnex from './db/knex.ts';
 import StoreRedis from './db/redis.ts';
 
-// import '../auth/jwt.ts';
-
 import type { ServiceConfig } from './types.ts';
 
 let servicesConfig: Record<string, ServiceConfig> = {};
-// biome-ignore lint/suspicious/noExplicitAny: service instances vary by type (StoreKnex | StoreRedis | StoreKeyV | Wss) with incompatible open() signatures
+// biome-ignore lint/suspicious/noExplicitAny: service instances vary by type (StoreDrizzle | StoreKnex | StoreRedis | StoreKeyV | Wss) with incompatible open() signatures
 const services: Record<string, any> = {};
 
 /** Start all configured services (DB, cache, WebSocket) based on SERVICES_CONFIG. */
@@ -25,7 +23,7 @@ const start = async (
     servicesConfig = config;
     for (const [name, svc] of Object.entries(servicesConfig)) {
       const opts = globalThis.__config?.[svc.options];
-      if (opts && svc.type === 'drizzle' && StoreOrm) services[name] = new StoreOrm(svc.options);
+      if (opts && svc.type === 'drizzle' && StoreDrizzle) services[name] = new StoreDrizzle(svc.options);
       if (opts && svc.type === 'knex' && StoreKnex) services[name] = new StoreKnex(svc.options);
       if (opts && svc.type === 'redis' && StoreRedis) services[name] = new StoreRedis(opts);
       if (opts && svc.type === 'keyv' && StoreKeyV) services[name] = new StoreKeyV(opts);

@@ -19,39 +19,51 @@ if (process.env.NODE_ENV === 'development') {
   } catch {}
 }
 
+function updateStringState(char: string, isEscaped: boolean): { isEscaped: boolean; inString: boolean } {
+  if (isEscaped) return { isEscaped: false, inString: true };
+  if (char === '\\') return { isEscaped: true, inString: true };
+  if (char === '"') return { isEscaped: false, inString: false };
+  return { isEscaped: false, inString: true };
+}
+
+function skipLineComment(source: string, index: number): { index: number; newline: boolean } {
+  while (index < source.length && source[index] !== '\n') index += 1;
+  return { index, newline: index < source.length };
+}
+
 /** Strip `//` line comments from a JSONC string, preserving strings and newlines. */
 const normalizeJsonc = (source: string): string => {
   let result = '';
   let inString = false;
   let isEscaped = false;
+  let index = 0;
 
-  for (let index = 0; index < source.length; index += 1) {
+  while (index < source.length) {
     const char = source[index];
-    const next = source[index + 1];
 
     if (inString) {
       result += char;
-      if (isEscaped) isEscaped = false;
-      else if (char === '\\') isEscaped = true;
-      else if (char === '"') inString = false;
+      ({ isEscaped, inString } = updateStringState(char, isEscaped));
+      index += 1;
       continue;
     }
 
     if (char === '"') {
       inString = true;
       result += char;
+      index += 1;
       continue;
     }
 
-    if (char === '/' && next === '/') {
-      while (index < source.length && source[index] !== '\n') {
-        index += 1;
-      }
-      if (index < source.length) result += '\n';
+    if (char === '/' && source[index + 1] === '/') {
+      const skip = skipLineComment(source, index);
+      index = skip.index;
+      if (skip.newline) result += '\n';
       continue;
     }
 
     result += char;
+    index += 1;
   }
 
   return result;

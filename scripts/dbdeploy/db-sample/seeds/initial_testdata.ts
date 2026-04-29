@@ -1,76 +1,70 @@
-import type { Knex } from 'knex';
-
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import {
+  award,
+  country,
+  state,
+  student,
+  studentSubject,
+  subject,
+} from '../../../../common/compiled/node/services/db/schema.ts';
 import countriesJson from './icc.json' with { type: 'json' };
 import statesJson from './state.json' with { type: 'json' };
 
-const mkDt = () => new Date().toISOString();
+// biome-ignore lint/suspicious/noExplicitAny: schema type not needed for seed scripts
+export async function seed(db: NodePgDatabase<any>): Promise<void> {
+  await db.delete(studentSubject);
+  await db.delete(subject);
+  await db.delete(student);
+  await db.delete(award);
+  await db.delete(country);
+  await db.delete(state);
 
-new Intl.DateTimeFormat('default', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  timeZone: 'UTC',
-  hour12: false,
-  formatMatcher: 'basic',
-}).format(new Date());
+  const countries = countriesJson.map(c => ({ ...c, updated: new Date() }));
+  await db.insert(country).values(countries);
+  await db.insert(state).values(statesJson);
 
-export async function seed(knex: Knex): Promise<void> {
-  await knex('student_subject').del();
-  await knex('subject').del();
-  await knex('student').del();
-  await knex('award').del();
-  await knex('country').del();
-  await knex('state').del();
-
-  const countries = countriesJson.map(country => ({
-    ...country,
-    updated: new Date().toISOString(),
-  }));
-  await knex('country').insert(countries);
-  await knex('state').insert(statesJson);
-  await knex('subject').insert([
+  await db.insert(subject).values([
     { code: 'EL1', name: 'English', passingGrade: 40 },
     { code: 'EM', name: 'E Math', passingGrade: 41 },
     { code: 'AM', name: 'A Math', passingGrade: 42 },
     { code: 'PHY', name: 'Physics', passingGrade: 43 },
     { code: 'CHEM', name: 'Chemistry', passingGrade: 44 },
   ]);
-  await knex('award').insert([
-    // studentId from insert above...
+
+  await db.insert(award).values([
     { code: 'ac', name: 'Academic' },
     { code: 'sp', name: 'Sports' },
     { code: 'cv', name: 'Civics' },
   ]);
-  const students = [...new Array(30)].map((_, idx) => {
-    return {
-      firstName: 'first',
-      lastName: `last${idx}`,
-      avatar: '',
-      kyc: '',
-      awards: '',
-      sex: idx % 2 === 0 ? 'M' : 'F',
-      age: idx + 15,
-      gpa: (idx + 1) % 5,
-      birthDate: '1976-04-19',
-      birthTime: '0600',
-      country: 'SG',
-      state: '',
-      dateTimeTz: new Date().toISOString(),
-      secret: '1234',
-      remarks: '',
-      updated_by: 'someone',
-      updated_at: new Date().toISOString(),
-    };
-  });
-  await knex('student').insert(students);
-  await knex('student_subject').insert([
-    { studentId: 1, subjectCode: 'EM', gradeFinal: 'A', gradeDate: '2024-10-01' },
-    { studentId: 1, subjectCode: 'AM', gradeFinal: 'B', gradeDate: '2024-10-01' },
-    { studentId: 1, subjectCode: 'PHY', gradeFinal: 'D', gradeDate: '2024-10-01' },
-    { studentId: 2, subjectCode: 'EM', gradeFinal: 'C', gradeDate: '2024-10-02' },
-    { studentId: 2, subjectCode: 'CHEM', gradeFinal: 'B', gradeDate: '2024-10-02' },
+
+  const students = Array.from({ length: 30 }, (_, idx) => ({
+    firstName: 'first',
+    lastName: `last${idx}`,
+    avatar: '',
+    kyc: '',
+    awards: '',
+    sex: idx % 2 === 0 ? 'M' : 'F',
+    age: idx + 15,
+    gpa: String((idx + 1) % 5),
+    birthDate: '1976-04-19',
+    birthTime: '06:00',
+    country: 'SG',
+    state: '',
+    dateTimeTz: new Date(),
+    secret: '1234',
+    remarks: '',
+    updated_by: 'someone',
+    updated_at: new Date(),
+  }));
+  const insertedStudents = await db.insert(student).values(students).returning({ id: student.id });
+  const s1 = insertedStudents[0].id;
+  const s2 = insertedStudents[1].id;
+
+  await db.insert(studentSubject).values([
+    { studentId: s1, subjectCode: 'EM', gradeFinal: 'A', gradeDate: new Date('2024-10-01') },
+    { studentId: s1, subjectCode: 'AM', gradeFinal: 'B', gradeDate: new Date('2024-10-01') },
+    { studentId: s1, subjectCode: 'PHY', gradeFinal: 'D', gradeDate: new Date('2024-10-01') },
+    { studentId: s2, subjectCode: 'EM', gradeFinal: 'C', gradeDate: new Date('2024-10-02') },
+    { studentId: s2, subjectCode: 'CHEM', gradeFinal: 'B', gradeDate: new Date('2024-10-02') },
   ]);
 }

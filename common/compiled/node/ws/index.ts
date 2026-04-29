@@ -1,13 +1,12 @@
 // https://www.npmjs.com/package/ws
 // NOTE: if --forcedExit --detectOpenHandles in JEST test, will cause error
-// TODO: automated testing for websockets
 
 import https, { type Server as HttpsServer } from 'node:https';
 import WebSocket, { type RawData, WebSocketServer } from 'ws';
 import type { AliveWebSocket } from './types.ts';
 
 export default class Wss {
-  static _instance: Wss | null = null;
+  private static _instance: Wss | null = null;
 
   _port: number | undefined;
   _keepAliveMs: number;
@@ -27,17 +26,16 @@ export default class Wss {
       this._onClientConnect = (_ws: AliveWebSocket) => {};
       this._onClientClose = (_ws: AliveWebSocket) => {};
       this._onClientMessage = async (data: RawData, isBinary: boolean, ws: AliveWebSocket, wss: WebSocketServer) => {
-        const message = isBinary ? data : data.toString();
-        logger.info(`ws message: ${message}`);
+        const message = isBinary ? (data as Buffer) : Buffer.from(data as Buffer).toString('utf8');
+        const logMsg = isBinary ? `[binary ${(data as Buffer).length} bytes]` : String(message);
+        logger.info(`ws message: ${logMsg}`);
         try {
-          if (wss) {
-            wss.clients.forEach((client: WebSocket) => {
-              if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(message);
-              }
-            });
-            ws.send(message);
-          }
+          wss.clients.forEach((client: WebSocket) => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(message);
+            }
+          });
+          ws.send(message);
         } catch (e) {
           logger.info((e as Error).toString());
         }
@@ -48,6 +46,11 @@ export default class Wss {
   /** Returns the singleton Wss instance, or null if not yet initialised. */
   static getInstance(): Wss | null {
     return Wss._instance;
+  }
+
+  /** Reset the singleton — for use in tests only. */
+  static _resetForTesting(): void {
+    Wss._instance = null;
   }
 
   /** Returns the singleton Wss instance (used by services/index.ts via `services.get()`). */
@@ -81,75 +84,75 @@ export default class Wss {
     });
   }
 
+  private _createWss(server: HttpsServer | null): WebSocketServer {
+    const { HTTPS_PRIVATE_KEY, HTTPS_CERTIFICATE } = process.env;
+    if (HTTPS_CERTIFICATE) {
+      const httpsServer =
+        server ?? https.createServer({ key: HTTPS_PRIVATE_KEY, cert: HTTPS_CERTIFICATE }).listen(this._port);
+      return new WebSocketServer({ server: httpsServer });
+    }
+    if (server) return new WebSocketServer({ server });
+    return new WebSocketServer({ port: this._port });
+  }
+
+  private _setupKeepAlive(): void {
+    this._keepAliveInterval = setInterval(() => {
+      logger.info('WS Clients: ', this._wss?.clients.size);
+      this._wss?.clients.forEach((ws: WebSocket) => {
+        const aliveWs = ws as AliveWebSocket;
+        if (!aliveWs.isAlive) {
+          aliveWs.terminate();
+          return;
+        }
+        aliveWs.isAlive = false;
+        aliveWs.ping(() => {}); // NOSONAR
+      });
+    }, this._keepAliveMs);
+  }
+
   /** Start the WebSocket server. Attaches to an existing HTTP/HTTPS server when provided. */
   open(server: HttpsServer | null = null, _app: unknown = null): this {
-    const { HTTPS_PRIVATE_KEY, HTTPS_CERTIFICATE } = process.env;
-    // biome-ignore lint/suspicious/noImplicitAnyLet: assigned in catch block below
-    let err;
+    let err: string | undefined;
     try {
       if (!this._wss && this._port) {
-        if (HTTPS_CERTIFICATE) {
-          if (!server)
-            server = https.createServer({ key: HTTPS_PRIVATE_KEY, cert: HTTPS_CERTIFICATE }).listen(this._port);
-          this._wss = new WebSocketServer({ server });
-        } else {
-          if (!server) this._wss = new WebSocketServer({ port: this._port });
-          else this._wss = new WebSocketServer({ server });
-        }
-
+        this._wss = this._createWss(server);
         logger.info(`WS API listening on port ${this._port}`);
 
-        if (this._wss) {
-          this._wss.on('error', (e: Error) => logger.info(`WS error: ${e.toString()}`));
-          this._wss.on('connection', (ws: WebSocket) => {
-            const aliveWs = ws as AliveWebSocket;
-            logger.info('ws client connected');
-            this._onClientConnect(aliveWs);
+        this._wss.on('error', (e: Error) => logger.info(`WS error: ${e.toString()}`));
+        this._wss.on('connection', (ws: WebSocket) => {
+          const aliveWs = ws as AliveWebSocket;
+          logger.info('ws client connected');
+          this._onClientConnect(aliveWs);
+          aliveWs.isAlive = true;
+          aliveWs.on('pong', () => {
             aliveWs.isAlive = true;
-            aliveWs.on('pong', () => {
-              aliveWs.isAlive = true;
-            });
-            aliveWs.on('close', () => this._onClientClose(aliveWs));
-            aliveWs.on('message', (data: RawData, isBinary: boolean) => {
-              if (this._wss) this._onClientMessage(data, isBinary, aliveWs, this._wss);
-            });
           });
+          aliveWs.on('close', () => this._onClientClose(aliveWs));
+          aliveWs.on('message', (data: RawData, isBinary: boolean) => {
+            if (this._wss) this._onClientMessage(data, isBinary, aliveWs, this._wss);
+          });
+        });
 
-          // save ref interval so that it can be cleared when close()
-          this._keepAliveInterval = setInterval(() => {
-            logger.info('WS Clients: ', this._wss?.clients.size);
-            this._wss?.clients.forEach((ws: WebSocket) => {
-              const aliveWs = ws as AliveWebSocket;
-              if (!aliveWs.isAlive) {
-                aliveWs.terminate();
-                return;
-              }
-              aliveWs.isAlive = false;
-              aliveWs.ping(() => {}); // NOSONAR
-            });
-          }, this._keepAliveMs);
-        }
+        this._setupKeepAlive();
       } else {
         logger.info('NO WS Service To Open');
       }
     } catch (e) {
       err = (e as Error).toString();
     }
-    logger.info(`WS Open ${err ? err : 'Done'}`);
+    logger.info(`WS Open ${err ?? 'Done'}`);
     return this;
   }
 
   /** Gracefully shut down the WebSocket server: broadcasts shutdown, terminates all clients, resets singleton. */
   close(): void {
     try {
-      // Clear interval before close to avoid accessing _wss which is already null
       if (this._keepAliveInterval) {
         clearInterval(this._keepAliveInterval);
         this._keepAliveInterval = null;
       }
 
       if (this._wss) {
-        // Broadcast shutdown to all clients before terminating
         this._wss.clients.forEach((client: WebSocket) => {
           if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify({ type: 'server_shutdown' }));
@@ -157,7 +160,6 @@ export default class Wss {
           }
         });
 
-        // Force terminate clients that have not yet closed
         for (const client of this._wss.clients) client.terminate();
         this._wss.close();
         this._wss = null;
@@ -166,9 +168,7 @@ export default class Wss {
       logger.error((e as Error).toString());
     }
 
-    // Reset the singleton so that it can be reinitialized if the service is restarted
     Wss._instance = null;
-
     logger.info('WS API CLOSE OK');
   }
 }
