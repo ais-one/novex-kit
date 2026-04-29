@@ -74,7 +74,7 @@ class OidcSession {
     if (depth > 8) throw new Error(`Too many redirects from ${url}`);
     const res = await this.get(url);
     if ((res.status === 301 || res.status === 302 || res.status === 303) && res.headers.location) {
-      return this.follow(new URL(res.headers.location as string, url).toString(), depth + 1);
+      return this.follow(new URL(res.headers.location, url).toString(), depth + 1);
     }
     return res;
   }
@@ -83,7 +83,7 @@ class OidcSession {
 // ─── HTML form helper ─────────────────────────────────────────────────────────
 
 function extractFormAction(html: string): string {
-  return html.match(/<form[^>]*action=["']([^"']+)["']/i)?.[1] ?? '';
+  return /<form[^>]*action=["']([^"']+)["']/i.exec(html)?.[1] ?? '';
 }
 
 // ─── Follow provider-internal redirects until reaching the callback URL ───────
@@ -101,7 +101,7 @@ async function followToCode(session: OidcSession, location: string, base: string
     if (![301, 302, 303].includes(res.status) || !res.headers.location) {
       throw new Error(`Expected redirect at ${url}, got ${res.status}`);
     }
-    url = new URL(res.headers.location as string, url).toString();
+    url = new URL(res.headers.location, url).toString();
   }
   throw new Error('Too many redirects following to auth code');
 }
@@ -131,7 +131,7 @@ async function getOidcAuthCode(): Promise<string> {
     new URLSearchParams({ prompt: 'login', login: 'testuser', password: 'test' }).toString(),
   );
 
-  const location = loginRes.headers.location as string;
+  const location = loginRes.headers.location;
   if (!location) throw new Error('No redirect after OIDC login POST');
 
   // loadExistingGrant auto-grants consent so there is no consent step
@@ -241,7 +241,7 @@ describe.only('OIDC integration', () => {
     it.only('redirects to oidc-provider authorization endpoint with correct params', async () => {
       const { status, headers } = await httpRequest(`${APP_BASE_URL}/api/oidc/login`);
       assert.strictEqual(status, 302);
-      const location = (headers.location as string) ?? '';
+      const location = headers.location ?? '';
       assert.ok(location.startsWith(`${OIDC_URL}/auth`), `Expected OIDC auth redirect, got: ${location}`);
       assert.ok(location.includes(`client_id=${OIDC_CLIENT_ID}`));
       assert.ok(location.includes('response_type=code'));
@@ -253,7 +253,7 @@ describe.only('OIDC integration', () => {
       const code = await getOidcAuthCode();
       const { status, headers } = await httpRequest(`${APP_BASE_URL}/api/oidc/auth?code=${code}`);
       assert.strictEqual(status, 302);
-      const location = (headers.location as string) ?? '';
+      const location = headers.location ?? '';
       assert.ok(location.startsWith(OIDC_CALLBACK), `Expected callback redirect, got: ${location}`);
       assert.ok(location.includes('#'), 'Expected token hash fragment in redirect URL');
     });
@@ -261,7 +261,7 @@ describe.only('OIDC integration', () => {
     it.only('redirects with error fragment when authorization code is invalid', async () => {
       const { status, headers } = await httpRequest(`${APP_BASE_URL}/api/oidc/auth?code=invalid-code-xyz`);
       assert.strictEqual(status, 302);
-      const location = (headers.location as string) ?? '';
+      const location = headers.location ?? '';
       // Controller redirects even on token error — no access_token in fragment
       assert.ok(location.includes('#'), 'Expected hash fragment in redirect URL');
       assert.ok(!location.includes('access_token='), 'Should not contain a valid access_token');

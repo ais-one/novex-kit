@@ -18,7 +18,7 @@ const waitForOpen = (ws: WebSocket) =>
 describe.only('Wss', () => {
   before(() => {
     process.env.WS_PORT = String(TEST_PORT);
-    Wss._instance = null;
+    Wss._resetForTesting();
   });
 
   after(() => {
@@ -29,14 +29,15 @@ describe.only('Wss', () => {
     it.only('first instance is stored as _instance', () => {
       const a = new Wss();
       assert.strictEqual(Wss.getInstance(), a);
-      Wss._instance = null;
+      Wss._resetForTesting();
     });
 
     it.only('subsequent construction does not replace the singleton', () => {
       const a = new Wss();
-      new Wss(); // second call should be no-op
+      const second = new Wss(); // second call should be no-op
       assert.strictEqual(Wss.getInstance(), a);
-      Wss._instance = null;
+      assert.notStrictEqual(second, a);
+      Wss._resetForTesting();
     });
   });
 
@@ -44,7 +45,7 @@ describe.only('Wss', () => {
     let wss: Wss;
 
     before(() => {
-      Wss._instance = null;
+      Wss._resetForTesting();
       wss = new Wss();
     });
 
@@ -65,7 +66,7 @@ describe.only('Wss', () => {
     let wss: Wss;
 
     before(async () => {
-      Wss._instance = null;
+      Wss._resetForTesting();
       wss = new Wss();
       wss.open();
       await wait(100);
@@ -80,7 +81,9 @@ describe.only('Wss', () => {
       const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT}`);
       await waitForOpen(client);
 
-      const received = new Promise<string>(resolve => client.once('message', d => resolve(d.toString())));
+      const received = new Promise<string>(resolve =>
+        client.once('message', d => resolve(Buffer.from(d as Buffer).toString('utf8'))),
+      );
       client.send('hello');
       assert.strictEqual(await received, 'hello');
       client.close();
@@ -92,7 +95,9 @@ describe.only('Wss', () => {
       const c2 = new WebSocket(`ws://127.0.0.1:${TEST_PORT}`);
       await Promise.all([waitForOpen(c1), waitForOpen(c2)]);
 
-      const c2Received = new Promise<string>(resolve => c2.once('message', d => resolve(d.toString())));
+      const c2Received = new Promise<string>(resolve =>
+        c2.once('message', d => resolve(Buffer.from(d as Buffer).toString('utf8'))),
+      );
       c1.send('broadcast');
       assert.strictEqual(await c2Received, 'broadcast');
       c1.close();
@@ -105,7 +110,7 @@ describe.only('Wss', () => {
     let wss: Wss;
 
     before(async () => {
-      Wss._instance = null;
+      Wss._resetForTesting();
       wss = new Wss();
       wss.open();
       await wait(100);
@@ -120,7 +125,9 @@ describe.only('Wss', () => {
       const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT}`);
       await waitForOpen(client);
 
-      const received = new Promise<string>(resolve => client.once('message', d => resolve(d.toString())));
+      const received = new Promise<string>(resolve =>
+        client.once('message', d => resolve(Buffer.from(d as Buffer).toString('utf8'))),
+      );
       wss.send('server push');
       assert.strictEqual(await received, 'server push');
       client.close();
@@ -132,7 +139,7 @@ describe.only('Wss', () => {
     let wss: Wss;
 
     before(async () => {
-      Wss._instance = null;
+      Wss._resetForTesting();
       wss = new Wss();
       wss.open();
       await wait(100);
@@ -145,13 +152,15 @@ describe.only('Wss', () => {
 
     it.only('setOnClientMessage replaces the default handler', async () => {
       wss.setOnClientMessage(async (data, _isBinary, ws) => {
-        ws.send(`pong:${data.toString()}`);
+        ws.send(`pong:${Buffer.from(data as Buffer).toString('utf8')}`);
       });
 
       const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT}`);
       await waitForOpen(client);
 
-      const received = new Promise<string>(resolve => client.once('message', d => resolve(d.toString())));
+      const received = new Promise<string>(resolve =>
+        client.once('message', d => resolve(Buffer.from(d as Buffer).toString('utf8'))),
+      );
       client.send('ping');
       assert.strictEqual(await received, 'pong:ping');
       client.close();

@@ -4,8 +4,15 @@ import assert from 'node:assert';
 import { beforeEach, describe, it } from 'node:test';
 import CategoryController, { _injectServices } from '../../src/controllers/category.ts';
 
-// Chainable query builder stub — resolves to an empty result set
+// Drizzle-style chainable query builder stub — resolves to an empty result set
 const mockQueryBuilder = {
+  select() {
+    return this;
+  },
+  // biome-ignore lint/suspicious/noExplicitAny: test mock
+  from(_table: any) {
+    return this;
+  },
   // biome-ignore lint/suspicious/noExplicitAny: test mock
   limit(_n: any) {
     return this;
@@ -19,7 +26,7 @@ const mockQueryBuilder = {
 // Inject mock services before any test runs
 _injectServices({
   // biome-ignore lint/suspicious/noExplicitAny: test mock
-  get: (_name: any) => () => mockQueryBuilder,
+  get: (_name: any) => mockQueryBuilder,
 });
 
 // biome-ignore lint/suspicious/noExplicitAny: test mock
@@ -45,7 +52,7 @@ describe.only('categoryController.find', () => {
   });
 
   it.only('should return status 200 and authors', async () => {
-    await CategoryController.find(req, res, () => {});
+    await CategoryController.find(req, res);
     assert.strictEqual(res.statusCode, 200);
   });
 });

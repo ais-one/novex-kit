@@ -18,13 +18,9 @@ export default express
   .get('/', (req, res) => res.send({ status: 'sample-api OK' }))
   .get('/healthcheck', (req, res) => res.send({ status: 'sample-api/healthcheck OK' }))
   .get('/check-db', async (req, res) => {
-    const connectionName = (req.query.conn as string) || 'knex1'; // refer to .env.sample file for this value
-    const knexDB = s.get(connectionName); // knex object, can have more than 1
-    const { config } = knexDB.context.client;
-    const rv = await knexDB.raw('SELECT 1'); // also can try knexDB(<table name>).query()
-    return res.status(200).json({
-      connectionName,
-      dbType: config.client,
-      result: rv,
-    });
+    const connectionName = (req.query.conn as string) || 'drizzle1';
+    const db = s.get(connectionName);
+    const { sql } = await import('drizzle-orm');
+    const result = await db.execute(sql`SELECT 1`);
+    return res.status(200).json({ connectionName, result: result.rows });
   });
