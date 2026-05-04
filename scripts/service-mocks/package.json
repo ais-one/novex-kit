@@ -16,7 +16,7 @@
     "@js-ak/kafkajs-mock": "^1.0.0",
     "ioredis-mock": "^8.13.1",
     "kafkajs": "^2.2.4",
-    "oidc-provider": "^9.8.2"
+    "oidc-provider": "^9.8.3"
   },
   "devDependencies": {
     "saml-idp": "^1.2.1"
