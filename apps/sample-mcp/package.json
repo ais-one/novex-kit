@@ -1,5 +1,5 @@
 {
-  "name": "sample-mcp",
+  "name": "@novex-kit/sample-mcp",
   "version": "0.0.1",
   "description": "sample-mcp MCP server",
   "type": "module",
@@ -19,9 +19,9 @@
     "test:e2e": "exit 0"
   },
   "dependencies": {
+    "@common/iso": "file:../../common/vanilla/iso",
+    "@common/node": "file:../../common/compiled/node",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "express": "^5.2.1",
-    "openai": "^6.34.0",
-    "zod": "^4.3.6"
+    "openai": "^6.35.0"
   }
 }

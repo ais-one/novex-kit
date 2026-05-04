@@ -10,11 +10,11 @@
     "@ant-design/icons-vue": "^7.0.1",
     "@common/iso": "file:../../vanilla/iso",
     "@common/web": "file:../../vanilla/web",
-    "@sentry/vue": "^10.49.0",
+    "@sentry/vue": "^10.51.0",
     "ant-design-vue": "^4.2.6",
     "pinia": "^3.0.4",
     "vue": "^3.3.8",
-    "vue-router": "^5.0.4"
+    "vue-router": "^5.0.6"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 0"
