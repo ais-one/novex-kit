@@ -49,7 +49,11 @@ const preRoute = () => {
 
   // SERVICES need server
   services.start(app, server);
-  authService.setup('keyv', 'knex1', services.get); // setup authorization
+  // setup authorization
+  const { TOKEN_SERVICE_NAME = '', USER_SERVICE_NAME = '' } = globalThis.__config?.JWT ?? {};
+  if (TOKEN_SERVICE_NAME && USER_SERVICE_NAME) {
+    authService.setup(TOKEN_SERVICE_NAME, USER_SERVICE_NAME, services.get);
+  }
 
   // with timeout handling: socket timeouts, client aborts, close connections, normal responses
   // and prevents duplicate logs

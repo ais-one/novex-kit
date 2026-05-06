@@ -8,7 +8,7 @@ let _userServiceType: string;
 // biome-ignore lint/suspicious/noExplicitAny: lookup returns the underlying store instance (drizzle or keyv)
 let _lookup: ((name: string) => any) | null = null;
 
-const { JWT_REFRESH_STORE_NAME = '' } = globalThis.__config.JWT;
+const { JWT_REFRESH_STORE_NAME = '' } = globalThis.__config?.JWT ?? {};
 
 const { AUTH_USER_STORE_NAME } = process.env;
 

@@ -93,12 +93,12 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           # cat password.txt |
-          # echo $CR_PASSWORD | docker login --username $CR_USERNAME --password-stdin $CR_HOST
+          echo $CR_PASSWORD | docker login --username $CR_USERNAME --password-stdin $CR_HOST
           docker build -f apps/$CR_IMAGENAME/Dockerfile \
             -t $CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }} \
             --target $DOCKERFILE_TARGET \
             --build-arg ARG_NODE_ENV=${{ github.event.inputs.cr_env }} \
             --build-arg ARG_API_PORT=3000 \
             $DOCKERFILE_PATH || exit 1001
-          # docker push $CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}
+          docker push $CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}
           docker logout

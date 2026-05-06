@@ -19,7 +19,7 @@ const {
   JWT_SCOPE = '',
 } = globalThis.__config.JWT;
 
-const { COOKIE_OPTS } = globalThis.__config;
+const { COOKIE_OPTS } = globalThis.__config?.JWT ?? {};
 
 const {
   AUTH_REFRESH_URL,

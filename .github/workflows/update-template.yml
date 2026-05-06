@@ -62,7 +62,7 @@ jobs:
       - name: Display Inputs
         run: echo "${{ toJSON(github.event.inputs) }}"
 
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/checkout
         with:
           token: ${{ secrets.SYNC_TOKEN }}
           ref: ${{ github.event.inputs.ref }}
@@ -126,6 +126,14 @@ jobs:
       #       echo "has_changes=true" >> $GITHUB_OUTPUT
       #       echo "has_changes=true"
       #     fi
+
+      # Regenerate lock file so upstream package.json version changes are reflected.
+      # Uses npm install (not ci) so the lock file is updated, not validated.
+      # The updated package-lock.json is picked up by git add -A in the next step.
+      - name: Set up Node and regenerate lock file
+        uses: ./.github/actions/setup-node-npm-install
+        with:
+          install-command: npm install
 
       - name: Push sync branch
         env:
