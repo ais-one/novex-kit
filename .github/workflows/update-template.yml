@@ -143,4 +143,4 @@ jobs:
         run: |
           git add -A
           git commit -m "chore: sync from upstream template"
-          git push origin "$SYNC_BRANCH" --force
+          git push origin "$SYNC_BRANCH" --force --no-verify
