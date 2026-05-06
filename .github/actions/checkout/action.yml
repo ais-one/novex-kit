@@ -10,11 +10,6 @@ inputs:
     description: Number of commits to fetch. 0 fetches full history.
     required: false
     default: '0'
-  token:
-    description: Personal access token for checkout. Defaults to the built-in GITHUB_TOKEN.
-    required: false
-    default: ${{ github.token }}
-
 runs:
   using: composite
   steps:
@@ -23,4 +18,3 @@ runs:
       with:
         ref: ${{ inputs.ref }}
         fetch-depth: ${{ inputs.fetch-depth }}
-        token: ${{ inputs.token }}
