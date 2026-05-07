@@ -1,5 +1,3 @@
-// TODO add retry - https://dev.to/ycmjason/javascript-fetch-retry-upon-failure-3p6g
-
 /**
  * Thin fetch wrapper with JWT bearer auth, token refresh, and optional timeout.
  * Set `credentials: 'include'` to use HttpOnly cookies instead of bearer tokens.
@@ -12,7 +10,7 @@ class Fetch {
    * @param {Function} [options.forceLogoutFn] - called on unrecoverable 401/403
    * @param {string} [options.refreshUrl] - endpoint used to exchange a refresh token for new tokens
    * @param {number} [options.timeoutMs] - abort after this many ms (0 = disabled)
-   * @param {number} [options.maxRetry] - max retry attempts (not yet implemented)
+   * @param {number} [options.maxRetry] - max retry attempts on network errors and 5xx responses (exponential backoff, default `0`)
    * @param {object} [tokens]
    * @param {string} [tokens.access] - JWT access token
    * @param {string} [tokens.refresh] - JWT refresh token
@@ -80,6 +78,11 @@ class Fetch {
     return this.tokens;
   }
 
+  /** @param {number} ms */
+  static #sleep(ms) {
+    return new Promise(res => setTimeout(res, ms));
+  }
+
   /** Build a query string from a params object merged with any existing URL search. */
   #buildQs(query, urlSearch) {
     const qs =
@@ -123,6 +126,28 @@ class Fetch {
     }
   }
 
+  /**
+   * Retry `#fetchAndParse` on network errors and 5xx responses with exponential backoff.
+   * Returns the last Response and the opts used (needed by `#refreshAndRetry`).
+   * @returns {Promise<{ rv: Response & { data: unknown }, opts: object }>}
+   */
+  async #fetchWithRetry(urlFull, qs, method, body, headers) {
+    let opts;
+    let rv;
+    for (let attempt = 0; attempt <= this.options.maxRetry; attempt++) {
+      if (attempt > 0) await Fetch.#sleep(2 ** (attempt - 1) * 200); // 200ms, 400ms, 800ms …
+      opts = this.#buildOptions(method, headers); // fresh AbortController per attempt
+      this.#setBody(opts, method, body);
+      try {
+        rv = await this.#fetchAndParse(urlFull, qs, opts);
+        if (rv.status < 500) break; // don't retry success or client errors
+      } catch (e) {
+        if (attempt >= this.options.maxRetry) throw e;
+      }
+    }
+    return { rv, opts };
+  }
+
   /** Execute fetch and attach parsed JSON as `.data` on the Response. */
   async #fetchAndParse(urlFull, qs, opts) {
     const rv = await fetch(urlFull + qs, opts);
@@ -163,20 +188,18 @@ class Fetch {
     const { urlOrigin, urlFull, urlSearch } = Fetch.parseUrl(url, this.options.baseUrl);
     try {
       const qs = this.#buildQs(query, urlSearch);
-      const opts = this.#buildOptions(method, headers);
-      this.#setBody(opts, method, body);
+      const { rv: rv0, opts } = await this.#fetchWithRetry(urlFull, qs, method, body, headers);
 
-      const rv0 = await this.#fetchAndParse(urlFull, qs, opts);
       if (rv0.status >= 200 && rv0.status < 400) return rv0;
 
       const rv2 = await this.#refreshAndRetry(rv0, urlFull, qs, opts, urlOrigin);
       if (rv2) return rv2;
 
-      throw rv0; // error
+      throw rv0;
     } catch (e) {
       if (e?.data?.message !== 'Token Expired Error' && (e.status === 401 || e.status === 403))
         this.options.forceLogoutFn();
-      throw e; // some other error
+      throw e;
     }
   }
 

@@ -67,7 +67,7 @@ async function fetchWithRetry(url, options = {}) {
     const timeoutId = setTimeout(() => timeoutController.abort(), timeout);
 
     // Merge the timeout signal with any external signal
-    const signal = externalSignal ? mergeSignals([timeoutController.signal, externalSignal]) : timeoutController.signal;
+    const signal = mergeSignals(timeoutController.signal, externalSignal);
 
     let response;
     let error;
@@ -91,8 +91,7 @@ async function fetchWithRetry(url, options = {}) {
       throw new DOMException('Fetch aborted by caller', 'AbortError');
     }
 
-    const shouldRetry =
-      attempt < retries && (isTimeout || isNetworkErr || (response && retryOn.includes(response.status)));
+    const shouldRetry = shouldRetryRequest(attempt, retries, isTimeout, isNetworkErr, response, retryOn);
 
     if (!shouldRetry) {
       // No more retries — resolve or throw
@@ -106,17 +105,11 @@ async function fetchWithRetry(url, options = {}) {
 
     // Check Retry-After header on 429/503 and honour it if present
     const retryAfterMs = parseRetryAfter(response?.headers?.get('Retry-After'));
-    const waitMs = retryAfterMs ? Math.min(retryAfterMs, maxDelay) : delay;
+    const waitMs = Math.min(retryAfterMs ?? delay, maxDelay);
 
-    const retryReason = isTimeout
-      ? `Timeout after ${timeout}ms`
-      : isNetworkErr
-        ? error.message
-        : `HTTP ${response.status}`;
+    const retryReason = getRetryReason(isTimeout, isNetworkErr, error, response, timeout);
 
-    if (typeof onRetry === 'function') {
-      onRetry({ attempt: attempt + 1, total: retries, reason: retryReason, delay: waitMs });
-    }
+    onRetry?.({ attempt: attempt + 1, total: retries, reason: retryReason, delay: waitMs });
 
     await sleep(waitMs, externalSignal); // sleep is also cancellable
     attempt++;
@@ -135,17 +128,20 @@ function calcDelay({ attempt, baseDelay, maxDelay, backoffFactor, jitter }) {
 }
 
 /**
- * Merge multiple AbortSignals into one.
- * Aborts as soon as ANY of the signals fires.
+ * Merge a timeout signal with an optional external signal.
+ * Aborts as soon as either signal fires.
+ * Returns `timeoutSignal` directly when there is no external signal.
  * (Native AbortSignal.any() is available in Node 20+ / Chrome 116+)
+ * @param {AbortSignal} timeoutSignal
+ * @param {AbortSignal} [externalSignal]
+ * @returns {AbortSignal}
  */
-function mergeSignals(signals) {
-  if (typeof AbortSignal.any === 'function') {
-    return AbortSignal.any(signals);
-  }
+function mergeSignals(timeoutSignal, externalSignal) {
+  if (!externalSignal) return timeoutSignal;
+  if (typeof AbortSignal.any === 'function') return AbortSignal.any([timeoutSignal, externalSignal]);
   // Polyfill for older environments
   const controller = new AbortController();
-  for (const signal of signals) {
+  for (const signal of [timeoutSignal, externalSignal]) {
     if (signal.aborted) {
       controller.abort(signal.reason);
       break;
@@ -153,6 +149,19 @@ function mergeSignals(signals) {
     signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
   }
   return controller.signal;
+}
+
+/** @returns {boolean} */
+function shouldRetryRequest(attempt, retries, isTimeout, isNetworkErr, response, retryOn) {
+  if (attempt >= retries) return false;
+  return isTimeout || isNetworkErr || (response != null && retryOn.includes(response.status));
+}
+
+/** @returns {string} */
+function getRetryReason(isTimeout, isNetworkErr, error, response, timeout) {
+  if (isTimeout) return `Timeout after ${timeout}ms`;
+  if (isNetworkErr) return error.message;
+  return `HTTP ${response.status}`;
 }
 
 /** Sleep for ms, but cancel early if signal fires */
@@ -174,7 +183,7 @@ function sleep(ms, signal) {
 /** Parse Retry-After header into milliseconds (supports seconds int and HTTP date) */
 function parseRetryAfter(header) {
   if (!header) return null;
-  const seconds = parseInt(header, 10);
+  const seconds = Number.parseInt(header, 10);
   if (!Number.isNaN(seconds)) return seconds * 1000;
   const date = new Date(header).getTime();
   if (!Number.isNaN(date)) return Math.max(0, date - Date.now());

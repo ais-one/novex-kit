@@ -9,8 +9,8 @@ export const dateStrAddDay = (dateStr, days = 0) => {
   d.setDate(d.getDate() + days); // add the days
   return [
     d.getFullYear().toString(),
-    (d.getMonth() + 1).toString().padStart(2, 0),
-    d.getDate().toString().padStart(2, 0),
+    (d.getMonth() + 1).toString().padStart(2, '0'),
+    d.getDate().toString().padStart(2, '0'),
   ];
 };
 
