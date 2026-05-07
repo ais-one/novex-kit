@@ -57,6 +57,18 @@ body {
 </div>
 `;
 
+/**
+ * Web-cam capture component. Streams the device camera into a `<video>` element
+ * and lets the user take a photo. The captured image is emitted as a PNG data URL.
+ *
+ * @element vcxwc-web-cam
+ * @attr {boolean} show - when present, the component is considered visible
+ * @attr {number} width - video/canvas width in px (default 320)
+ * @attr {number} height - video/canvas height in px (default 240)
+ * @slot button-snap - button that triggers capture (default: "Take Photo")
+ * @slot button-unsnap - button that restarts the camera after capture (default: "Start Camera")
+ * @fires snap - when a photo is taken (detail: PNG data URL string)
+ */
 class WebCam extends HTMLElement {
   constructor() {
     super();

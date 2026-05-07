@@ -191,10 +191,23 @@ template.innerHTML = /*html*/ `
 </div>
 `;
 
+/**
+ * Dynamic form renderer driven by a T4T table config.
+ * Generates form fields (input, textarea, select, combobox, file upload) from
+ * the column definitions returned by `getConfig()`, and emits submit/cancel events.
+ *
+ * @element bwc-t4t-form
+ * @attr {string} mode - `'add'` or `'edit'`
+ * @prop {Record<string, unknown>} record - current form data (keyed by column name)
+ * @prop {Record<string, unknown>} config - T4T config object as returned by the `/t4t/config/:table` endpoint
+ * @fires submit - when the form is submitted (detail: `{ data }` on success, `{ error }` on validation failure)
+ * @fires cancel - when the cancel button is clicked
+ * @fires render-error - when an unexpected error occurs during rendering (detail: Error)
+ */
 class BwcT4tForm extends HTMLElement {
-  #config = []; // from table config property passed in
-  #record = {}; // from record property passed in
-  #xcols = {}; // extended column information - info on input element, event, etc...
+  #config = [];
+  #record = {};
+  #xcols = {};
 
   get config() {
     return this.#config;
@@ -208,19 +221,12 @@ class BwcT4tForm extends HTMLElement {
   }
   set record(val) {
     this.#record = val;
-    if (this.#config && this.#record) {
-      // console.log('do render - val (this.#record)', val)
-      // console.log('do render - config', this.#config)
-      this._render();
-    }
+    if (this.#config && this.#record) this._render();
   }
 
   connectedCallback() {
-    // console.log('bwc-t4t-form', this.#config, this.#record)
     this.appendChild(template.content.cloneNode(true));
-    if (this.#config && this.#record) {
-      this._render();
-    }
+    if (this.#config && this.#record) this._render();
   }
 
   static get observedAttributes() {
@@ -241,275 +247,233 @@ class BwcT4tForm extends HTMLElement {
     this.setAttribute('mode', val);
   }
 
+  // ── Private helpers: formEl ───────────────────────────────────────────────
+
+  /** Set all key-value pairs in `attrs` as HTML attributes on `el`. No-op if attrs is falsy. */
+  #setAttributes(el, attrs) {
+    if (!attrs) return;
+    for (const key in attrs) el.setAttribute(key, attrs[key]);
+  }
+
+  /** Wire up a validated input/select/combobox element and register it in #xcols. */
+  #setupInputElement(el, c, k, elementTag) {
+    if (!this.#xcols[k]) this.#xcols[k] = {};
+    if (c.mode === 'readonly') el.setAttribute('disabled', true);
+    if (c.required) el.setAttribute('required', true);
+
+    if (elementTag === 'select') {
+      this.#setupSelectElement(el, c, k);
+    } else if (elementTag === 'bwc-combobox') {
+      this.#setupComboboxElement(el, c, k);
+    } else if (this.mode === 'add') {
+      el.value = c.default || '';
+    } else if (this.mode === 'edit') {
+      el.value = el.type === 'file' ? '' : this.#record[k] || '';
+    }
+    this.#xcols[k].el = el;
+  }
+
+  /** Recursively build and append child form elements. */
+  #appendChildren(el, children, k, c) {
+    children.forEach(child => {
+      const childEl = this.formEl(child, k, c);
+      if (childEl) el.appendChild(childEl);
+    });
+  }
+
+  #setupSelectElement(el, c, k) {
+    const selectString = this.mode === 'add' ? c.default || '' : this.#record[k] || '';
+    let selected;
+    if (selectString) {
+      selected = c?.ui?.attrs?.multiple ? selectString.split(',') : [selectString];
+    } else {
+      selected = [];
+    }
+    for (const option of c?.ui?.options ?? []) {
+      const optEl = document.createElement('option');
+      optEl.value = option.key;
+      optEl.innerText = option.text;
+      if (selected.includes(option.key)) optEl.selected = true;
+      el.appendChild(optEl);
+    }
+  }
+
+  #setupComboboxElement(el, c, k) {
+    el.setAttribute('listid', `list-${k}`);
+    el.setAttribute('object-key', 'key');
+    el.setAttribute('object-text', 'text');
+    if (c?.ui?.attrs?.multiple) el.setAttribute('multiple', '');
+    if (c?.ui?.attrs?.repeat) el.setAttribute('repeat', '');
+    if (c?.ui?.attrs?.allowCustomTag) el.setAttribute('allow-custom-tag', '');
+    if (c?.ui?.attrs?.tagLimit) el.setAttribute('tag-limit', c.ui.attrs.tagLimit);
+    // disabled and required already set
+    // TODO set input class
+
+    el.onload = () => {
+      const valueType = c?.ui?.valueType; // TODO transform value
+      const val = this.mode === 'add' ? c.default : this.#record[k];
+      if (c?.ui?.attrs?.multiple) {
+        el.tags = valueType === '' ? val.split(',').map(item => ({ key: item, text: item })) || [] : val || [];
+      } else if (valueType === '') {
+        el.value = val || '';
+        el.selected = val ? { key: val, text: val } : null;
+      } else {
+        el.value = val.text || ''; // key and text should be same
+        el.selected = val || null;
+      }
+    };
+
+    el.onsearch = debounce(async e => {
+      let parentVal = null;
+      if (c?.options?.parentCol) {
+        const col = this.#xcols[c?.options?.parentCol];
+        if (col?.el) parentVal = col.el.value;
+      }
+      const res = await autocomplete(e.target.value, k, this.#record, parentVal);
+      el.items = res;
+    }, 500);
+
+    el.onselect = () => {
+      // TODO reset child value - may cascade down further
+      const childColName = c?.options?.childCol;
+      if (!childColName) return;
+      const col = this.#xcols[childColName];
+      const childColObj = this.#config.cols[childColName];
+      if (col?.el) {
+        if (childColObj?.ui?.attrs?.multiple) {
+          col.el.tags = [];
+        } else {
+          col.el.value = '';
+          col.el.selected = null;
+        }
+      }
+    };
+  }
+
+  // ── Private helpers: _render ───────────────────────────────────────────────
+
+  #validateForm() {
+    let error = false;
+    for (const col in this.#xcols) {
+      const { el, errorEl } = this.#xcols[col];
+      if (el?.checkValidity) {
+        const valid = el.checkValidity();
+        if (!valid) error = true;
+        if (errorEl) errorEl.innerText = valid ? '' : el.validationMessage;
+      }
+    }
+    return error;
+  }
+
+  #collectColData(inputEl, col) {
+    const tag = inputEl.tagName.toLowerCase();
+    if (tag === 'select') {
+      const selected = [];
+      for (const opt of inputEl.selectedOptions) selected.push(opt.value);
+      return selected.join(',');
+    }
+    if (tag === 'bwc-combobox') {
+      // TODO set the value
+      const c = this.#config.cols[col];
+      const val = c?.ui?.attrs?.multiple ? inputEl.tags : inputEl.selected;
+      const valueType = c?.ui?.valueType;
+      if (c?.ui?.attrs?.multiple) {
+        return valueType === '' ? val.map(item => item.text).join(',') : val;
+      }
+      return valueType === '' ? val.text : val;
+    }
+    // input, textarea
+    return inputEl.files ? inputEl.files : inputEl.value;
+  }
+
+  #collectFormData() {
+    for (const col in this.#xcols) {
+      const inputEl = this.#xcols[col].el;
+      if (inputEl) this.#record[col] = this.#collectColData(inputEl, col);
+    }
+  }
+
+  /** Render a single column into the content area if the mode/visibility rules allow it. */
+  #renderCol(contentEl, col, c) {
+    const visible = (this.mode === 'add' && c.add !== 'hide') || (this.mode === 'edit' && c.edit !== 'hide');
+    if (!visible) return;
+    const tagKey = c?.ui?.tag;
+    if (!tagKey) return;
+    const fieldEl = this.formEl(framework[tagKey], col, c);
+    if (c?.ui?.attrs?.type === 'file' && this.mode === 'edit') {
+      this.#xcols[col].errorEl.innerText = this.#record[col] || 'No Files Found';
+    }
+    contentEl.appendChild(fieldEl);
+  }
+
+  // ── Core ───────────────────────────────────────────────────────────────────
+
   // node is current node in tree, k = column key, c = column object
   formEl(node, k, c) {
     const mode = this.mode;
     if (c[mode] === 'hide') return null;
 
-    // console.log(k, c)
     const { tag, className, attrs, children, errorLabel } = node;
-    // console.log(tag, className, attrs)
-    const elementTag = tag === 'input-placeholder' ? c.ui.tag : tag; // replace for this
+    const elementTag = tag === 'input-placeholder' ? c.ui.tag : tag;
     const el = document.createElement(elementTag);
 
-    if (!this.#xcols[k]) this.#xcols[k] = {};
-
-    if (tag === 'label') el.innerText = c.label; // set the label
-
-    const inputAttrs = c?.ui?.attrs; // set col specific attributes for the input
-    if (inputAttrs) {
-      for (const key in inputAttrs) {
-        el.setAttribute(key, inputAttrs[key]);
-      }
-    }
+    if (tag === 'label') el.innerText = c.label;
+    this.#setAttributes(el, c?.ui?.attrs);
 
     // DONE: input - text, integer, decimal, date, time, datetime, file(upload)
     // DONE: select (single and multiple, limited options)
     // DONE: textarea
     // DONE: bwc-combobox (multiple with tags), TODO: need to test more
-
     if (['input', 'textarea', 'select', 'bwc-combobox'].includes(elementTag)) {
-      // its an input
-      if (c.mode === 'readonly') el.setAttribute('disabled', true); // select is disabled, as it applies to more html tags
-      if (c.required) el.setAttribute('required', true);
-
-      if (elementTag === 'select') {
-        // set the options
-        // console.log('select', el.value, k, this.#record[k], this.mode)
-        const selectString = this.mode === 'add' ? c.default || '' : this.#record[k] || '';
-        const selected = !selectString ? [] : c?.ui?.attrs?.multiple ? selectString.split(',') : [selectString];
-        const options = c?.ui?.options;
-        for (const option of options) {
-          const optEl = document.createElement('option');
-          optEl.value = option.key;
-          optEl.innerText = option.text;
-          if (selected.includes(option.key)) {
-            optEl.selected = true; // set selected
-          }
-          el.appendChild(optEl);
-        }
-      } else {
-        // other input
-        if (elementTag === 'bwc-combobox') {
-          // console.log('bwc-combobox', this.#record)
-          el.setAttribute('listid', `list-${k}`);
-          el.setAttribute('object-key', 'key');
-          el.setAttribute('object-text', 'text');
-          if (c?.ui?.attrs?.multiple) el.setAttribute('multiple', '');
-          if (c?.ui?.attrs?.repeat) el.setAttribute('repeat', '');
-          if (c?.ui?.attrs?.allowCustomTag) el.setAttribute('allow-custom-tag', '');
-          if (c?.ui?.attrs?.tagLimit) el.setAttribute('tag-limit', c.ui.attrs.tagLimit);
-          // disbled and required already set
-          // TODO set input class
-
-          el.onload = e => {
-            // need to wait for component to load before setting the values
-            // console.log('bwc loaded')
-            const valueType = c?.ui?.valueType; // TODO transform value
-            if (c?.ui?.attrs?.multiple) {
-              // can be array in column or join table
-              const val = this.mode === 'add' ? c.default : this.#record[k];
-              if (valueType === '') {
-                el.tags = val.split(',').map(item => ({ key: item, text: item })) || [];
-              } else {
-                // object
-                el.tags = val || [];
-              }
-            } else {
-              // single
-              const val = this.mode === 'add' ? c.default : this.#record[k];
-              if (valueType === '') {
-                el.value = val || '';
-                el.selected = val ? { key: val, text: val } : null;
-              } else {
-                // object
-                el.value = val.text || ''; // key and text should be same
-                el.selected = val || null;
-              }
-            }
-          }; // onload end
-
-          el.onsearch = debounce(async e => {
-            // this.#xcols['state'].el.value // use this.#xcols to get latest values
-            // console.log(e.target.value, k, this.#record) // this.#record does not change until validated and submit
-            let parentVal = null;
-            if (c?.options?.parentCol) {
-              const col = this.#xcols[c?.options?.parentCol];
-              if (col?.el) parentVal = col.el.value;
-            }
-            const res = await autocomplete(e.target.value, k, this.#record, parentVal);
-            el.items = res;
-          }, 500);
-          el.onselect = e => {
-            // onselect works (events handled by DOM), onselected need to use addEventListener
-            // TODO reset child value - may cascade down further
-            const childColName = c?.options?.childCol;
-            if (childColName) {
-              const col = this.#xcols[childColName];
-              const childColObj = this.#config.cols[childColName];
-              if (col?.el) {
-                if (childColObj?.ui?.attrs?.multiple) {
-                  // multiple
-                  col.el.tags = [];
-                } else {
-                  col.el.value = '';
-                  col.el.selected = null;
-                }
-              }
-            }
-            // console.log('t4t combobox onselect', e.detail)
-          };
-        } else {
-          // input, textarea
-          if (this.mode === 'add') {
-            // set the value
-            el.value = c.default || '';
-          } else if (this.mode === 'edit') {
-            // console.log('is FileList',this.#record[k] instanceof FileList, k, el.type === 'file')
-            el.value = el.type === 'file' ? '' : this.#record[k] || '';
-          }
-        }
-      }
-      this.#xcols[k].el = el; // set input element
+      this.#setupInputElement(el, c, k, elementTag);
     }
 
     if (errorLabel) {
+      if (!this.#xcols[k]) this.#xcols[k] = {};
       this.#xcols[k].errorEl = el;
     }
+    if (className) el.className = className;
 
-    if (className) el.className = className; // set classes
-
-    // Bulma Specific Note (TODO tmprove this): if className has 'select' - it is bulma need to set is-multiple here if is multi select
-    if (node?.className?.includes('select')) {
-      if (c?.ui?.attrs?.multiple) {
-        el.classList.add('is-multiple');
-      }
+    // Bulma Specific Note (TODO improve this): if className has 'select' - it is bulma, need to set is-multiple here if is multi select
+    if (node?.className?.includes('select') && c?.ui?.attrs?.multiple) {
+      el.classList.add('is-multiple');
     }
 
-    if (attrs) {
-      for (const key in attrs) {
-        el.setAttribute(key, attrs[key]);
-      }
-    }
-    if (children) {
-      children.forEach(child => {
-        const childEl = this.formEl(child, k, c);
-        if (childEl) el.appendChild(childEl);
-      });
-    }
+    this.#setAttributes(el, attrs);
+    if (children) this.#appendChildren(el, children, k, c);
     return el;
   }
 
   _render() {
     try {
-      // const el = this.querySelector('#form-wrapper')
       const el = this.querySelector('.content-area');
-      if (!el) return; // .content-area not found
+      if (!el) return;
       el.innerHTML = '';
-      const { cols, auto, pk, required, multiKey } = this.#config;
-      // console.log('this.#record', this.#record)
+      const { cols, auto } = this.#config;
       for (const col in cols) {
-        if (!auto.includes(col)) {
-          const c = cols[col];
-          // console.log('nonauto', c, this.mode)
-          if ((this.mode === 'add' && c.add !== 'hide') || (this.mode === 'edit' && c.edit !== 'hide')) {
-            const tagKey = c?.ui?.tag;
-            if (tagKey) {
-              const fieldEl = this.formEl(framework[tagKey], col, c);
-
-              if (c?.ui?.attrs?.type === 'file' && this.mode === 'edit') {
-                // field is file...
-                this.#xcols[col].errorEl.innerText = this.#record[col] || 'No Files Found';
-                // console.log(fieldEl, col)
-              }
-              el.appendChild(fieldEl);
-            }
-          }
-        } else {
-          // console.log('auto', col)
-        }
+        if (auto.includes(col)) continue;
+        this.#renderCol(el, col, cols[col]);
       }
 
       const btnSubmit = this.querySelector('.btn-submit');
-      // btnSubmit.classList.add('button')
       btnSubmit.onclick = e => {
-        let error = false;
-        // console.log('submit clicked')
-        e.preventDefault(); // e.stopPropagation()
-
-        // check validity
-        for (const col in this.#xcols) {
-          if (this.#xcols[col].el) {
-            if (this.#xcols[col]?.el?.checkValidity) {
-              const valid = this.#xcols[col].el.checkValidity();
-              if (!valid) error = true;
-              if (this.#xcols[col].errorEl)
-                this.#xcols[col].errorEl.innerText = valid ? '' : this.#xcols[col].el.validationMessage;
-            }
-          }
-        }
-
-        // console.log(this.#record)
-        if (!error) {
-          for (const col in this.#xcols) {
-            // console.log('this.#xcols', this.#xcols[col].el.tagName)
-            const inputEl = this.#xcols[col].el;
-            if (inputEl) {
-              if (inputEl.tagName.toLowerCase() === 'select') {
-                // select options, [string] - done, [{ key, text }] - next
-                const selected = [];
-                for (const opt of inputEl.selectedOptions) {
-                  selected.push(opt.value);
-                }
-                this.#record[col] = selected.join(',');
-              } else if (inputEl.tagName.toLowerCase() === 'bwc-combobox') {
-                // TODO set the value
-                const c = this.#config.cols[col];
-                const val = c?.ui?.attrs?.multiple ? inputEl.tags : inputEl.selected;
-                const valueType = c?.ui?.valueType;
-
-                if (c?.ui?.attrs?.multiple) {
-                  // can be array in column or join table
-                  if (valueType === '') {
-                    this.#record[col] = val.map(item => item.text).join(',');
-                  } else {
-                    // object
-                    this.#record[col] = val;
-                  }
-                } else {
-                  // single
-                  if (valueType === '') {
-                    this.#record[col] = val.text;
-                  } else {
-                    // object
-                    this.#record[col] = val;
-                  }
-                }
-              } else {
-                // input, textarea
-                this.#record[col] = inputEl.value;
-                if (inputEl.files) {
-                  // console.log(inputEl.files instanceof FileList)
-                  this.#record[col] = inputEl.files;
-                }
-              }
-            }
-          }
-          // console.log('test submit', this.#record)
-          this.dispatchEvent(new CustomEvent('submit', { detail: { data: this.#record } }));
-        } else {
+        e.preventDefault();
+        const error = this.#validateForm();
+        if (error) {
           this.dispatchEvent(new CustomEvent('submit', { detail: { error } }));
+          return;
         }
+        this.#collectFormData();
+        this.dispatchEvent(new CustomEvent('submit', { detail: { data: this.#record } }));
       };
 
       const btnCancel = this.querySelector('.btn-cancel');
-      // btnCancel.classList.add('button')
       btnCancel.onclick = e => {
         e.preventDefault();
         this.dispatchEvent(new CustomEvent('cancel'));
       };
     } catch (e) {
-      // console.log('bwc-t4t-form', e)
+      this.dispatchEvent(new CustomEvent('render-error', { detail: e }));
     }
   }
 }

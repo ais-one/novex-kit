@@ -66,23 +66,44 @@ template.innerHTML = /*html*/ `
 <datalist id="json-datalist"></datalist>
 `;
 
+/**
+ * Combobox with optional multi-select tags, backed by a native `<datalist>`.
+ *
+ * @element bwc-combobox
+ * @attr {string} value - current input value (v-model compatible)
+ * @attr {boolean} required - marks the inner input as required
+ * @attr {boolean} disabled - disables the inner input
+ * @attr {string} listid - unique id for the datalist (required when multiple instances coexist)
+ * @attr {string} input-class - CSS class applied to the inner input
+ * @attr {boolean} multiple - enable multi-select tag mode
+ * @attr {boolean} repeat - allow the same item to be tagged more than once
+ * @attr {boolean} allow-custom-tag - allow user-defined tags not in the suggestion list
+ * @attr {string} object-key - property name used as the key when items are objects
+ * @attr {string} object-text - property name used as the display text when items are objects
+ * @attr {number} tag-limit - maximum number of tags (0 = unlimited)
+ * @prop {string[]|{ [key]: string, [text]: string }[]} items - suggestion list
+ * @prop {string[]|{ [key]: string, [text]: string }[]} tags - current selected tags (multi-select)
+ * @fires load - after connectedCallback finishes setup
+ * @fires input - when the input value changes (detail: string)
+ * @fires search - when the user types a value not in the list (detail: string)
+ * @fires select - when a selection changes (detail: item|item[]|null)
+ */
 class BwcCombobox extends HTMLElement {
-  // local properties
-  #items = []; // list of items
-  #tags = []; // multi-select
-  #selected = null; // single-select
-  #key = ''; // must have both, other wise string is assumed?
+  #items = [];
+  #tags = [];
+  #selected = null;
+  #key = '';
   #text = '';
 
-  #elTags = null; // div.tags element
-  #elInput = null; // input element
-  #elList = null; // datalist element
-  #elClearBtn = null; // clear button
+  #elTags = null;
+  #elInput = null;
+  #elList = null;
+  #elClearBtn = null;
 
-  #multiple = false; // hold readonly attributes
-  #repeat = false; // for multiselect, tag can be added multiple times
-  #allowCustomTag = false; // can add new items
-  #tagLimit = 0; // unlimited tags
+  #multiple = false;
+  #repeat = false;
+  #allowCustomTag = false;
+  #tagLimit = 0;
 
   constructor() {
     super();
@@ -96,7 +117,7 @@ class BwcCombobox extends HTMLElement {
     this.#elList = this.querySelector('datalist');
     this.#elClearBtn = this.querySelector('.clear-btn');
 
-    this.#elList.id = this.listid; // console.log('listid', this.listid)
+    this.#elList.id = this.listid;
     this.#elInput.setAttribute('list', this.listid);
     this.#elInput.addEventListener('input', this._onInput);
 
@@ -109,61 +130,22 @@ class BwcCombobox extends HTMLElement {
     if (this.hasAttribute('object-text')) this.#text = this.getAttribute('object-text');
 
     if (this.#multiple) {
-      // if multiple... use tags
       this.#elTags = document.createElement('div');
       this.#elTags.className = 'tags';
-      // this.prepend(this.#elTags)
       this.append(this.#elTags);
     }
 
-    this.#elClearBtn.onclick = e => {
+    this.#elClearBtn.onclick = () => {
       this.#elInput.value = '';
       if (!this.#multiple) {
-        // console.log('clear button click')
         this.#selected = null;
         this.dispatchEvent(new CustomEvent('select', { detail: this.#selected }));
       }
     };
-    this.#elInput.onblur = e => {
-      // console.log('onblur', e)
-      const found = this.items.find(item => this._itemMatchInput(item));
-      if (this.#multiple) {
-        // multiple
-        if (!found) {
-          // not found
-          if (this.#allowCustomTag) {
-            // can add new
-            this._addTag(this._makeItemFromValue());
-            this.dispatchEvent(new CustomEvent('select', { detail: this.#tags }));
-          }
-        } else {
-          // if repeatable? set tags list if not there already
-          this._addTag(found);
-          this.dispatchEvent(new CustomEvent('select', { detail: this.#tags }));
-        }
-        this.value = '';
-      } else {
-        // single
-        if (!found) {
-          // not found
-          if (this.#selected) {
-            // console.log('onBlur - single select - not found and this.#selected truthy')
-            this.#selected = null;
-            this.dispatchEvent(new CustomEvent('select', { detail: this.#selected }));
-          }
-        } else {
-          if (!this.#selected) {
-            // console.log('onBlur - single select - found and this.#selected falsy')
-            this.#selected = found;
-            this.dispatchEvent(new CustomEvent('select', { detail: this.#selected }));
-          }
-        }
-      }
-    };
+    this.#elInput.onblur = () => this.#onBlur();
 
-    // console.log('combo box connected', this.required, this.disabled, this.inputClass)
     this.#elInput.value = this.value;
-    this.#elInput.className = this.inputClass || 'input'; // default to bulma - // if (this.hasAttribute('input-class')) el.setAttribute('class', this.getAttribute('input-class'))
+    this.#elInput.className = this.inputClass || 'input';
     this.required ? this.#elInput.setAttribute('required', '') : this.#elInput.removeAttribute('required');
     this.disabled ? this.#elInput.setAttribute('disabled', '') : this.#elInput.removeAttribute('disabled');
     this._setList(this.items);
@@ -175,26 +157,22 @@ class BwcCombobox extends HTMLElement {
     this.#elInput.removeEventListener('input', this._onInput);
   }
 
-  attributeChangedCallback(name, oldVal, newVal) {
+  attributeChangedCallback(name, _oldVal, newVal) {
     const el = this.#elInput;
     switch (name) {
-      case 'value': {
-        if (el) el.value = newVal; // v-model affects this
+      case 'value':
+        if (el) el.value = newVal;
         this.dispatchEvent(new CustomEvent('input', { detail: newVal }));
         break;
-      }
-      case 'required': {
+      case 'required':
         el?.setAttribute('required', '');
         break;
-      }
-      case 'disabled': {
+      case 'disabled':
         el?.setAttribute('disabled', '');
         break;
-      }
-      case 'input-class': {
+      case 'input-class':
         if (el) el.className = newVal;
         break;
-      }
       default:
         break;
     }
@@ -215,7 +193,7 @@ class BwcCombobox extends HTMLElement {
     return this.hasAttribute('required');
   }
   set required(val) {
-    val ? this.setAttribute('required', '') : this.removeAttribute('required');
+    this.toggleAttribute('required', val);
   }
 
   get listid() {
@@ -229,7 +207,7 @@ class BwcCombobox extends HTMLElement {
     return this.hasAttribute('disabled');
   }
   set disabled(val) {
-    val ? this.setAttribute('disabled', '') : this.removeAttribute('disabled');
+    this.toggleAttribute('disabled', val);
   }
 
   get inputClass() {
@@ -239,12 +217,10 @@ class BwcCombobox extends HTMLElement {
     this.setAttribute('input-class', val);
   }
 
-  // properties
   get items() {
     return this.#items;
   }
   set items(val) {
-    // console.log('set items', val.length)
     this.#items = val;
     this._setList(val);
   }
@@ -265,18 +241,45 @@ class BwcCombobox extends HTMLElement {
     this.#selected = val;
   } // TODO set it correctly
 
-  _isStringType() {
-    // is list item and selected values string ?
-    return !(this.#key && this.#text); // console.log('_isStringType', !(this.#key && this.#text))
+  #onBlur() {
+    const found = this.items.find(item => this._itemMatchInput(item));
+    if (this.#multiple) {
+      if (found) {
+        // if repeatable? set tags list if not there already
+        this._addTag(found);
+        this.dispatchEvent(new CustomEvent('select', { detail: this.#tags }));
+      } else if (this.#allowCustomTag) {
+        // can add new
+        this._addTag(this._makeItemFromValue());
+        this.dispatchEvent(new CustomEvent('select', { detail: this.#tags }));
+      }
+      this.value = '';
+    } else if (found) {
+      // single - found but not yet selected
+      if (!this.#selected) {
+        // console.log('onBlur - single select - found and this.#selected falsy')
+        this.#selected = found;
+        this.dispatchEvent(new CustomEvent('select', { detail: this.#selected }));
+      }
+    } else if (this.#selected) {
+      // single - not found, clear current selection
+      // console.log('onBlur - single select - not found and this.#selected truthy')
+      this.#selected = null;
+      this.dispatchEvent(new CustomEvent('select', { detail: this.#selected }));
+    }
   }
+
+  _isStringType() {
+    return !(this.#key && this.#text);
+  }
+
   _itemMatchInput(item) {
-    // item match to text input
     return this._isStringType()
       ? item === this.value
       : item[this.#key] === this.value || item[this.#text] === this.value;
   }
+
   _matchItems(item1, item2) {
-    //  item match to another item
     if (item1 === null && item2 === null) return true;
     else if (item1 === null) return false;
     else if (item2 === null) return false;
@@ -284,6 +287,7 @@ class BwcCombobox extends HTMLElement {
       ? item1 === item2
       : item1[this.#key] === item2[this.#key] || item1[this.#text] === item2[this.#text];
   }
+
   _makeItemFromValue() {
     // TODO if all spaces only... return? trim white spaces?
     return this._isStringType() ? this.value : { [this.#key]: this.value, [this.#text]: this.value };
@@ -292,6 +296,7 @@ class BwcCombobox extends HTMLElement {
   _tagLimitReached() {
     return this.#tagLimit && this.#elTags.children.length >= this.#tagLimit;
   }
+
   _addTag(item) {
     if (this._tagLimitReached()) return;
     const itemExists = this.#tags.find(tag =>
@@ -302,8 +307,7 @@ class BwcCombobox extends HTMLElement {
     span.className = 'tag is-black';
     span.innerText = this._isStringType() ? item : item[this.#text];
     span.value = this._isStringType() ? item : item[this.#key];
-    span.onclick = e => {
-      // e.target.innerText, e.target.value
+    span.onclick = () => {
       this._removeTag(span);
       this.dispatchEvent(new CustomEvent('select', { detail: this.#tags }));
     };
@@ -311,35 +315,32 @@ class BwcCombobox extends HTMLElement {
     this._updateTags();
     if (this._tagLimitReached()) this.#elInput.setAttribute('disabled', '');
   }
+
   _updateTags() {
     const tags = [...this.#elTags.children];
     this.#tags = tags.map(tag =>
       this._isStringType() ? tag.innerText : { [this.#key]: tag.value, [this.#text]: tag.innerText },
     );
-    // console.log('_updateTags', this.#tags)
   }
+
   _removeTag(span) {
-    this.#elTags.removeChild(span);
+    span.remove();
     this._updateTags();
     if (!this._tagLimitReached() && !this.disabled) this.#elInput.removeAttribute('disabled');
   }
 
-  _onInput(e) {
-    // whether clicked or typed
-    // console.log('_onInput', e.target.value, this.items.length)
+  _onInput() {
     const prevItem = this.#selected;
     this.value = this.#elInput.value;
 
     const found = this.items.find(item => this._itemMatchInput(item));
-    if (!found) {
-      // not found
+    if (found) {
+      this.#selected = found;
+    } else {
       this.#selected = null;
       this.dispatchEvent(new CustomEvent('search', { detail: this.value }));
-    } else {
-      this.#selected = found;
     }
     if (!this._matchItems(prevItem, this.#selected) && !this.#multiple) {
-      // console.log('_onInput - selected && provItem not match this.#selected')
       if (!this.#selected && this.allowCustomTag) {
         this.#selected = this._makeItemFromValue();
       }
@@ -348,7 +349,6 @@ class BwcCombobox extends HTMLElement {
   }
 
   _setTags(_tags) {
-    // console.log('_setTags', _tags, this.#elTags)
     if (!this.#elTags) return;
     this.#elTags.innerHTML = '';
     this.#tags = [];
@@ -359,13 +359,9 @@ class BwcCombobox extends HTMLElement {
   }
 
   _setList(_items) {
-    // set list items
-    // console.log('items', _items, this.value)
     const dd = this.#elList;
     if (!dd) return;
-    while (dd.firstChild) {
-      dd.removeChild(dd.lastChild);
-    }
+    while (dd.firstChild) dd.lastChild.remove();
     if (typeof _items !== 'object') return;
 
     // EVENT TEST START

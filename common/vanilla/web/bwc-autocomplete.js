@@ -47,10 +47,23 @@ template.innerHTML = /*html*/ `
 <datalist id="json-datalist"></datalist>
 `;
 
+/**
+ * Single-value autocomplete input backed by a native `<datalist>`.
+ *
+ * @element bwc-autocomplete
+ * @attr {string} value - current input value (v-model compatible)
+ * @attr {boolean} required - marks the inner input as required
+ * @attr {boolean} disabled - disables the inner input
+ * @attr {string} listid - unique id for the datalist element (required when multiple instances coexist)
+ * @attr {string} input-class - CSS class applied to the inner input
+ * @prop {string[]|{ key: string, text: string }[]} items - suggestion list; set this property directly
+ * @fires input - when the value changes (detail: string)
+ * @fires search - when the user types a value not in the list (detail: string)
+ * @fires selected - when the user selects or clears an item (detail: string|{key,text}|null)
+ */
 class AutoComplete extends HTMLElement {
-  // local properties
-  #items = []; // private
-  selectedItem = null; // public
+  #items = [];
+  selectedItem = null;
 
   constructor() {
     super();
@@ -60,35 +73,29 @@ class AutoComplete extends HTMLElement {
   connectedCallback() {
     this.appendChild(template.content.cloneNode(true));
 
-    // console.log('listid', this.listid)
     this.querySelector('datalist').id = this.listid;
     this.querySelector('input').setAttribute('list', this.listid);
 
     const el = this.querySelector('input');
     el.addEventListener('input', this.inputFn);
 
-    el.onblur = e => {
-      const found = this.items.find(item => {
-        return typeof item === 'string' ? item === this.value : item.key === this.value || item.text === this.value;
-      });
-      if (!found) {
-        // not found
-        if (this.selectedItem) {
-          // console.log('not found but is selected')
-          this.selectedItem = null;
-          this.dispatchEvent(new CustomEvent('selected', { detail: this.selectedItem }));
-        }
-      } else {
+    el.onblur = () => {
+      const found = this.items.find(item =>
+        typeof item === 'string' ? item === this.value : item.key === this.value || item.text === this.value,
+      );
+      if (found) {
         if (!this.selectedItem) {
-          // console.log('found but not selected')
           this.selectedItem = found;
           this.dispatchEvent(new CustomEvent('selected', { detail: this.selectedItem }));
         }
+      } else if (this.selectedItem) {
+        this.selectedItem = null;
+        this.dispatchEvent(new CustomEvent('selected', { detail: this.selectedItem }));
       }
     };
-    // console.log('setup stuff', this.required, this.disabled, this.inputClass)
+
     el.value = this.value;
-    el.className = this.inputClass || 'input'; // default to bulma?
+    el.className = this.inputClass || 'input';
 
     if (this.required) el.setAttribute('required', '');
     else el.removeAttribute('required');
@@ -99,30 +106,25 @@ class AutoComplete extends HTMLElement {
   }
 
   disconnectedCallback() {
-    const el = this.querySelector('input');
-    el.removeEventListener('input', this.inputFn);
+    this.querySelector('input').removeEventListener('input', this.inputFn);
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
     const el = this.querySelector('input');
     switch (name) {
-      case 'value': {
+      case 'value':
         if (el) el.value = newVal;
         this.dispatchEvent(new CustomEvent('input', { detail: newVal }));
         break;
-      }
-      case 'required': {
-        if (el) el.setAttribute('required', '');
+      case 'required':
+        el?.setAttribute('required', '');
         break;
-      }
-      case 'disabled': {
-        if (el) el.setAttribute('disabled', '');
+      case 'disabled':
+        el?.setAttribute('disabled', '');
         break;
-      }
-      case 'input-class': {
+      case 'input-class':
         if (el) el.className = newVal;
         break;
-      }
       default:
         break;
     }
@@ -143,11 +145,7 @@ class AutoComplete extends HTMLElement {
     return this.hasAttribute('required');
   }
   set required(val) {
-    if (val) {
-      this.setAttribute('required', '');
-    } else {
-      this.removeAttribute('required');
-    }
+    this.toggleAttribute('required', val);
   }
 
   get listid() {
@@ -161,11 +159,7 @@ class AutoComplete extends HTMLElement {
     return this.hasAttribute('disabled');
   }
   set disabled(val) {
-    if (val) {
-      this.setAttribute('disabled', '');
-    } else {
-      this.removeAttribute('disabled');
-    }
+    this.toggleAttribute('disabled', val);
   }
 
   get inputClass() {
@@ -175,47 +169,41 @@ class AutoComplete extends HTMLElement {
     this.setAttribute('input-class', val);
   }
 
-  // properties
   get items() {
     return this.#items;
   }
   set items(val) {
-    // console.log('set items', val.length)
     this.#items = val;
     this.setList(val);
   }
 
-  inputFn(e) {
-    // whether clicked or typed
-    // console.log('inputFn', e.target.value, this.items.length)
+  inputFn() {
     const el = this.querySelector('input');
     const prevItem = this.selectedItem;
     this.value = el.value;
 
-    const found = this.items.find(item => {
-      return typeof item === 'string' ? item === this.value : item.key === this.value || item.text === this.value;
-    });
-    if (!found) {
-      // not found
-      // console.log('emit search')
+    const found = this.items.find(item =>
+      typeof item === 'string' ? item === this.value : item.key === this.value || item.text === this.value,
+    );
+    if (found) {
+      this.selectedItem = found;
+    } else {
       this.selectedItem = null;
       this.dispatchEvent(new CustomEvent('search', { detail: this.value }));
-    } else {
-      this.selectedItem = found;
     }
-    // console.log('emit selected?', prevItem !== this.selectedItem, this.selectedItem)
     if (prevItem !== this.selectedItem) {
       this.dispatchEvent(new CustomEvent('selected', { detail: this.selectedItem }));
     }
   }
 
+  /**
+   * Rebuild the datalist options from the given items array.
+   * @param {string[]|{ key: string, text: string }[]} _items
+   */
   setList(_items) {
-    // console.log('items', _items, this.value)
     const dd = this.querySelector('datalist');
     if (!dd) return;
-    while (dd.firstChild) {
-      dd.removeChild(dd.lastChild);
-    }
+    while (dd.firstChild) dd.lastChild.remove();
     if (typeof _items !== 'object') return;
 
     _items.forEach(item => {

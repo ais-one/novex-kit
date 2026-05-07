@@ -8,6 +8,16 @@ canvas {
 </style>
 <canvas id="canvas"></canvas>
 `;
+/**
+ * Canvas-based signature pad. The user draws with the mouse; on mouse-up
+ * the signature is exported as a PNG data URL and stored in the `value` attribute.
+ *
+ * @element vcxwc-sign-pad
+ * @attr {string} value - data URL of the captured signature (empty string when blank)
+ * @attr {number} width - canvas width in px (default 300)
+ * @attr {number} height - canvas height in px (default 150)
+ * @fires input - after each stroke completes (detail: data URL string or `''`)
+ */
 class SignPad extends HTMLElement {
   constructor() {
     super();

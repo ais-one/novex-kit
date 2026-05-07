@@ -6,7 +6,12 @@
  */
 export const isEmptyObject = value => value && Object.keys(value).length === 0 && value.constructor === Object;
 
+/**
+ * Return true only if the value is a plain (non-null, non-array) object.
+ * @param {unknown} value
+ * @returns {boolean}
+ */
 export const isValidObject = value => value && typeof value === 'object' && value.constructor === Object;
 
-// backward compatiibility
+/** @deprecated Use `isEmptyObject` instead. */
 export const emptyObjects = isEmptyObject;

@@ -18,6 +18,20 @@ const html = /*html*/ `
   <input type="file" style="display: none" accept="text/csv" onclick="event.stopPropagation()" />
 `;
 
+/**
+ * File-picker input that shows the selected filename(s) in a readonly text field.
+ * Clicking the text field opens the native file picker.
+ *
+ * @element bwc-fileupload
+ * @attr {string} value - comma-separated filename(s) of the current selection
+ * @attr {string} accept - file type filter passed to the hidden `<input type="file">`
+ * @attr {string} capture - capture source (`'user'` | `'environment'`)
+ * @attr {boolean} multiple - allow selecting more than one file
+ * @attr {boolean} required - marks the hidden file input as required
+ * @attr {string} input-class - CSS class applied to the visible text input
+ * @fires input - when files are selected (detail: FileList)
+ * @fires change - when files are selected (detail: FileList)
+ */
 class BwcFileupload extends HTMLElement {
   files = null;
 
@@ -25,11 +39,6 @@ class BwcFileupload extends HTMLElement {
     super();
     this.click = this.click.bind(this);
     this.change = this.change.bind(this);
-    // const shadowRoot = this.attachShadow({ mode: 'open' })
-    // const template = document.createElement('template')
-    // template.innerHTML = html
-    // // this.shadowRoot.appendChild(template.content.cloneNode(true))
-    // shadowRoot.innerHTML = html
   }
 
   connectedCallback() {
@@ -58,15 +67,10 @@ class BwcFileupload extends HTMLElement {
     this.querySelector('input[type=file]').removeEventListener('change', this.change);
   }
 
-  attributeChangedCallback(name, oldVal, newVal) {
-    const el = this.querySelector('input[type=text]');
-    switch (name) {
-      case 'value':
-        if (el) el.value = newVal;
-        // this.dispatchEvent(new CustomEvent('input', { detail: newVal }))
-        break;
-      default:
-        break;
+  attributeChangedCallback(name, _oldVal, newVal) {
+    if (name === 'value') {
+      const el = this.querySelector('input[type=text]');
+      if (el) el.value = newVal;
     }
   }
 

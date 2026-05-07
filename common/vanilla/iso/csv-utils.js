@@ -17,73 +17,94 @@ const CHAR_CR = '\r';
 const CHAR_LF = '\n';
 
 /**
+ * Advance the parser by one character and update state in place.
+ * Returns the new index (may jump by 2 for escaped quotes or \r\n pairs).
+ * @param {string} ch - current character
+ * @param {string} next - lookahead character
+ * @param {number} i - current index
+ * @param {{ row: string[], field: string, inQuotes: boolean }} state
+ * @param {string} delimCol
+ * @param {() => void} commitRow - flush current row into rows array
+ * @returns {number} next index
+ */
+const processChar = (ch, next, i, state, delimCol, commitRow) => {
+  if (state.inQuotes) {
+    if (ch === QUOTE_CHAR && next === QUOTE_CHAR) {
+      state.field += QUOTE_CHAR; // "" → single "
+      return i + 2;
+    } else if (ch === QUOTE_CHAR) {
+      state.inQuotes = false;
+    } else {
+      state.field += ch;
+    }
+  } else if (ch === QUOTE_CHAR) {
+    state.inQuotes = true;
+  } else if (ch === delimCol) {
+    state.row.push(state.field);
+    state.field = '';
+  } else if (ch === CHAR_LF || ch === CHAR_CR) {
+    commitRow();
+    if (ch === CHAR_CR && next === CHAR_LF) return i + 2; // skip \r\n pair
+  } else {
+    state.field += ch;
+  }
+  return i + 1;
+};
+
+/**
  * RFC 4180-compliant CSV parser (handles quoted fields with embedded commas/newlines)
  * - 1. escaped correctly
- * - 2. same number of columns in each row (TODO?)
- * - 3. trims white space around fields (TODO?)
+ * - 2. validates uniform column count per row when `strict` is true
+ * - 3. trims whitespace around fields when `trim` is true
  * @param {string} str - CSV string to parse
+ * @param {string} [delimCol] - column delimiter, default `,`
+ * @param {{ trim?: boolean, strict?: boolean }} [options]
+ * @param {boolean} [options.trim] - trim whitespace from each field, default `false`
+ * @param {boolean} [options.strict] - throw if any row has a different column count than the first row, default `false`
  * @returns {string[][]} - array of rows, each row is an array of fields
- * @throws {Error} - if CSV is invalid (e.g. unclosed quotes)
+ * @throws {Error} if the CSV contains an unclosed quoted field
+ * @throws {Error} if `strict` is true and a row has an inconsistent column count
  */
-const parseCSV = (str, delimCol = DELIM_COL) => {
+const parseCSV = (str, delimCol = DELIM_COL, { trim = false, strict = false } = {}) => {
   const rows = [];
-  let row = [];
-  let field = '';
-  let inQuotes = false;
+  const state = { row: [], field: '', inQuotes: false };
+
+  const commitRow = () => {
+    state.row.push(state.field);
+    rows.push(state.row);
+    state.row = [];
+    state.field = '';
+  };
+
   let i = 0;
-
   while (i < str.length) {
-    const ch = str[i];
-    const next = str[i + 1];
+    i = processChar(str[i], str[i + 1], i, state, delimCol, commitRow);
+  }
 
-    if (inQuotes) {
-      if (ch === QUOTE_CHAR && next === QUOTE_CHAR) {
-        field += QUOTE_CHAR; // "" → single "
-        i += 2;
-      } else if (ch === QUOTE_CHAR) {
-        inQuotes = false;
-        i++;
-      } else {
-        field += ch;
-        i++;
-      }
-    } else {
-      if (ch === QUOTE_CHAR) {
-        inQuotes = true;
-        i++;
-      } else if (ch === delimCol) {
-        row.push(field);
-        field = '';
-        i++;
-      } else if (ch === CHAR_LF || ch === CHAR_CR) {
-        row.push(field);
-        rows.push(row);
-        row = [];
-        field = '';
-        if (ch === CHAR_CR && next === CHAR_LF) i++; // handle \r\n
-        i++;
-      } else {
-        field += ch;
-        i++;
-      }
+  if (state.field || state.row.length) commitRow();
+  if (state.inQuotes) throw new Error('Unclosed quoted field — invalid CSV');
+
+  if (trim) {
+    for (const row of rows) {
+      for (let j = 0; j < row.length; j++) row[j] = row[j].trim();
     }
   }
 
-  // Push last field/row
-  if (field || row.length) {
-    row.push(field);
-    rows.push(row);
+  if (strict) {
+    const expected = rows[0]?.length ?? 0;
+    for (let r = 1; r < rows.length; r++) {
+      if (rows[r].length !== expected)
+        throw new Error(`Row ${r + 1} has ${rows[r].length} columns, expected ${expected}`);
+    }
   }
 
-  if (inQuotes) throw new Error('Unclosed quoted field — invalid CSV');
   return rows;
 };
 
 /**
- * Parse a string as CSV and also validate JSON if a field is a JSON field
- * @param {string[][]} csvString - CSV parsed as array of rows, each row is an array of fields
- * @returns {object} - { valid: boolean, reason?: string, rows?: string[][] }
- * @throws {Error} - if CSV is invalid (e.g. unclosed quotes)
+ * Parse a CSV string and validate any fields that look like JSON.
+ * @param {string} csvString - raw CSV text to parse and validate
+ * @returns {{ valid: boolean, reason?: string, rows?: string[][] }}
  */
 const parseAndValidateCsv = csvString => {
   try {
@@ -108,12 +129,12 @@ const parseAndValidateCsv = csvString => {
 };
 
 /**
- * convert CSV to array of JSON object
- * @param {object} input - conversion inputs
- * @param {string} input._text - CSV text to be converted to array
- * @param {string} input.delimCol - CSV column delimiter, default is comma (,)
- * @param {boolean} input.ignoreColumnMismatch - whether to ignore column count mismatches
- * @returns
+ * Convert a CSV string to an array of objects, using the first row as keys.
+ * @param {object} input
+ * @param {string} input._text - raw CSV text
+ * @param {string} [input.delimCol] - column delimiter, default `,`
+ * @param {boolean} [input.ignoreColumnMismatch] - skip rows whose column count differs from the header
+ * @returns {Record<string, string>[]}
  */
 const csvToJson = ({ _text, delimCol = DELIM_COL, ignoreColumnMismatch = false }) => {
   const arr = parseCSV(_text, delimCol);
@@ -134,7 +155,7 @@ const csvToJson = ({ _text, delimCol = DELIM_COL, ignoreColumnMismatch = false }
  * escape for Excel, Google Sheets, and RFC 4180-compliant parsers
  *
  * @param {*[]} fields - array of field values to convert to a CSV row
- * @param {string} delimCol - CSV column delimiter, default is comma (,)
+ * @param {string} [delimCol] - CSV column delimiter, default `,`
  * @returns {string} - CSV datarow string
  */
 const arrayToCSVRow = (fields, delimCol = DELIM_COL) => {
@@ -142,12 +163,12 @@ const arrayToCSVRow = (fields, delimCol = DELIM_COL) => {
     .map(field => {
       if (field === null || field === undefined) return '';
       if (typeof field === 'object') {
-        const jsonStr = JSON.stringify(field).replace(/"/g, ESCAPE_CHAR);
+        const jsonStr = JSON.stringify(field).replaceAll('"', ESCAPE_CHAR);
         return `"${jsonStr}"`;
       }
       // Wrap any plain string containing commas/quotes/newlines too
       if (typeof field === 'string' && /[",\n]/.test(field)) {
-        return `"${field.replace(/"/g, ESCAPE_CHAR)}"`;
+        return `"${field.replaceAll('"', ESCAPE_CHAR)}"`;
       }
       return field;
     })
@@ -159,7 +180,7 @@ const arrayToCSVRow = (fields, delimCol = DELIM_COL) => {
  * escape for Excel, Google Sheets, and RFC 4180-compliant parsers
  *
  * @param {Object} jsonObj - JSON object to convert to a CSV row
- * @param {string} delimCol - CSV column delimiter, default is comma (,)
+ * @param {string} [delimCol] - CSV column delimiter, default `,`
  * @returns {string} - CSV data row string
  */
 const jsonToCSVRow = (jsonObj, delimCol = DELIM_COL) => arrayToCSVRow(Object.values(jsonObj), delimCol);
@@ -169,18 +190,18 @@ const jsonToCSVRow = (jsonObj, delimCol = DELIM_COL) => arrayToCSVRow(Object.val
  * escape for Excel, Google Sheets, and RFC 4180-compliant parsers
  *
  * @param {Object} jsonObj - JSON object to convert to a CSV row
- * @param {string} delimCol - CSV column delimiter, default is comma (,)
+ * @param {string} [delimCol] - CSV column delimiter, default `,`
  * @returns {string} - CSV header row string
  */
 const jsonToCSVHeader = (jsonObj, delimCol = DELIM_COL) => arrayToCSVRow(Object.keys(jsonObj), delimCol);
 
 /**
- * convert array of JSON objects to CSV
- * @param {Object[]} _json - array of JS objects to be converted to CSV
- * @param {string} delimRow - CSV row delimiter, default is newline (\n)
- * @param {string} delimCol - CSV column delimiter, default is comma (,)
- * @param {boolean} ignoreColumnMismatch - whether to ignore column count mismatches
- * @returns
+ * Convert an array of objects to a CSV string (first row is the header).
+ * @param {Record<string, unknown>[]} _json - array of objects to serialise
+ * @param {string} [delimCol] - column delimiter, default `,`
+ * @param {string} [delimRow] - row delimiter, default `\n`
+ * @param {boolean} [ignoreColumnMismatch] - skip rows whose value count differs from the header
+ * @returns {string}
  */
 const jsonToCsv = (_json, delimCol = DELIM_COL, delimRow = DELIM_ROW, ignoreColumnMismatch = false) => {
   let csv = '';

@@ -3,6 +3,12 @@
 // get languages / locales from browser
 // sample output: ['en-US', 'en-GB']
 
+/**
+ * Return the list of locales reported by the browser.
+ * @param {object} [options]
+ * @param {boolean} [options.languageCodeOnly] - when true, strip region subtags (e.g. `'en-US'` → `'en'`)
+ * @returns {string[]|undefined} - e.g. `['en-US', 'en-GB']`, or `undefined` if unavailable
+ */
 function getBrowserLocales(options = {}) {
   const defaultOptions = {
     languageCodeOnly: false,
@@ -17,7 +23,7 @@ function getBrowserLocales(options = {}) {
   }
   return browserLocales.map(locale => {
     const trimmedLocale = locale.trim();
-    return opt.languageCodeOnly ? trimmedLocale.split(/-|_/)[0] : trimmedLocale;
+    return opt.languageCodeOnly ? trimmedLocale.split(/[-_]/)[0] : trimmedLocale;
   });
 }
 

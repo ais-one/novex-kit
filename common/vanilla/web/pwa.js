@@ -2,6 +2,12 @@
 // We use this function to subscribe to our push notifications
 // As soon as you run this code once, it shouldn't run again if the initial subscription went well
 // Except if you clear your storage
+/**
+ * Subscribe the current browser to Web Push using the given VAPID public key.
+ * Returns a serialised `PushSubscription` JSON string ready to send to the server.
+ * @param {string} publicKey - VAPID public key (base64url encoded)
+ * @returns {Promise<string>} - JSON-serialised PushSubscription
+ */
 export const webpushSubscribe = async publicKey => {
   const registration = await navigator.serviceWorker.ready;
   // NOSONAR
@@ -24,6 +30,10 @@ export const webpushSubscribe = async publicKey => {
 };
 
 // Let's create an unsubscribe function as well
+/**
+ * Unsubscribe the current browser from Web Push.
+ * @returns {Promise<void>}
+ */
 export const webpushUnsubscribe = async () => {
   const registration = await navigator.serviceWorker.ready;
   const subscription = await registration.pushManager.getSubscription();
@@ -61,12 +71,20 @@ const handleSwMessage = async e => {
   //NOSONAR if (e && e.data && e.data.msg === 'pushsubscriptionchange') { }
 };
 
+/**
+ * Register a service-worker message listener.
+ * @param {Function} [handler] - defaults to the built-in no-op handler
+ */
 export const addSwMessageEvent = (handler = handleSwMessage) => {
-  navigator.serviceWorker.addEventListener('message', handleSwMessage);
+  navigator.serviceWorker.addEventListener('message', handler);
 };
 
+/**
+ * Remove a previously registered service-worker message listener.
+ * @param {Function} [handler] - must be the same reference passed to `addSwMessageEvent`
+ */
 export const removeSwMessageEvent = (handler = handleSwMessage) => {
-  navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+  navigator.serviceWorker.removeEventListener('message', handler);
 };
 
 // https://felixgerschau.com/how-to-communicate-with-service-workers/

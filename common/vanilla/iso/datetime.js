@@ -1,8 +1,8 @@
 /**
- * Get array of strings with datetime elements after offseting input date by X days
- * @param {string} isoString - ISO datetime string
- * @param {Number} days - ISO datetime string
- * @returns {string[]}} -  return array or YYYY, MM, DD strings - not so useful...
+ * Return [YYYY, MM, DD] string parts for a date string offset by N days.
+ * @param {string} dateStr - date string parseable by Date.parse
+ * @param {number} [days] - number of days to add (negative to subtract)
+ * @returns {string[]} - [YYYY, MM, DD]
  */
 export const dateStrAddDay = (dateStr, days = 0) => {
   const d = new Date(Date.parse(dateStr) - new Date().getTimezoneOffset());
@@ -15,10 +15,10 @@ export const dateStrAddDay = (dateStr, days = 0) => {
 };
 
 /**
- * Get new ISO datetime string date after offseting input date by X days
+ * Return a new ISO datetime string offset by N days from the input.
  * @param {string} isoString - ISO datetime string
- * @param {Number} days - ISO datetime string
- * @returns {string} -  return ISO datetime string
+ * @param {number} [days] - number of days to add (negative to subtract)
+ * @returns {string} ISO datetime string
  */
 export const dateStrAddDayISO = (isoString, days = 0) => {
   const d = new Date(isoString);
@@ -65,9 +65,9 @@ export const getLocaleDateISO = (isoString, tz) => getLocaleDateTimeTzISO(isoStr
 export const getLocaleTimeISO = (isoString, tz) => getLocaleDateTimeTzISO(isoString, tz).substring(11, 19);
 
 /**
- * Get timezone offset in ISO format (+hh:mm or -hh:mm)
- * @param {Date|undefined} date - if undefined, will create a date object and use that timezone
- * @returns {string}
+ * Return the timezone offset of a Date in ISO format.
+ * @param {Date} [date] - defaults to now
+ * @returns {string} e.g. `+08:00` or `-05:30`
  */
 export const getTzOffsetISO = date => {
   const pad = n => `${Math.floor(Math.abs(n))}`.padStart(2, '0'); // Pad a number to 2 digits
@@ -77,9 +77,9 @@ export const getTzOffsetISO = date => {
 };
 
 /**
- * Get return current UTC timestamp YmdHms
- * @param {Date|undefined} date - if undefined, will create a date object and use that timezone
- * @returns {string} YYYYMMDD_HHmmssZ
+ * Return the current UTC timestamp as a compact string.
+ * @param {Date} [date] - defaults to now
+ * @returns {string} format: YYYYMMDD_HHmmssZ
  */
 export const getYmdhmsUtc = date => {
   if (!date) date = new Date();

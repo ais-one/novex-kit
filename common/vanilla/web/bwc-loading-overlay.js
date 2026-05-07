@@ -33,6 +33,13 @@ template.innerHTML = `
 </style>
 <div id="overlay"><div class="loader"></div></div>
 `;
+/**
+ * Full-screen semi-transparent loading overlay with a spinning indicator.
+ * Toggle visibility via the `show` attribute or property.
+ *
+ * @element bwc-loading-overlay
+ * @attr {boolean} show - when present, the overlay is visible
+ */
 class LoadingOverlay extends HTMLElement {
   constructor() {
     super();

@@ -7,23 +7,52 @@ let urlPrefix = '/api';
 let http = new Fetch();
 // Do Not Catch Errors - let it be caught by caller
 
+/**
+ * Set the active table name. Resets any parent filter.
+ * @param {string} name - T4T table name as defined in the server YAML config
+ */
 function setTableName(name) {
-  // set table name
   tableName = name;
   parentFilter = null; // TODO: find a more sustainable way using prototype or let caller handle this part
 }
 
-// this might change
-const setFetch = _fetch => (http = _fetch); // set the fetch function
+/**
+ * Replace the Fetch instance used for all T4T requests.
+ * @param {import('./fetch.js').default} _fetch
+ */
+const setFetch = _fetch => (http = _fetch);
+
+/**
+ * Set a parent-table filter applied to every `find` call.
+ * Useful for child tables that must always be scoped to a parent row.
+ * @param {{ col: string, id: unknown }|null} _filter
+ */
 const setParentFilter = _filter => (parentFilter = _filter);
+
+/**
+ * Override the URL prefix for all T4T endpoints (default: `'/api'`).
+ * @param {string} _urlPrefix
+ */
 const setUrlPrefix = _urlPrefix => (urlPrefix = _urlPrefix);
 
+/**
+ * Fetch and cache the column/permission config for the active table.
+ * @returns {Promise<Record<string, unknown>>} - raw config object from the server
+ */
 async function getConfig() {
   const { data } = await http.get(`${urlPrefix}/t4t/config/${tableName}`);
   if (data) config = data;
   return data;
 }
 
+/**
+ * Fetch a paginated, filtered, and sorted list of rows from the active table.
+ * @param {{ col: string, op: string, val: unknown, andOr: string }[]} filters
+ * @param {{ column: string, order: 'asc'|'desc' }[]} sorter
+ * @param {number} page - 1-based page number
+ * @param {number} limit - rows per page
+ * @returns {Promise<{ results: Record<string, unknown>[], total: number }>}
+ */
 async function find(filters, sorter, page, limit) {
   const rv = {
     results: [],
@@ -32,8 +61,8 @@ async function find(filters, sorter, page, limit) {
   if (parentFilter) {
     filters.push({ col: parentFilter.col, op: '=', val: parentFilter.id, andOr: 'and' });
   }
-  filters = filters ? JSON.stringify(filters) : ''; // [{col, op, val, andOr}, ...]
-  sorter = sorter ? JSON.stringify(sorter) : ''; // [{ column: '<col_name>', order: 'asc|desc' }, ...]
+  filters = filters ? JSON.stringify(filters) : '';
+  sorter = sorter ? JSON.stringify(sorter) : '';
   const { data } = await http.get(`${urlPrefix}/t4t/find/${tableName}`, {
     page,
     limit,
@@ -45,20 +74,31 @@ async function find(filters, sorter, page, limit) {
   return rv;
 }
 
+/**
+ * Download all rows matching the given filters as a CSV string.
+ * @param {{ col: string, op: string, val: unknown, andOr: string }[]} filters
+ * @param {{ column: string, order: 'asc'|'desc' }[]} sorter
+ * @returns {Promise<string>} - raw CSV text
+ */
 async function download(filters, sorter) {
   const { data } = await http.get(`${urlPrefix}/t4t/find/${tableName}`, {
     page: 0,
     limit: 0,
     filters: filters ? JSON.stringify(filters) : '',
     sorter: sorter ? JSON.stringify(sorter) : '',
-    csv: 1, // it is a csv
+    csv: 1,
   });
   return data;
 }
 
+/**
+ * Fetch a single row by its primary key (or composite key, values joined by `|`).
+ * @param {string} __key - primary key value, or `'val1|val2'` for composite keys
+ * @returns {Promise<Record<string, unknown> & { __key: string }>}
+ */
 async function findOne(__key) {
   let rv = {};
-  const { data } = await http.get(`${urlPrefix}/t4t/find-one/${tableName}`, { __key }); // if multiKey, then seperate values by |, column is implied by order
+  const { data } = await http.get(`${urlPrefix}/t4t/find-one/${tableName}`, { __key });
   if (data) {
     rv = data;
     rv.__key = __key;
@@ -66,8 +106,14 @@ async function findOne(__key) {
   return rv;
 }
 
-// process data for use with
-// JSON only,  multi-part form, JSON & filelist (signed URL upload)
+/**
+ * Split a record into its JSON fields and any attached files.
+ * FileList values are extracted into `form` (multipart) or `files` (signed-URL upload).
+ * @param {Record<string, unknown>} record - raw form data, may contain FileList values
+ * @param {object} [options]
+ * @param {boolean} [options.signedUrl] - when true, collect files for signed-URL upload instead of multipart
+ * @returns {{ json: Record<string, unknown>, form?: FormData, files?: File[] }}
+ */
 function processData(record, { signedUrl = false } = {}) {
   const rv = {
     json: {},
@@ -81,73 +127,73 @@ function processData(record, { signedUrl = false } = {}) {
           rv.files.push(file);
         } else {
           if (!rv.form) rv.form = new FormData();
-          rv.form.append('file-data', file); // add
+          rv.form.append('file-data', file);
         }
         fileNameArray.push(file.name);
       }
-      rv.json[k] = fileNameArray.join(','); // array
+      rv.json[k] = fileNameArray.join(',');
     } else {
       rv.json[k] = v;
     }
   }
-  if (rv.form) rv.form.append('json-data', JSON.stringify(rv.json)); // set the JSON
+  if (rv.form) rv.form.append('json-data', JSON.stringify(rv.json));
   return rv;
 }
 
+/**
+ * Create a new row in the active table.
+ * @param {Record<string, unknown>|FormData} record
+ * @returns {Promise<Response & { data: unknown }>}
+ */
 async function create(record) {
-  // const { data } = await http.patch(`/authors/${id}`, formData,
-  //   { onUploadProgress: progressEvent => console.log(Math.round(progressEvent.loaded / progressEvent.total * 100) + '%') } // axios only
-  // )
   return await http.post(`${urlPrefix}/t4t/create/${tableName}`, record);
 }
 
+/**
+ * Update an existing row identified by its primary key.
+ * @param {string} __key - primary key value
+ * @param {Record<string, unknown>} record - fields to update
+ * @param {Record<string, string>|null} [headers] - additional request headers
+ * @returns {Promise<Response & { data: unknown }>}
+ */
 async function update(__key, record, headers = null) {
   return await http.patch(`${urlPrefix}/t4t/update/${tableName}`, record, { __key }, headers);
 }
 
-// Handle file removals seperately
+/**
+ * Delete one or more rows by their primary key values.
+ * @param {string[]} items - array of primary key values to delete
+ * @returns {Promise<Response & { data: unknown }>}
+ */
 async function remove(items) {
-  // console.log(items)
-  let ids = [];
-  // const { pk } = config
-  // ids = pk ? items.map((item) => item[pk]) : items.map((item) => item.__key)
-  // console.log(ids)
-  ids = items;
-  return await http.post(`${urlPrefix}/t4t/remove/${tableName}`, { ids });
+  return await http.post(`${urlPrefix}/t4t/remove/${tableName}`, { ids: items });
 }
 
-// uploads a single csv for batch processing
+/**
+ * Upload a CSV file for bulk import into the active table.
+ * @param {File|null} file - the CSV file to upload
+ * @returns {Promise<Response & { data: unknown }|false>} - false if no file provided
+ */
 async function upload(file) {
-  // the file object
-  // TODO add exception handling
   if (file === null) return false;
   const formData = new FormData();
-  formData.append('csv-file', file); // call it file
-  // console.log('zzz', formData instanceof FormData)
-  // for(const pair of formData.entries()) console.log(pair[0], pair[1])
+  formData.append('csv-file', file);
   return await http.post(`${urlPrefix}/t4t/upload/${tableName}`, formData);
-  // formData.append('textdata', JSON.stringify({ name: 'name', age: 25 }))
-  // const res = await fetch('/api/upload', { method: 'POST', body: formData })
-  // const { id, name, avatar } = record
-  // const json = JSON.stringify({ name })
-  // // const blob = new Blob([json], { type: 'application/json' })
-  // // console.log('json', blob)
 }
 
-// const autoComplete = debounce(async (e, col, _showForm) => {
-// recordObj[_showForm][col] = e.target.value
-
-// wrap in debounce
-// parentColVal in use-cases where parent table column changes
+/**
+ * Fetch autocomplete suggestions for a foreign-key column.
+ * @param {string} search - current input text
+ * @param {string} col - column name whose `options` config defines the lookup table
+ * @param {Record<string, unknown>} record - current form record (used to resolve parent column values)
+ * @param {unknown} [parentColVal] - explicit override for the parent column value
+ * @returns {Promise<{ key: unknown, text: string }[]>}
+ */
 async function autocomplete(search, col, record, parentColVal = '') {
   let res = [];
   try {
     const { tableName, limit, key, text, parentTableColName, parentCol } = config.cols[col].options;
-    const query = { tableName, limit, key, text, search };
-    let parentTableColVal = '';
-    if (parentTableColName) {
-      parentTableColVal = parentColVal || record[parentCol] || '';
-    }
+    const parentTableColVal = parentTableColName ? parentColVal || record[parentCol] || '' : '';
     const { data } = await http.post(`${urlPrefix}/t4t/autocomplete/${tableName}`, {
       key,
       text,
@@ -158,7 +204,7 @@ async function autocomplete(search, col, record, parentColVal = '') {
     });
     res = data;
   } catch (err) {
-    // TODO console.log('autocomplete', err.message)
+    // TODO: surface autocomplete errors to caller
   }
   return res;
 }
