@@ -26,6 +26,7 @@ let notifWSS: WebSocketServer;
 let adminWSS: WebSocketServer;
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
+/** Parse the `?token=` query param and return the authenticated user. Throws on invalid or missing token. */
 async function requireUser(req: http.IncomingMessage): Promise<AuthUser> {
   const params = new URLSearchParams(req.url?.split('?')[1]);
   const token = params.get('token');
@@ -36,6 +37,7 @@ async function requireUser(req: http.IncomingMessage): Promise<AuthUser> {
   return user;
 }
 
+/** Like `requireUser` but additionally asserts `role === 'admin'`. */
 async function requireAdmin(req: http.IncomingMessage): Promise<AuthUser> {
   const user = await requireUser(req);
   if (user.role !== 'admin') throw new Error('Insufficient role');
@@ -43,6 +45,7 @@ async function requireAdmin(req: http.IncomingMessage): Promise<AuthUser> {
 }
 
 // ─── Reject a socket before any WS handshake ─────────────────────────────────
+/** Reject an upgrade request with an HTTP error response before the WS handshake completes. */
 function rejectSocket(socket: Duplex, code: number, message: string): void {
   socket.write(
     `HTTP/1.1 ${code} ${message}\r\n` +
@@ -55,6 +58,7 @@ function rejectSocket(socket: Duplex, code: number, message: string): void {
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
+/** Send a JSON-serialised payload to every open client on a WebSocketServer. */
 function broadcast(wss: WebSocketServer, payload: unknown): void {
   const data = JSON.stringify(payload);
   for (const client of wss.clients) {
@@ -64,12 +68,14 @@ function broadcast(wss: WebSocketServer, payload: unknown): void {
   }
 }
 
+/** Normalise a ws `RawData` value (Buffer | ArrayBuffer | Buffer[]) to a single Buffer. */
 function rawToBuffer(raw: RawData): Buffer {
   if (Buffer.isBuffer(raw)) return raw;
   if (Array.isArray(raw)) return Buffer.concat(raw);
   return Buffer.from(new Uint8Array(raw));
 }
 
+/** Parse raw WS data as JSON; returns `null` on any parse failure. */
 function safeParseJSON(raw: RawData): unknown {
   try {
     return JSON.parse(rawToBuffer(raw).toString('utf8'));
@@ -80,6 +86,7 @@ function safeParseJSON(raw: RawData): unknown {
 
 const MAX_BYTES = 64 * 1024;
 
+/** Parse raw WS data as JSON with a max-byte guard. Returns `{ ok, error, value }`. */
 function safeParseJSON2(
   raw: RawData,
   { maxBytes = MAX_BYTES } = {},
@@ -96,10 +103,12 @@ function safeParseJSON2(
   }
 }
 
+/** Serialise an error message into a `{ type: 'error', message }` JSON string. */
 function wsError(message: string): string {
   return JSON.stringify({ type: 'error', message });
 }
 
+/** Return live connection counts for all three namespaces plus process uptime. */
 function getServerStats(): { chat: number; notif: number; admin: number; uptime: number } {
   return {
     chat: chatWSS.clients.size,
@@ -109,6 +118,7 @@ function getServerStats(): { chat: number; notif: number; admin: number; uptime:
   };
 }
 
+/** Stub token verifier — replace with real JWT validation in production. */
 async function verifyToken(token: string): Promise<AuthUser | null> {
   const users: Record<string, AuthUser> = {
     'user-token-abc': { id: 1, name: 'Alice', role: 'user' },

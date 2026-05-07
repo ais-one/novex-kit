@@ -79,25 +79,22 @@ class WebCam extends HTMLElement {
     // captures: []
 
     this.slotNode = {
-      // TODO change ['button-snap'] to 'button-snap'
-      'button-snap': this.shadowRoot.querySelector('#snap'),
-      'button-unsnap': this.shadowRoot.querySelector('#unsnap'),
+      buttonSnap: this.shadowRoot.querySelector('#snap'),
+      buttonUnsnap: this.shadowRoot.querySelector('#unsnap'),
     };
 
+    // Map slot names to camelCase slotNode keys
+    const slotKeyMap = { 'button-snap': 'buttonSnap', 'button-unsnap': 'buttonUnsnap' };
     const slots = this.shadowRoot.querySelectorAll('slot');
-    const slotMap = {};
     slots.forEach(slot => {
-      slotMap[slot.name] = slot;
-      slot.addEventListener('slotchange', e => {
-        if (this.slotNode[slot.name]) {
-          const nodes = slot.assignedNodes();
-          const btnNode = nodes[0];
-          this.slotNode[slot.name].removeEventListener('click', this.capture);
-          this.slotNode[slot.name] = btnNode;
-          if (slot.name === 'button-snap') this.slotNode[slot.name].style.display = 'block';
-          if (slot.name === 'button-unsnap') this.slotNode[slot.name].style.display = 'none';
-          this.slotNode[slot.name].addEventListener('click', this.capture);
-        }
+      slot.addEventListener('slotchange', () => {
+        const key = slotKeyMap[slot.name];
+        if (!key || !this.slotNode[key]) return;
+        const btnNode = slot.assignedNodes()[0];
+        this.slotNode[key].removeEventListener('click', this.capture);
+        this.slotNode[key] = btnNode;
+        this.slotNode[key].style.display = slot.name === 'button-snap' ? 'block' : 'none';
+        this.slotNode[key].addEventListener('click', this.capture);
       });
     });
   }
@@ -106,13 +103,19 @@ class WebCam extends HTMLElement {
     return ['show'];
   }
 
-  // getter and setter for property - show
-  get show() {
+  /** @returns {boolean} true when the component is marked visible */
+  get visible() {
     return this.hasAttribute('show');
   }
 
-  set show(value) {
-    value ? this.setAttribute('show', '') : this.removeAttribute('show');
+  /** Mark the component as visible by adding the `show` attribute. */
+  show() {
+    this.setAttribute('show', '');
+  }
+
+  /** Mark the component as hidden by removing the `show` attribute. */
+  hide() {
+    this.removeAttribute('show');
   }
 
   // added to the DOM
@@ -120,8 +123,8 @@ class WebCam extends HTMLElement {
     this.width = this.getAttribute('width') || 320;
     this.height = this.getAttribute('height') || 240;
 
-    this.slotNode['button-snap'].addEventListener('click', this.capture);
-    this.slotNode['button-unsnap'].addEventListener('click', this.capture);
+    this.slotNode.buttonSnap.addEventListener('click', this.capture);
+    this.slotNode.buttonUnsnap.addEventListener('click', this.capture);
 
     const containerEl = this.shadowRoot.querySelector('.container');
     containerEl.style.width = `${this.width}px`;
@@ -130,10 +133,10 @@ class WebCam extends HTMLElement {
     const videoEl = this.shadowRoot.querySelector('#video');
     if (navigator.mediaDevices?.getUserMedia) {
       navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
-        try {
+        if ('srcObject' in videoEl) {
           videoEl.srcObject = stream;
-        } catch (e) {
-          videoEl.src = window.URL.createObjectURL(stream);
+        } else {
+          videoEl.src = globalThis.URL.createObjectURL(stream);
         }
         videoEl.play();
       });
@@ -149,10 +152,15 @@ class WebCam extends HTMLElement {
 
   // removed from the DOM
   disconnectedCallback() {
-    this.slotNode['button-snap'].removeEventListener('click', this.capture);
-    this.slotNode['button-unsnap'].removeEventListener('click', this.capture);
+    this.slotNode.buttonSnap.removeEventListener('click', this.capture);
+    this.slotNode.buttonUnsnap.removeEventListener('click', this.capture);
   }
 
+  /**
+   * Take a photo from the current video frame, or restart the camera after a capture.
+   * When capturing: pauses video, dispatches `snap` with the PNG data URL.
+   * When restarting: resumes video playback.
+   */
   capture() {
     const videoEl = this.shadowRoot.querySelector('#video');
     if (this.captureMode) {
@@ -164,8 +172,8 @@ class WebCam extends HTMLElement {
       videoEl.pause();
 
       // console.log('videoEl', canvas.toDataURL('image/png'))
-      this.slotNode['button-snap'].style.display = 'none';
-      this.slotNode['button-unsnap'].style.display = 'block';
+      this.slotNode.buttonSnap.style.display = 'none';
+      this.slotNode.buttonUnsnap.style.display = 'block';
 
       const event = new CustomEvent('snap', {
         detail: canvas.toDataURL('image/png'),
@@ -176,8 +184,8 @@ class WebCam extends HTMLElement {
     } else {
       videoEl.play();
       this.captureMode = true;
-      this.slotNode['button-snap'].style.display = 'block';
-      this.slotNode['button-unsnap'].style.display = 'none';
+      this.slotNode.buttonSnap.style.display = 'block';
+      this.slotNode.buttonUnsnap.style.display = 'none';
       // set image data back to empty
     }
   }

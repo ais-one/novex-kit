@@ -35,7 +35,7 @@ const idleTimer = {
    * @returns {number}
    */
   getElapsedTimeSeconds() {
-    return parseInt((Date.now() - this._elapsedTsMs) / 1000.0);
+    return Number.parseInt((Date.now() - this._elapsedTsMs) / 1000);
   },
 
   /**
@@ -66,7 +66,7 @@ const idleTimer = {
     document.addEventListener('click', this._reset);
     document.addEventListener('mousemove', this._reset);
     document.addEventListener('keypress', this._reset);
-    this._idleSecondsTimer = window.setInterval(this._check, 1000);
+    this._idleSecondsTimer = globalThis.setInterval(this._check, 1000);
   },
 
   /** Stop tracking idle time and remove all activity listeners. */
@@ -75,7 +75,7 @@ const idleTimer = {
     document.removeEventListener('click', this._reset);
     document.removeEventListener('mousemove', this._reset);
     document.removeEventListener('keypress', this._reset);
-    window.clearInterval(this._idleSecondsTimer);
+    globalThis.clearInterval(this._idleSecondsTimer);
   },
 };
 

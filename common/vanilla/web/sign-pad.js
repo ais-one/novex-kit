@@ -43,15 +43,17 @@ class SignPad extends HTMLElement {
     return ['value', 'width', 'height'];
   }
 
-  // getter and setter for property - show
+  /** @returns {string} PNG data URL of the current signature, or `''` when blank. */
   get value() {
     return this.getAttribute('value');
   }
 
+  /** @param {string} val - PNG data URL or `''` to clear */
   set value(val) {
     this.setAttribute('value', val || '');
   }
 
+  /** @param {string} name @param {string} oldVal @param {string} newVal */
   attributeChangedCallback(name, oldVal, newVal) {
     const el = this.shadowRoot.querySelector('#canvas');
     switch (name) {
@@ -65,10 +67,8 @@ class SignPad extends HTMLElement {
     }
   }
 
+  /** Initialise mouse state, configure the 2D context, and attach mouse event listeners. */
   connectedCallback() {
-    // const styleSheetList = this.shadowRoot.styleSheets // do this here, not in constructor
-    // const bg_rule = styleSheetList[0].cssRules[0]
-    // const yyy = context_rule.style.getPropertyValue('--vcxwc-sign-pad-background-color')
     this.mouse = {
       current: { x: 0, y: 0 },
       previous: { x: 0, y: 0 },
@@ -93,8 +93,7 @@ class SignPad extends HTMLElement {
     el.addEventListener('mousemove', this.handleMouseMove);
   }
 
-  adoptedCallback() {}
-
+  /** Remove all mouse event listeners. */
   disconnectedCallback() {
     const el = this.shadowRoot.querySelector('#canvas');
     el.removeEventListener('mousedown', this.handleMouseDown);
@@ -102,6 +101,7 @@ class SignPad extends HTMLElement {
     el.removeEventListener('mousemove', this.handleMouseMove);
   }
 
+  /** Start a new stroke: clear the canvas, record the start position. @param {MouseEvent} event */
   handleMouseDown(event) {
     this.mouse.down = true;
     this.mouse.move = false;
@@ -119,6 +119,7 @@ class SignPad extends HTMLElement {
     ctx.moveTo(x, y);
   }
 
+  /** End the current stroke: export the PNG data URL and dispatch an `input` event. */
   handleMouseUp() {
     const el = this.shadowRoot.querySelector('#canvas');
     if (this.mouse.move) this.value = el.toDataURL('image/png');
@@ -131,6 +132,7 @@ class SignPad extends HTMLElement {
     this.mouse.move = false;
   }
 
+  /** Track mouse position and draw the current stroke. @param {MouseEvent} event */
   handleMouseMove(event) {
     this.mouse.move = true;
     this.mouse.current = {
@@ -140,6 +142,7 @@ class SignPad extends HTMLElement {
     this.draw(event);
   }
 
+  /** Redraw the canvas path up to the current mouse position. @param {MouseEvent} event */
   draw(event) {
     // requestAnimationFrame(this.draw)
     if (this.mouse.down) {
@@ -154,6 +157,7 @@ class SignPad extends HTMLElement {
     }
   }
 
+  /** @returns {{ x: number, y: number }} current mouse coordinates */
   currentMouse() {
     return {
       x: this.mouse.current.x,

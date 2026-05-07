@@ -8,12 +8,12 @@ let http = new Fetch();
 // Do Not Catch Errors - let it be caught by caller
 
 /**
- * Set the active table name. Resets any parent filter.
+ * Set the active table name.
+ * Call `setParentFilter(null)` explicitly when switching tables if a parent filter was active.
  * @param {string} name - T4T table name as defined in the server YAML config
  */
 function setTableName(name) {
   tableName = name;
-  parentFilter = null; // TODO: find a more sustainable way using prototype or let caller handle this part
 }
 
 /**
@@ -107,6 +107,29 @@ async function findOne(__key) {
 }
 
 /**
+ * Collect files from a FileList into rv.files (signed-URL) or rv.form (multipart).
+ * Returns a comma-separated string of file names for storage in the JSON payload.
+ * @param {FileList} fileList
+ * @param {{ form?: FormData, files?: File[] }} rv
+ * @param {boolean} signedUrl
+ * @returns {string}
+ */
+function processFileList(fileList, rv, signedUrl) {
+  const names = [];
+  for (const file of fileList) {
+    if (signedUrl) {
+      if (!rv.files) rv.files = [];
+      rv.files.push(file);
+    } else {
+      if (!rv.form) rv.form = new FormData();
+      rv.form.append('file-data', file);
+    }
+    names.push(file.name);
+  }
+  return names.join(',');
+}
+
+/**
  * Split a record into its JSON fields and any attached files.
  * FileList values are extracted into `form` (multipart) or `files` (signed-URL upload).
  * @param {Record<string, unknown>} record - raw form data, may contain FileList values
@@ -115,23 +138,10 @@ async function findOne(__key) {
  * @returns {{ json: Record<string, unknown>, form?: FormData, files?: File[] }}
  */
 function processData(record, { signedUrl = false } = {}) {
-  const rv = {
-    json: {},
-  };
+  const rv = { json: {} };
   for (const [k, v] of Object.entries(record)) {
     if (v instanceof FileList) {
-      const fileNameArray = [];
-      for (const file of v) {
-        if (signedUrl) {
-          if (!rv.files) rv.files = [];
-          rv.files.push(file);
-        } else {
-          if (!rv.form) rv.form = new FormData();
-          rv.form.append('file-data', file);
-        }
-        fileNameArray.push(file.name);
-      }
-      rv.json[k] = fileNameArray.join(',');
+      rv.json[k] = processFileList(v, rv, signedUrl);
     } else {
       rv.json[k] = v;
     }
@@ -190,23 +200,17 @@ async function upload(file) {
  * @returns {Promise<{ key: unknown, text: string }[]>}
  */
 async function autocomplete(search, col, record, parentColVal = '') {
-  let res = [];
-  try {
-    const { tableName, limit, key, text, parentTableColName, parentCol } = config.cols[col].options;
-    const parentTableColVal = parentTableColName ? parentColVal || record[parentCol] || '' : '';
-    const { data } = await http.post(`${urlPrefix}/t4t/autocomplete/${tableName}`, {
-      key,
-      text,
-      search,
-      limit,
-      parentTableColName,
-      parentTableColVal,
-    });
-    res = data;
-  } catch (err) {
-    // TODO: surface autocomplete errors to caller
-  }
-  return res;
+  const { tableName, limit, key, text, parentTableColName, parentCol } = config.cols[col].options;
+  const parentTableColVal = parentTableColName ? parentColVal || record[parentCol] || '' : '';
+  const { data } = await http.post(`${urlPrefix}/t4t/autocomplete/${tableName}`, {
+    key,
+    text,
+    search,
+    limit,
+    parentTableColName,
+    parentTableColVal,
+  });
+  return data;
 }
 
 export {

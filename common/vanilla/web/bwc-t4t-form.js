@@ -1,7 +1,3 @@
-// TODO fix
-// onsubmit --> multi select
-// error messages on submit
-
 // attributes
 // - mode: add, edit
 //
@@ -51,7 +47,8 @@ const bulma = {
           { tag: 'label', className: 'label' },
           {
             tag: 'div',
-            className: 'select is-fullwidth', // need to add is-multiple for bulma
+            className: 'select is-fullwidth',
+            multipleClass: 'is-multiple', // appended when field has multiple attribute
             children: [{ tag: 'input-placeholder' }],
           },
         ],
@@ -66,16 +63,14 @@ const bulma = {
       {
         tag: 'div',
         className: 'control has-icons-left',
-        children: [
-          { tag: 'input-placeholder' }, // TODO className = 'input'
-        ],
+        children: [{ tag: 'input-placeholder', className: 'input' }],
       },
       { tag: 'p', className: 'help is-danger', errorLabel: true },
     ],
   },
 }; // end bulma
 
-// Bootstrap - TODO VERIFY
+// Bootstrap (unverified)
 const bootstrap = {
   input: {
     tag: 'div',
@@ -103,7 +98,7 @@ const bootstrap = {
   'bwc-combobox': {},
 };
 
-// Mui CSS - TODO VERIFY
+// Mui CSS (unverified)
 const muicss = {
   input: {
     tag: 'div',
@@ -209,21 +204,26 @@ class BwcT4tForm extends HTMLElement {
   #record = {};
   #xcols = {};
 
+  /** @returns {object} T4T column/permission config as returned by the server */
   get config() {
     return this.#config;
   }
+  /** @param {object} val - setting config triggers a re-render when record is also set */
   set config(val) {
     this.#config = val;
   }
 
+  /** @returns {Record<string, unknown>} the current form record */
   get record() {
     return this.#record;
   }
+  /** @param {Record<string, unknown>} val - setting record triggers a re-render when config is also set */
   set record(val) {
     this.#record = val;
     if (this.#config && this.#record) this._render();
   }
 
+  /** Mount the template and trigger an initial render if both config and record are ready. */
   connectedCallback() {
     this.appendChild(template.content.cloneNode(true));
     if (this.#config && this.#record) this._render();
@@ -240,9 +240,11 @@ class BwcT4tForm extends HTMLElement {
   //   }
   // }
 
+  /** @returns {'add'|'edit'} current form mode */
   get mode() {
     return this.getAttribute('mode');
   }
+  /** @param {'add'|'edit'} val */
   set mode(val) {
     this.setAttribute('mode', val);
   }
@@ -307,19 +309,24 @@ class BwcT4tForm extends HTMLElement {
     if (c?.ui?.attrs?.allowCustomTag) el.setAttribute('allow-custom-tag', '');
     if (c?.ui?.attrs?.tagLimit) el.setAttribute('tag-limit', c.ui.attrs.tagLimit);
     // disabled and required already set
-    // TODO set input class
+    if (c?.ui?.attrs?.inputClass) el.setAttribute('input-class', c.ui.attrs.inputClass);
 
     el.onload = () => {
-      const valueType = c?.ui?.valueType; // TODO transform value
+      const valueType = c?.ui?.valueType;
       const val = this.mode === 'add' ? c.default : this.#record[k];
       if (c?.ui?.attrs?.multiple) {
-        el.tags = valueType === '' ? val.split(',').map(item => ({ key: item, text: item })) || [] : val || [];
+        if (valueType === '') {
+          el.tags = val ? val.split(',').map(item => ({ key: item, text: item })) : [];
+        } else {
+          el.tags = val ?? [];
+        }
       } else if (valueType === '') {
         el.value = val || '';
         el.selected = val ? { key: val, text: val } : null;
       } else {
-        el.value = val.text || ''; // key and text should be same
-        el.selected = val || null;
+        const item = this.#normaliseItem(val);
+        el.value = item?.text || item?.key || '';
+        el.selected = item;
       }
     };
 
@@ -334,20 +341,31 @@ class BwcT4tForm extends HTMLElement {
     }, 500);
 
     el.onselect = () => {
-      // TODO reset child value - may cascade down further
       const childColName = c?.options?.childCol;
-      if (!childColName) return;
-      const col = this.#xcols[childColName];
-      const childColObj = this.#config.cols[childColName];
-      if (col?.el) {
-        if (childColObj?.ui?.attrs?.multiple) {
-          col.el.tags = [];
-        } else {
-          col.el.value = '';
-          col.el.selected = null;
-        }
-      }
+      if (childColName) this.#resetCol(childColName);
     };
+  }
+
+  /** Normalise a raw stored value to `{ key, text }` for object-type comboboxes. */
+  #normaliseItem(val) {
+    if (val == null) return null;
+    if (typeof val === 'object') return val;
+    return { key: val, text: val };
+  }
+
+  /** Recursively clear a column's value and cascade to its child column. */
+  #resetCol(colName) {
+    const col = this.#xcols[colName];
+    const colObj = this.#config.cols?.[colName];
+    if (!col?.el) return;
+    if (colObj?.ui?.attrs?.multiple) {
+      col.el.tags = [];
+    } else {
+      col.el.value = '';
+      col.el.selected = null;
+    }
+    const childColName = colObj?.options?.childCol;
+    if (childColName) this.#resetCol(childColName);
   }
 
   // ── Private helpers: _render ───────────────────────────────────────────────
@@ -373,14 +391,13 @@ class BwcT4tForm extends HTMLElement {
       return selected.join(',');
     }
     if (tag === 'bwc-combobox') {
-      // TODO set the value
       const c = this.#config.cols[col];
       const val = c?.ui?.attrs?.multiple ? inputEl.tags : inputEl.selected;
       const valueType = c?.ui?.valueType;
       if (c?.ui?.attrs?.multiple) {
-        return valueType === '' ? val.map(item => item.text).join(',') : val;
+        return valueType === '' ? (val ?? []).map(item => item.text).join(',') : (val ?? []);
       }
-      return valueType === '' ? val.text : val;
+      return valueType === '' ? (val?.text ?? '') : val;
     }
     // input, textarea
     return inputEl.files ? inputEl.files : inputEl.value;
@@ -408,7 +425,13 @@ class BwcT4tForm extends HTMLElement {
 
   // ── Core ───────────────────────────────────────────────────────────────────
 
-  // node is current node in tree, k = column key, c = column object
+  /**
+   * Recursively build a single form element from a UI tree node.
+   * @param {{ tag: string, className?: string, attrs?: object, children?: object[], errorLabel?: boolean, multipleClass?: string }} node - UI tree node
+   * @param {string} k - column key
+   * @param {object} c - column config object
+   * @returns {HTMLElement|null} the constructed element, or null when the column is hidden in this mode
+   */
   formEl(node, k, c) {
     const mode = this.mode;
     if (c[mode] === 'hide') return null;
@@ -423,7 +446,7 @@ class BwcT4tForm extends HTMLElement {
     // DONE: input - text, integer, decimal, date, time, datetime, file(upload)
     // DONE: select (single and multiple, limited options)
     // DONE: textarea
-    // DONE: bwc-combobox (multiple with tags), TODO: need to test more
+    // DONE: bwc-combobox (multiple with tags)
     if (['input', 'textarea', 'select', 'bwc-combobox'].includes(elementTag)) {
       this.#setupInputElement(el, c, k, elementTag);
     }
@@ -434,9 +457,8 @@ class BwcT4tForm extends HTMLElement {
     }
     if (className) el.className = className;
 
-    // Bulma Specific Note (TODO improve this): if className has 'select' - it is bulma, need to set is-multiple here if is multi select
-    if (node?.className?.includes('select') && c?.ui?.attrs?.multiple) {
-      el.classList.add('is-multiple');
+    if (node?.multipleClass && c?.ui?.attrs?.multiple) {
+      el.classList.add(node.multipleClass);
     }
 
     this.#setAttributes(el, attrs);
@@ -444,6 +466,7 @@ class BwcT4tForm extends HTMLElement {
     return el;
   }
 
+  /** Rebuild all form fields from the current config and record. Dispatches `render-error` on failure. */
   _render() {
     try {
       const el = this.querySelector('.content-area');

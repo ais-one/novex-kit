@@ -85,11 +85,11 @@ export const hardDelete = async (
     const tuples = buildTuples(ids as Record<string, number | string>[], keys);
     const colList = buildColList(keys);
     const result = await trx.execute(sql.raw(`SELECT * FROM "${tableName}" WHERE (${colList}) IN (${tuples})`));
-    records = result.rows as Record<string, unknown>[];
+    records = result.rows;
   } else {
     const idList = (ids as (number | string)[]).join(', ');
     const result = await trx.execute(sql.raw(`SELECT * FROM "${tableName}" WHERE id IN (${idList})`));
-    records = result.rows as Record<string, unknown>[];
+    records = result.rows;
   }
 
   // Validate all records exist

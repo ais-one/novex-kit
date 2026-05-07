@@ -50,22 +50,32 @@ export const webpushUnsubscribe = async () => {
 // but I could not find the original author
 // here's one such source:
 // https://stackoverflow.com/questions/42362235/web-pushnotification-unauthorizedregistration-or-gone-or-unauthorized-sub
+/**
+ * Convert a base64url-encoded VAPID public key to a Uint8Array suitable for `applicationServerKey`.
+ * @param {string} base64String - base64url string
+ * @returns {Uint8Array}
+ */
 const urlBase64ToUint8Array = base64String => {
   // const padding = '='.repeat((4 - base64String.length % 4) % 4)
   // const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/')
   // https://stackoverflow.com/questions/52379865/eslint-replace-cant-read-method
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const base64 = (base64String + padding).replaceAll('-', '+').replaceAll('_', '/');
 
-  const rawData = window.atob(base64);
+  const rawData = globalThis.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
 
   for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
+    outputArray[i] = rawData.codePointAt(i);
   }
   return outputArray;
 };
 
+/**
+ * Default service-worker message handler (no-op).
+ * Override by passing a custom handler to `addSwMessageEvent`.
+ * @param {MessageEvent} e
+ */
 const handleSwMessage = async e => {
   // console.log('handleSwMessage', e)
   //NOSONAR if (e && e.data && e.data.msg === 'pushsubscriptionchange') { }
