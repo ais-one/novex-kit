@@ -46,13 +46,13 @@ const throttle = (fn, wait) => {
 
 /**
  * Return true if the string looks like a valid email address (basic pattern check).
- * Uses anchors and a negated character class to avoid ReDoS backtracking.
+ * Domain labels exclude `.` explicitly so `\.` separators are unambiguous — no backtracking.
  * @param {string} email
  * @returns {boolean}
  */
 const isEmail = email => {
   if (typeof email !== 'string' || email.length > 254) return false;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+  return /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(email);
 };
 
 /**
