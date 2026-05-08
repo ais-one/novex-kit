@@ -22,8 +22,9 @@ const CHAR_LF = '\n';
  * - 2. same number of columns in each row (TODO?)
  * - 3. trims white space around fields (TODO?)
  * @param {string} str - CSV string to parse
+ * @param {string} [delimCol] - column delimiter, default `,`
  * @returns {string[][]} - array of rows, each row is an array of fields
- * @throws {Error} - if CSV is invalid (e.g. unclosed quotes)
+ * @throws {Error} if the CSV contains an unclosed quoted field
  */
 const parseCSV = (str, delimCol = DELIM_COL) => {
   const rows = [];
@@ -80,10 +81,9 @@ const parseCSV = (str, delimCol = DELIM_COL) => {
 };
 
 /**
- * Parse a string as CSV and also validate JSON if a field is a JSON field
- * @param {string[][]} csvString - CSV parsed as array of rows, each row is an array of fields
- * @returns {object} - { valid: boolean, reason?: string, rows?: string[][] }
- * @throws {Error} - if CSV is invalid (e.g. unclosed quotes)
+ * Parse a CSV string and validate any fields that look like JSON.
+ * @param {string} csvString - raw CSV text to parse and validate
+ * @returns {{ valid: boolean, reason?: string, rows?: string[][] }}
  */
 const parseAndValidateCsv = csvString => {
   try {
@@ -108,12 +108,12 @@ const parseAndValidateCsv = csvString => {
 };
 
 /**
- * convert CSV to array of JSON object
- * @param {object} input - conversion inputs
- * @param {string} input._text - CSV text to be converted to array
- * @param {string} input.delimCol - CSV column delimiter, default is comma (,)
- * @param {boolean} input.ignoreColumnMismatch - whether to ignore column count mismatches
- * @returns
+ * Convert a CSV string to an array of objects, using the first row as keys.
+ * @param {object} input
+ * @param {string} input._text - raw CSV text
+ * @param {string} [input.delimCol] - column delimiter, default `,`
+ * @param {boolean} [input.ignoreColumnMismatch] - skip rows whose column count differs from the header
+ * @returns {Record<string, string>[]}
  */
 const csvToJson = ({ _text, delimCol = DELIM_COL, ignoreColumnMismatch = false }) => {
   const arr = parseCSV(_text, delimCol);
@@ -134,7 +134,7 @@ const csvToJson = ({ _text, delimCol = DELIM_COL, ignoreColumnMismatch = false }
  * escape for Excel, Google Sheets, and RFC 4180-compliant parsers
  *
  * @param {*[]} fields - array of field values to convert to a CSV row
- * @param {string} delimCol - CSV column delimiter, default is comma (,)
+ * @param {string} [delimCol] - CSV column delimiter, default `,`
  * @returns {string} - CSV datarow string
  */
 const arrayToCSVRow = (fields, delimCol = DELIM_COL) => {
@@ -142,12 +142,12 @@ const arrayToCSVRow = (fields, delimCol = DELIM_COL) => {
     .map(field => {
       if (field === null || field === undefined) return '';
       if (typeof field === 'object') {
-        const jsonStr = JSON.stringify(field).replace(/"/g, ESCAPE_CHAR);
+        const jsonStr = JSON.stringify(field).replaceAll('"', ESCAPE_CHAR);
         return `"${jsonStr}"`;
       }
       // Wrap any plain string containing commas/quotes/newlines too
       if (typeof field === 'string' && /[",\n]/.test(field)) {
-        return `"${field.replace(/"/g, ESCAPE_CHAR)}"`;
+        return `"${field.replaceAll('"', ESCAPE_CHAR)}"`;
       }
       return field;
     })
@@ -159,7 +159,7 @@ const arrayToCSVRow = (fields, delimCol = DELIM_COL) => {
  * escape for Excel, Google Sheets, and RFC 4180-compliant parsers
  *
  * @param {Object} jsonObj - JSON object to convert to a CSV row
- * @param {string} delimCol - CSV column delimiter, default is comma (,)
+ * @param {string} [delimCol] - CSV column delimiter, default `,`
  * @returns {string} - CSV data row string
  */
 const jsonToCSVRow = (jsonObj, delimCol = DELIM_COL) => arrayToCSVRow(Object.values(jsonObj), delimCol);
@@ -169,18 +169,18 @@ const jsonToCSVRow = (jsonObj, delimCol = DELIM_COL) => arrayToCSVRow(Object.val
  * escape for Excel, Google Sheets, and RFC 4180-compliant parsers
  *
  * @param {Object} jsonObj - JSON object to convert to a CSV row
- * @param {string} delimCol - CSV column delimiter, default is comma (,)
+ * @param {string} [delimCol] - CSV column delimiter, default `,`
  * @returns {string} - CSV header row string
  */
 const jsonToCSVHeader = (jsonObj, delimCol = DELIM_COL) => arrayToCSVRow(Object.keys(jsonObj), delimCol);
 
 /**
- * convert array of JSON objects to CSV
- * @param {Object[]} _json - array of JS objects to be converted to CSV
- * @param {string} delimRow - CSV row delimiter, default is newline (\n)
- * @param {string} delimCol - CSV column delimiter, default is comma (,)
- * @param {boolean} ignoreColumnMismatch - whether to ignore column count mismatches
- * @returns
+ * Convert an array of objects to a CSV string (first row is the header).
+ * @param {Record<string, unknown>[]} _json - array of objects to serialise
+ * @param {string} [delimCol] - column delimiter, default `,`
+ * @param {string} [delimRow] - row delimiter, default `\n`
+ * @param {boolean} [ignoreColumnMismatch] - skip rows whose value count differs from the header
+ * @returns {string}
  */
 const jsonToCsv = (_json, delimCol = DELIM_COL, delimRow = DELIM_ROW, ignoreColumnMismatch = false) => {
   let csv = '';

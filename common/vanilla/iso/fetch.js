@@ -1,9 +1,21 @@
 // TODO add retry - https://dev.to/ycmjason/javascript-fetch-retry-upon-failure-3p6g
+
+/**
+ * Thin fetch wrapper with JWT bearer auth, token refresh, and optional timeout.
+ * Set `credentials: 'include'` to use HttpOnly cookies instead of bearer tokens.
+ */
 class Fetch {
   /**
-   *
-   * @param {*} options
-   * @param {*} tokens
+   * @param {object} [options]
+   * @param {string} [options.baseUrl] - prepended to every relative URL
+   * @param {string} [options.credentials] - fetch credentials mode (`'same-origin'` | `'include'` | `'omit'`)
+   * @param {Function} [options.forceLogoutFn] - called on unrecoverable 401/403
+   * @param {string} [options.refreshUrl] - endpoint used to exchange a refresh token for new tokens
+   * @param {number} [options.timeoutMs] - abort after this many ms (0 = disabled)
+   * @param {number} [options.maxRetry] - max retry attempts (TODO, default `0`)
+   * @param {object} [tokens]
+   * @param {string} [tokens.access] - JWT access token
+   * @param {string} [tokens.refresh] - JWT refresh token
    */
   constructor(options = {}, tokens = {}) {
     this.options = {
@@ -20,11 +32,10 @@ class Fetch {
   }
 
   /**
-   *
-   * @param {string} url
-   * @param {string} baseUrl
-   * @returns {object} { urlOrigin, urlPath, urlFull, urlSearch }
-   * @throws {Error} if URL is invalid
+   * Parse a URL into its components, falling back to manual extraction for relative URLs.
+   * @param {string} url - absolute or relative URL to parse
+   * @param {string} [baseUrl] - base URL prepended to relative paths
+   * @returns {{ urlOrigin: string, urlPath: string, urlFull: string, urlSearch: string }}
    */
   static parseUrl(url, baseUrl = '') {
     let urlPath = url;
@@ -43,20 +54,42 @@ class Fetch {
     return { urlOrigin, urlPath, urlFull, urlSearch };
   }
 
+  /**
+   * Merge new values into the current options.
+   * @param {Partial<typeof this.options>} options
+   */
   setOptions(options) {
     Object.assign(this.options, options);
   }
+
+  /** @returns {typeof this.options} */
   getOptions() {
     return this.options;
   }
 
+  /**
+   * Merge new values into the current tokens.
+   * @param {Partial<typeof this.tokens>} tokens
+   */
   setTokens(tokens) {
     Object.assign(this.tokens, tokens);
   }
+
+  /** @returns {typeof this.tokens} */
   getTokens() {
     return this.tokens;
   }
 
+  /**
+   * Execute an HTTP request, handling auth headers, body serialisation, and token refresh.
+   * @param {string} method - HTTP verb (`GET`, `POST`, `PATCH`, `PUT`, `DELETE`)
+   * @param {string} url - absolute URL or path relative to `baseUrl`
+   * @param {object|FormData|null} [body] - request body (serialised as JSON unless FormData)
+   * @param {Record<string, string>|null} [query] - query-string params appended to the URL
+   * @param {Record<string, string>|null} [headers] - additional request headers
+   * @returns {Promise<Response & { data: unknown }>} fetch Response with `.data` parsed from JSON
+   * @throws {Response} on non-2xx/3xx responses after exhausting refresh
+   */
   async http(method, url, body = null, query = null, headers = null) {
     const { urlOrigin, urlPath, urlFull, urlSearch } = Fetch.parseUrl(url, this.options.baseUrl);
     try {
@@ -137,18 +170,55 @@ class Fetch {
     }
   }
 
+  /**
+   * @param {string} url
+   * @param {object|FormData|null} [body]
+   * @param {Record<string, string>|null} [query]
+   * @param {Record<string, string>|null} [headers]
+   * @returns {Promise<Response & { data: unknown }>}
+   */
   async post(url, body = null, query = null, headers = null) {
     return this.http('POST', url, body, query, headers);
   }
+
+  /**
+   * @param {string} url
+   * @param {object|FormData|null} [body]
+   * @param {Record<string, string>|null} [query]
+   * @param {Record<string, string>|null} [headers]
+   * @returns {Promise<Response & { data: unknown }>}
+   */
   async put(url, body = null, query = null, headers = null) {
     return this.http('PUT', url, body, query, headers);
   }
+
+  /**
+   * @param {string} url
+   * @param {object|FormData|null} [body]
+   * @param {Record<string, string>|null} [query]
+   * @param {Record<string, string>|null} [headers]
+   * @returns {Promise<Response & { data: unknown }>}
+   */
   async patch(url, body = null, query = null, headers = null) {
     return this.http('PATCH', url, body, query, headers);
   }
+
+  /**
+   * @param {string} url
+   * @param {Record<string, string>|null} [query]
+   * @param {Record<string, string>|null} [headers]
+   * @returns {Promise<Response & { data: unknown }>}
+   */
   async del(url, query = null, headers = null) {
     return this.http('DELETE', url, null, query, headers);
   }
+
+  /**
+   * @param {string} url
+   * @param {Record<string, string>|null} [query]
+   * @param {Record<string, string>|null} [headers]
+   * @returns {Promise<Response & { data: unknown }>}
+   */
   async get(url, query = null, headers = null) {
     return this.http('GET', url, null, query, headers);
   }

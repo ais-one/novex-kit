@@ -33,6 +33,13 @@ template.innerHTML = `
 </style>
 <div id="overlay"><div class="loader"></div></div>
 `;
+/**
+ * Full-screen semi-transparent loading overlay with a spinning indicator.
+ *
+ * @element bwc-loading-overlay
+ * @attr {boolean} show - when present, the overlay is visible
+ * @prop {boolean} visible - read-only; true when the overlay is currently shown
+ */
 class LoadingOverlay extends HTMLElement {
   constructor() {
     super();
@@ -43,11 +50,20 @@ class LoadingOverlay extends HTMLElement {
   static get observedAttributes() {
     return ['show'];
   }
-  get show() {
+
+  /** @returns {boolean} */
+  get visible() {
     return this.hasAttribute('show');
   }
-  set show(value) {
-    value ? this.setAttribute('show', '') : this.removeAttribute('show');
+
+  /** Make the overlay visible. */
+  show() {
+    this.setAttribute('show', '');
+  }
+
+  /** Hide the overlay. */
+  hide() {
+    this.removeAttribute('show');
   }
 }
 

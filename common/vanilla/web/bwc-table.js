@@ -1,6 +1,3 @@
-// TODO
-// inline edit?
-
 // FEATURES
 // handle columns and items
 // row select
@@ -12,6 +9,8 @@
 // sticky coloumn (optional - currently only for 1st column)
 // checkbox & check all (optional)
 // custom render columns
+// inline-edit: double-click a data cell to edit in place (requires inlineEdit = true)
+//   dispatches 'celledit' { key, idx, oldVal, newVal }
 
 // STYLING...
 // --bwc-table-width: 100%
@@ -28,6 +27,7 @@
 // --bwc-table-td-select-bgcolor: black
 // --bwc-table-td-select-color: black
 // --bwc-table-sticky-header-top: 56px
+// --bwc-table-checkbox-width: 50px
 
 // PROPERTIES
 // commands="reload,filter"
@@ -42,10 +42,11 @@
 // style="--bwc-table-height: calc(100vh - 360px);--bwc-table-width: 200%;"
 // class="sticky-header sticky-column"
 
-// TODO change some properties to attributes? handle multiple UI frameworks
+// Attributes: commands, pagination, sort, checkboxes (boolean presence-based)
 
 // EVENTS
 // rowclick { detail: { row, col, data }
+// celledit { detail: { key, idx, oldVal, newVal } } — only when inlineEdit = true
 // triggered = sort / page / page-size / reload { detail: { name, sortKey, sortDir, page, pageSize, filters: [ { key, op, val, andOr } ] } }
 // cmd = show/hide filter, reload, add, del, import, export, goback (if parentKey != null)
 // checked = [indexes checked...]
@@ -54,6 +55,8 @@
 // for hidden table columns, please remove before passing it to component
 // label: 'ID',
 // key: 'id',
+// type: 'text' | 'number' | 'date' | 'datetime',  — used for filter input type
+// pattern: '',                                      — HTML input pattern for filter
 // filter: false,
 // sort: false,
 // render: ({val, key, row, idx}) => `<a class='button' onclick='this.dispatchEvent(new CustomEvent("testevent", { detail: ${JSON.stringify({ val, key, row, idx })} }))'>${val}</a>`
@@ -109,7 +112,7 @@ template.innerHTML = /*html*/ `
 .sticky-header #table-wrapper th {
   position: -webkit-sticky;
   position: sticky;
-  top: var(--bwc-table-sticky-header-top, 56px); /* nav height - TODO filter height*/
+  top: var(--bwc-table-sticky-header-top, 56px); /* nav height */
   z-index: 2;
 }
 .sticky-column #table-wrapper th[scope=row] {
@@ -156,7 +159,7 @@ input[type="number"] {
           <a id="cmd-export" class="button">↓</a>
         </div>
       </div>
-    
+
       <div class="navbar-end pagination">
         <div class="navbar-item">
           <a id="page-dec" class="button">&lt;</a>
@@ -180,6 +183,30 @@ input[type="number"] {
 </div>
 `;
 
+/**
+ * Feature-rich data table with pagination, filtering, sorting, row selection,
+ * checkboxes, sticky header/column, inline editing, and a command navbar.
+ *
+ * @element bwc-table
+ * @attr {string} commands - comma-separated toolbar buttons to show (e.g. `'reload,filter,add,del,import,export'`)
+ * @attr {boolean} pagination - enable pagination controls
+ * @attr {boolean} sort - enable single-column sorting
+ * @attr {boolean} checkboxes - enable row checkboxes
+ * @prop {number} page - current 1-based page number
+ * @prop {number} pageSize - rows per page
+ * @prop {number[]} pageSizeList - available page-size options
+ * @prop {{ label: string, key: string, type?: string, pattern?: string, filter?: boolean, sort?: boolean, render?: Function }[]} columns - column definitions
+ * @prop {Record<string, unknown>[]} items - current page rows
+ * @prop {number} total - total row count (used for pagination)
+ * @prop {boolean} inlineEdit - enable double-click inline cell editing
+ * @prop {string} selectedClass - CSS class applied to the selected row (default `'is-selected'`)
+ * @prop {number[]} checkedRows - read-only list of currently checked row indexes
+ * @fires rowclick - when a cell is clicked (detail: `{ row, col, data }`)
+ * @fires celledit - when an inline edit is committed (detail: `{ key, idx, oldVal, newVal }`)
+ * @fires triggered - on sort, page change, reload, or filter (detail: `{ name, sortKey, sortDir, page, pageSize, filters }`)
+ * @fires cmd - on toolbar button click (detail: command name)
+ * @fires checked - when checkbox selection changes (detail: number[] of checked row indexes)
+ */
 class Table extends HTMLElement {
   // basic
   #columns = [];
@@ -206,6 +233,10 @@ class Table extends HTMLElement {
   #selectedIndex = -1;
   #selectedNode = null;
   #selectedItem = null;
+  #selectedClass = 'is-selected';
+
+  // inline edit
+  #inlineEdit = false;
 
   // enable commands menu
   #commands = '';
@@ -220,18 +251,44 @@ class Table extends HTMLElement {
   #navbarHeight = 56; // #table-navbar
   #filterHeight = 0; // #filters
 
+  static get observedAttributes() {
+    return ['commands', 'pagination', 'sort', 'checkboxes'];
+  }
+
+  attributeChangedCallback(name, _oldVal, newVal) {
+    switch (name) {
+      case 'commands':
+        this.#commands = newVal ?? '';
+        if (this.isConnected) this.#setupCommandsVisibility();
+        break;
+      case 'pagination':
+        this.#pagination = this.hasAttribute('pagination');
+        if (this.isConnected) this.querySelector('.pagination').style.display = this.#pagination ? '' : 'none';
+        break;
+      case 'sort':
+        this.#sort = this.hasAttribute('sort');
+        break;
+      case 'checkboxes':
+        this.#checkboxes = this.hasAttribute('checkboxes');
+        if (this.isConnected) this._render();
+        break;
+      default:
+        break;
+    }
+  }
+
+  /** Recalculate and apply sticky `top` positions for the filter bar and header cells. */
   _setHeights() {
-    // console.log(this.#navbarHeight, this.#filterHeight)
     const el = this.querySelector('#filters');
     if (!el) return;
     el.style.top = `${this.#navbarHeight}px`;
     const nodes = this.querySelectorAll('.sticky-header #table-wrapper th');
-    for (let i = 0; i < nodes.length; i++) {
-      // console.log('nodes', nodes[i])
-      nodes[i].style.top = `${this.#navbarHeight + this.#filterHeight}px`;
+    for (const node of nodes) {
+      node.style.top = `${this.#navbarHeight + this.#filterHeight}px`;
     }
   }
 
+  /** Handle page-number input change: navigate to the new page or restore the current value. @param {Event} e */
   _eventPageInputEL(e) {
     const page = Number(e.target.value);
     if (page >= 1 && page <= this.#pages && Number(page) !== Number(this.page)) {
@@ -244,9 +301,6 @@ class Table extends HTMLElement {
 
   connectedCallback() {
     this.appendChild(template.content.cloneNode(true));
-
-    // this.querySelector('input').addEventListener('input', this.input)
-    // if (this.required !== null) el.setAttribute('required', '')
 
     // Check for click events on the navbar burger icon
     this.querySelector('.navbar-burger').onclick = () => {
@@ -296,7 +350,6 @@ class Table extends HTMLElement {
       }
     };
     this.querySelector('#page-inc').onclick = e => {
-      // console.log('inc page', this.page, this.#pages)
       let numPage = Number(this.page);
       if (numPage < this.#pages) {
         numPage += 1;
@@ -313,134 +366,160 @@ class Table extends HTMLElement {
       }
     };
 
-    // console.log('connectedCallback 0')
-
     // initialize non-required properties that are undefined
     if (!this.#sortKey) this.#sortKey = '';
     if (!this.#sortDir) this.#sortDir = '';
 
     this.querySelector('#filters').style.display = this.#filterShow ? 'block' : 'none';
     if (!this.#pagination) this.querySelector('.pagination').style.display = 'none';
-    if (!this.#commands || typeof this.#commands !== 'string') {
-      this.querySelector('#commands').style.display = 'none';
-    } else {
-      this.querySelector('#cmd-reload').style.display = this.#commands.includes('reload') ? 'block' : 'none';
-      this.querySelector('#cmd-filter').style.display = this.#commands.includes('filter') ? 'block' : 'none';
-      this.querySelector('#cmd-add').style.display = this.#commands.includes('add') ? 'block' : 'none';
-      this.querySelector('#cmd-del').style.display = this.#commands.includes('del') ? 'block' : 'none';
-      this.querySelector('#cmd-import').style.display = this.#commands.includes('import') ? 'block' : 'none';
-      this.querySelector('#cmd-export').style.display = this.#commands.includes('export') ? 'block' : 'none';
-      this.querySelector('#cmd-goback').style.display = this.#commands.includes('goback') ? 'block' : 'none';
-    }
+    this.#setupCommandsVisibility();
 
     this._render();
     this._renderPageSelect();
     this._renderPageInput();
     this._renderPages();
     this._renderFilters();
-
-    // console.log('connectedCallback 1')
   }
 
   disconnectedCallback() {
     // this.querySelector('input').removeEventListener('input', this.input)
   }
 
-  // attributeChangedCallback(name, oldVal, newVal) {
-  //   switch (name) {
-  //     case 'page': { break }
-  //   }
-  // }
-  // static get observedAttributes() {
-  //   return ['page']
-  // }
-
+  /** @returns {boolean} */
   get checkboxes() {
     return this.#checkboxes;
   }
+  /** @param {boolean} val */
   set checkboxes(val) {
     this.#checkboxes = val;
   }
+  /** @returns {boolean} */
   get pagination() {
     return this.#pagination;
   }
+  /** @param {boolean} val */
   set pagination(val) {
     this.#pagination = val;
   }
+  /** @returns {string} comma-separated list of visible toolbar commands */
   get commands() {
     return this.#commands;
   }
+  /** @param {string} val */
   set commands(val) {
     this.#commands = val;
   }
+  /** @returns {boolean} */
   get sort() {
     return this.#sort;
   }
+  /** @param {boolean} val */
   set sort(val) {
     this.#sort = val;
   }
 
+  /** @returns {number} current 1-based page number */
   get page() {
     return this.#page;
   }
+  /** @param {number} val */
   set page(val) {
     this.#page = val;
-  } // DONE ELSEWHERE emit event
+  }
 
+  /** @returns {number} rows per page */
   get pageSize() {
     return this.#pageSize;
   }
+  /** @param {number} val */
   set pageSize(val) {
     this.#pageSize = val;
     this._renderPages();
-  } // DONE ELSEWHERE emit event
+  }
 
+  /** @returns {number[]} available page-size options */
   get pageSizeList() {
     return this.#pageSizeList;
   }
+  /** @param {number[]} val - replaces options and re-renders the page-size select */
   set pageSizeList(val) {
     this.#pageSizeList = val;
-  } // TODO emit event
+    this._renderPageSelect();
+  }
+
+  /** @returns {Record<string, unknown>[]} current page rows */
   get items() {
     return this.#items;
   }
+  /** @param {Record<string, unknown>[]} val - replaces rows and re-renders the table */
   set items(val) {
-    // console.log('set items')
     this.#items = val;
     this._render();
     this._renderPageSelect();
     this._renderPageInput();
     this._renderPages();
-  } // if columns do something
+  }
 
+  /** @returns {number} total row count across all pages */
   get total() {
     return this.#total;
   }
+  /** @param {number} val */
   set total(val) {
     this.#total = val;
     this._renderPages();
-  } // emit event ?
+  }
 
+  /** @returns {{ row: number, col: number, data: object }|null} last clicked row info */
   get selectedItem() {
     return this.#selectedItem;
   }
+  /** @param {{ row: number, col: number, data: object }|null} val */
   set selectedItem(val) {
     this.#selectedItem = val;
   }
+
+  /** @returns {object[]} column definitions */
   get columns() {
     return this.#columns;
   }
+  /** @param {object[]} val - replaces column definitions and re-renders */
   set columns(val) {
     this.#columns = val;
     this._render();
   }
 
+  /** @returns {boolean} true when double-click inline editing is enabled */
+  get inlineEdit() {
+    return this.#inlineEdit;
+  }
+  /** @param {boolean} val */
+  set inlineEdit(val) {
+    this.#inlineEdit = val;
+  }
+
+  /** @returns {string} CSS class applied to the selected row */
+  get selectedClass() {
+    return this.#selectedClass;
+  }
+  /** @param {string} val */
+  set selectedClass(val) {
+    this.#selectedClass = val;
+  }
+
+  /** Read-only list of currently checked row indexes. */
+  get checkedRows() {
+    return [...this.#checkedRows];
+  }
+
+  /** Recompute total page count and update the pages label. */
   _renderPages() {
     this.#pages = Math.ceil(this.total / this.pageSize);
     const el = this.querySelector('#pages-span');
     if (el) el.textContent = this.#pages;
   }
 
+  /** Rebuild the page-size `<select>` options from `pageSizeList`. */
   _renderPageSelect() {
     const el = this.querySelector('#page-select');
     if (!el) return;
@@ -454,12 +533,20 @@ class Table extends HTMLElement {
     });
   }
 
+  /** Sync the page number `<input>` to the current `page` value. */
   _renderPageInput() {
     const el = this.querySelector('#page-input');
     if (!el) return;
     el.value = this.page;
   }
 
+  /**
+   * Build a Bulma-styled `<select>` wrapped in `<p class="control">`.
+   * @param {string[]|{ key: string, label: string }[]} items
+   * @param {object} filter - filter object whose `prop` key is kept in sync
+   * @param {string} prop - property name on `filter` to bind
+   * @returns {HTMLParagraphElement}
+   */
   _createSelect(items, filter, prop) {
     const p = document.createElement('p');
     p.classList.add('control', 'm-0');
@@ -484,6 +571,15 @@ class Table extends HTMLElement {
     return p;
   }
 
+  /** Update a filter input's type and pattern to match the column definition. */
+  _updateFilterInput(input, columnKey) {
+    const col = this.#columns.find(c => c.key === columnKey);
+    const typeMap = { number: 'number', date: 'date', datetime: 'datetime-local' };
+    input.type = typeMap[col?.type] || 'text';
+    input.pattern = col?.pattern || '';
+  }
+
+  /** Rebuild the filter bar from the current `#filters` array. */
   _renderFilters() {
     const el = this.querySelector('#filters');
     el.textContent = '';
@@ -493,7 +589,8 @@ class Table extends HTMLElement {
         const div = document.createElement('div');
         div.classList.add('field', 'has-addons', 'm-0', 'p-1');
 
-        div.appendChild(this._createSelect(this.#filterCols, filter, 'key')); // TODO set input type and pattern based on column UI change event
+        const keyP = this._createSelect(this.#filterCols, filter, 'key');
+        div.appendChild(keyP);
         div.appendChild(this._createSelect(this.#filterOps, filter, 'op'));
 
         const p = document.createElement('p');
@@ -501,7 +598,12 @@ class Table extends HTMLElement {
         const filterInput = document.createElement('input');
         filterInput.classList.add('input');
         filterInput.value = filter.val;
-        filterInput.oninput = e => (filter.val = e.target.value); // so that we can keep the filter value
+        filterInput.oninput = e => (filter.val = e.target.value);
+        this._updateFilterInput(filterInput, filter.key); // set initial type from column definition
+        // when the key column changes, update the input type/pattern accordingly
+        keyP
+          .querySelector('select')
+          .addEventListener('change', e => this._updateFilterInput(filterInput, e.target.value));
         p.appendChild(filterInput);
         div.appendChild(p);
 
@@ -552,11 +654,14 @@ class Table extends HTMLElement {
     }
   }
 
+  /**
+   * Read active filter values from the DOM and dispatch a `triggered` event.
+   * @param {'page'|'page-size'|'sort'|'reload'} name - event sub-type
+   */
   _trigger(name) {
     const filters = [];
     const el = this.querySelector('#filters');
-    for (let i = 0; i < el.children.length; i++) {
-      const div = el.children[i];
+    for (const div of el.children) {
       if (div.children.length >= 4) {
         filters.push({
           key: div.children[0].querySelector('select').value,
@@ -582,10 +687,12 @@ class Table extends HTMLElement {
   }
 
   // filters
+  /** Remove the filter at `index` and re-render the filter bar. @param {number} index */
   _delFilter(index) {
     this.#filters.splice(index, 1); // console.log('remove filter', index)
     this._renderFilters();
   }
+  /** Insert a new empty filter at `index` and re-render the filter bar. @param {number} index */
   _addFilter(index) {
     this.#filters.splice(index, 0, {
       key: this.#filterCols[0].key,
@@ -597,202 +704,234 @@ class Table extends HTMLElement {
     this._renderFilters();
   }
 
+  #setupCommandsVisibility() {
+    if (!this.#commands || typeof this.#commands !== 'string') {
+      this.querySelector('#commands').style.display = 'none';
+      return;
+    }
+    this.querySelector('#cmd-reload').style.display = this.#commands.includes('reload') ? 'block' : 'none';
+    this.querySelector('#cmd-filter').style.display = this.#commands.includes('filter') ? 'block' : 'none';
+    this.querySelector('#cmd-add').style.display = this.#commands.includes('add') ? 'block' : 'none';
+    this.querySelector('#cmd-del').style.display = this.#commands.includes('del') ? 'block' : 'none';
+    this.querySelector('#cmd-import').style.display = this.#commands.includes('import') ? 'block' : 'none';
+    this.querySelector('#cmd-export').style.display = this.#commands.includes('export') ? 'block' : 'none';
+    this.querySelector('#cmd-goback').style.display = this.#commands.includes('goback') ? 'block' : 'none';
+  }
+
+  /** Collect the indexes of all currently checked rows in tbody. */
+  #collectCheckedRows(tbody) {
+    const rows = [];
+    for (const [i, tr] of [...tbody.children].entries()) {
+      const checkbox = tr.firstChild?.firstChild;
+      if (checkbox?.type === 'checkbox' && checkbox.checked) rows.push(i);
+    }
+    return rows;
+  }
+
+  /** Check or uncheck all row checkboxes and emit 'checked'. */
+  #handleCheckAll(target) {
+    this.#checkedRows = [];
+    const tbody = this.querySelector('table tbody');
+    if (!tbody?.children) return;
+    for (const [i, tr] of [...tbody.children].entries()) {
+      const checkbox = tr.firstChild?.firstChild;
+      if (checkbox?.type === 'checkbox') {
+        checkbox.checked = target.checked;
+        if (target.checked) this.#checkedRows.push(i);
+      }
+    }
+    this.dispatchEvent(new CustomEvent('checked', { detail: this.#checkedRows }));
+  }
+
+  /** Recalculate checked rows after a single checkbox changes and emit 'checked'. */
+  #handleCheckRow(tbody) {
+    this.#checkedRows = this.#collectCheckedRows(tbody);
+    this.dispatchEvent(new CustomEvent('checked', { detail: this.#checkedRows }));
+  }
+
+  /** Advance the sort direction cycle for a column key: none → asc → desc → none. */
+  #cycleSortDir(key) {
+    if (key !== this.#sortKey) {
+      this.#sortKey = key;
+      this.#sortDir = 'asc';
+      return;
+    }
+    if (this.#sortDir === 'asc') {
+      this.#sortDir = 'desc';
+    } else if (this.#sortDir === 'desc') {
+      this.#sortKey = '';
+      this.#sortDir = '';
+    }
+  }
+
+  /** Update row highlight and selectedItem state; returns the row data or null when deselected. */
+  #updateRowSelection(target, row, col) {
+    if (this.#selectedNode) this.#selectedNode.classList.remove(this.#selectedClass);
+    if (this.#selectedIndex === row && this.#selectedIndex !== -1) {
+      this.#selectedIndex = -1;
+      this.selectedItem = null;
+      return null;
+    }
+    const data = { ...this.#items[row] };
+    this.#selectedNode = target;
+    this.#selectedIndex = row;
+    this.selectedItem = { row, col, data };
+    target.classList.add(this.#selectedClass);
+    return data;
+  }
+
+  #handleTheadClick(e) {
+    const target = e.target;
+    if (this.#checkboxes && !target.cellIndex) {
+      this.#handleCheckAll(target);
+      return;
+    }
+    if (!this.sort) return;
+    const offset = this.#checkboxes ? 1 : 0;
+    const col = target.cellIndex - offset;
+    if (!this.#columns[col]?.sort) return;
+    this.#cycleSortDir(this.#columns[col].key);
+    this._trigger('sort');
+  }
+
+  #handleTbodyClick(e, tbody) {
+    let target = e.target;
+    if (this.#checkboxes && !target.cellIndex) {
+      if (target.type !== 'checkbox') return;
+      this.#handleCheckRow(tbody);
+      return;
+    }
+    const offset = this.#checkboxes ? 1 : 0;
+    const col = target.cellIndex - offset;
+    while (target && target.nodeName !== 'TR') target = target.parentNode;
+    if (!target) return;
+    const row = target.rowIndex - 1;
+    const data = this.#updateRowSelection(target, row, col);
+    this.dispatchEvent(new CustomEvent('rowclick', { detail: { row, col, data } }));
+  }
+
+  /** Replace a cell's content with an inline input for editing. */
+  #startInlineEdit(td, key, idx) {
+    const original = td.textContent;
+    td.textContent = '';
+    const input = document.createElement('input');
+    input.className = 'input';
+    input.value = original;
+    const finish = () => {
+      const newVal = input.value;
+      td.textContent = newVal;
+      if (newVal !== original) {
+        this.dispatchEvent(new CustomEvent('celledit', { detail: { key, idx, oldVal: original, newVal } }));
+      }
+    };
+    input.onblur = finish;
+    input.onkeydown = e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        input.blur();
+      }
+      if (e.key === 'Escape') {
+        input.value = original;
+        input.blur();
+      }
+    };
+    td.appendChild(input);
+    input.focus();
+    input.select();
+  }
+
+  /** Return the column header label with a sort direction indicator appended if applicable. */
+  #getSortLabel(col) {
+    if (!col.sort) return col.label;
+    if (this.#sortKey === col.key && this.#sortDir === 'asc') return `${col.label}↑`;
+    if (this.#sortKey === col.key && this.#sortDir === 'desc') return `${col.label}↓`;
+    return `${col.label}↕`;
+  }
+
+  /** Build the `<thead>` with header cells and attach the sort/checkbox click handler. */
+  #buildTableHead(table) {
+    const thead = document.createElement('thead');
+    thead.onclick = e => this.#handleTheadClick(e);
+    table.appendChild(thead);
+    const tr = document.createElement('tr');
+    thead.appendChild(tr);
+    if (this.#checkboxes) {
+      // check-all checkbox
+      const th = document.createElement('th');
+      th.style.width = 'var(--bwc-table-checkbox-width, 50px)';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      th.setAttribute('scope', 'row');
+      th.appendChild(checkbox);
+      tr.appendChild(th);
+    }
+    this.#filterCols = [];
+    for (const col of this.#columns) {
+      const th = document.createElement('th');
+      if (col.sort) th.style.cursor = 'pointer';
+      if (col.width) th.style.width = `${col.width}px`;
+      if (col.sticky) th.setAttribute('scope', 'row');
+      th.appendChild(document.createTextNode(this.#getSortLabel(col)));
+      tr.appendChild(th);
+      if (col.filter) this.#filterCols.push({ key: col.key, label: col.label });
+    }
+  }
+
+  /** Build a single data row `<tr>` with cells for each column. */
+  #buildBodyRow(tbody, idx, row) {
+    const tr = document.createElement('tr');
+    tbody.appendChild(tr);
+    if (this.#checkboxes) {
+      // add checkbox cell
+      const td = document.createElement('td');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      td.setAttribute('scope', 'row');
+      td.appendChild(checkbox);
+      tr.appendChild(td);
+    }
+    for (const { key, width, render } of this.#columns) {
+      const td = document.createElement('td');
+      if (width) td.style.width = `${width}px`;
+      if (render) {
+        td.innerHTML = render({ val: row[key], key, row, idx });
+      } else {
+        td.appendChild(document.createTextNode(row[key]));
+        if (this.#inlineEdit) td.ondblclick = () => this.#startInlineEdit(td, key, idx);
+      }
+      tr.appendChild(td);
+    }
+  }
+
+  /** Build the `<tbody>` with data rows and attach the row/checkbox click handler. */
+  #buildTableBody(table) {
+    if (!this.#items || typeof this.#items !== 'object' || !this.#items.length) return;
+    const tbody = document.createElement('tbody');
+    tbody.onclick = e => this.#handleTbodyClick(e, tbody);
+    table.appendChild(tbody);
+    for (const [idx, row] of this.#items.entries()) {
+      this.#buildBodyRow(tbody, idx, row);
+    }
+  }
+
+  /** Rebuild the entire `<table>` element from the current columns and items. */
   _render() {
-    // console.log('bwc-table render fired')
     const el = this.querySelector('#table-wrapper');
     if (!el) return;
-    //<tfoot><tr><th><abbr title="Position">Pos</abbr></th>
 
-    let table = el.querySelector('table');
-    if (table) {
-      // const cNode = table.cloneNode(false)
-      // table.parentNode.replaceChild(cNode, table)
-      // table.innerHTML = ''
-      const parent = el.querySelector('table'); // WORKS!
-      while (parent.firstChild) {
-        parent.firstChild.remove();
-      }
-      parent.remove();
+    const existing = el.querySelector('table');
+    if (existing) {
+      while (existing.firstChild) existing.firstChild.remove();
+      existing.remove();
     }
 
     if (this.#columns && typeof this.#columns === 'object') {
-      // console.log('render thead')
-      table = document.createElement('table');
+      const table = document.createElement('table');
       table.setAttribute('id', 'table');
-      el.appendChild(table);
-      const thead = document.createElement('thead');
-      thead.onclick = e => {
-        const target = e.target;
-        if (this.#checkboxes && !target.cellIndex) {
-          // checkbox clicked - target.type === 'checkbox' // e.stopPropagation()?
-          this.#checkedRows = []; //  clear first
-          const tbody = this.querySelector('table tbody');
-          if (tbody?.children) {
-            for (let i = 0; i < tbody.children.length; i++) {
-              const tr = tbody.children[i];
-              const td = tr.firstChild;
-              if (td) {
-                const checkbox = td.firstChild;
-                if (checkbox.type === 'checkbox') {
-                  checkbox.checked = target.checked;
-                  if (target.checked) this.#checkedRows.push(i);
-                }
-              }
-            }
-          }
-          this.dispatchEvent(new CustomEvent('checked', { detail: this.#checkedRows }));
-        } else {
-          // sort
-          if (!this.sort) return;
-          const offset = this.#checkboxes ? 1 : 0; //  column offset
-          const col = target.cellIndex - offset; // TD 0-index based column
-          if (!this.#columns[col].sort) return;
-          const key = this.#columns[col].key;
-
-          if (key !== this.#sortKey) {
-            this.#sortKey = key;
-            this.#sortDir = 'asc';
-          } else {
-            if (this.#sortDir === 'asc') {
-              this.#sortDir = 'desc';
-            } else if (this.#sortDir === 'desc') {
-              this.#sortKey = '';
-              this.#sortDir = '';
-            }
-          }
-
-          this._trigger('sort'); // header is re-rendered,  checkboxes are also cleared...
-        }
-      };
-      table.appendChild(thead);
       table.classList.add('table');
-      const tr = document.createElement('tr');
-      thead.appendChild(tr);
-      if (this.#checkboxes) {
-        // check all
-        const th = document.createElement('th');
-        th.style.width = '50px'; // TODO do not hardcode
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox'; // value
-        th.setAttribute('scope', 'row');
-        th.appendChild(checkbox);
-        tr.appendChild(th);
-      }
-      this.#filterCols = []; // clear this first
-      for (const col of this.#columns) {
-        const th = document.createElement('th');
-        if (col.sort) th.style.cursor = 'pointer';
-        let label = col.label;
-        if (col.sort) {
-          if (this.#sortKey === col.key) {
-            // &and; (up) & &or; (down)
-            label += this.#sortDir === 'asc' ? '↑' : this.#sortDir === 'desc' ? '↓' : '↕';
-          } else {
-            label += '↕';
-          }
-        }
-        if (col.width) th.style.width = `${col.width}px`;
-        if (col.sticky) th.setAttribute('scope', 'row');
-
-        th.appendChild(document.createTextNode(label));
-        tr.appendChild(th);
-
-        // set filters...
-        if (col.filter)
-          this.#filterCols.push({
-            key: col.key,
-            label: col.label,
-          }); // process filters (col is key)
-      }
-
-      // populate the data
-      if (this.#items && typeof this.#items === 'object' && this.#items.length) {
-        // console.log('render tbody')
-        const tbody = document.createElement('tbody');
-        // TODO function to get checked rows...
-        tbody.onclick = e => {
-          let target = e.target;
-          if (this.#checkboxes && !target.cellIndex) {
-            // checkbox clicked - target.type === 'checkbox' // e.stopPropagation()?
-            if (target.type === 'checkbox') {
-              this.#checkedRows = []; //  clear first
-              for (let i = 0; i < tbody.children.length; i++) {
-                const tr = tbody.children[i];
-                const td = tr.firstChild;
-                if (td) {
-                  const checkbox = td.firstChild;
-                  if (checkbox.type === 'checkbox' && checkbox.checked) {
-                    this.#checkedRows.push(i);
-                  }
-                }
-              }
-              this.dispatchEvent(new CustomEvent('checked', { detail: this.#checkedRows }));
-            }
-          } else {
-            const offset = this.#checkboxes ? 1 : 0; //  column offset
-            const col = target.cellIndex - offset; // TD 0-index based column
-
-            while (target && target.nodeName !== 'TR') {
-              target = target.parentNode;
-            }
-            const row = target.rowIndex - 1; // TR 1-index based row
-            let data = null;
-            if (target) {
-              // TODO - To handle multiple UI frameworks
-              if (this.#selectedNode) {
-                // clear class is-selected
-                this.#selectedNode.classList.remove('is-selected');
-              }
-              if (this.#selectedIndex === row && this.#selectedIndex !== -1) {
-                // unselect
-                this.#selectedIndex = -1;
-                this.selectedItem = null;
-              } else {
-                data = { ...this.#items[row] };
-                this.#selectedNode = target; // set selected
-                this.#selectedIndex = row;
-                this.selectedItem = { row, col, data };
-                target.classList.add('is-selected');
-              }
-            }
-            this.dispatchEvent(new CustomEvent('rowclick', { detail: { row, col, data } }));
-          }
-        };
-
-        table.appendChild(tbody);
-        for (const [idx, row] of this.#items.entries()) {
-          const tr = document.createElement('tr');
-          tbody.appendChild(tr);
-
-          if (this.#checkboxes) {
-            // add checkbox
-            const td = document.createElement('td');
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox'; // value
-            td.setAttribute('scope', 'row');
-            td.appendChild(checkbox);
-            tr.appendChild(td);
-          }
-
-          for (const col of this.#columns) {
-            const { key, sticky, width, render } = col;
-            const td = document.createElement('td');
-            // if (sticky) td.setAttribute('scope', 'row') // not used yet, need to calculate left property value
-            if (width) td.style.width = `${width}px`;
-            if (render) {
-              td.innerHTML = render({
-                val: row[key],
-                key,
-                row,
-                idx,
-              }); // value, key, row - need to sanitize, el (the td element)
-            } else {
-              td.appendChild(document.createTextNode(row[key]));
-            }
-            tr.appendChild(td);
-          }
-        }
-      }
+      el.appendChild(table);
+      this.#buildTableHead(table);
+      this.#buildTableBody(table);
     }
   }
 }

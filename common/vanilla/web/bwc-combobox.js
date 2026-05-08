@@ -1,10 +1,4 @@
-// Combobox with autocomplete component using input, datalist and tags
-// TODO fix multi select init in bwc-t4t-form.js
-// TODO Initially if no data for the list, please fetch some
-// TODO allow configurable classnames for tag and tag wrapper, clear icons (for bootstrap, muicss)
-// TODO single select clear value if not found and custom tags not allowed
-// TODO use ul/li instead of datalist (big change)
-// OR https://stackoverflow.com/questions/30022728/perform-action-when-clicking-html5-datalist-option
+// Combobox with autocomplete component using input, custom dropdown (ul/li) and tags
 
 /*
 attributes:
@@ -59,30 +53,54 @@ const autoComplete = (e) => {
 
 const template = document.createElement('template');
 template.innerHTML = /*html*/ `
-<input type="text" list="json-datalist" placeholder="search..." autocomplete="off">
-<span class="icon is-small is-left clear-btn" style="pointer-events: all; cursor:pointer;">
+<input type="text" placeholder="search..." autocomplete="off">
+<span class="icon is-small is-left clear-btn" style="pointer-events:all;cursor:pointer;">
   <i class="fas fa-times"></i>
 </span>
-<datalist id="json-datalist"></datalist>
+<ul class="combobox-dropdown" hidden style="position:absolute;z-index:1000;background:#fff;border:1px solid #ccc;list-style:none;margin:0;padding:0;min-width:100%;max-height:200px;overflow-y:auto;box-shadow:0 2px 6px rgba(0,0,0,.15);"></ul>
 `;
 
+/**
+ * Combobox with optional multi-select tags, backed by a custom `<ul>` dropdown.
+ *
+ * @element bwc-combobox
+ * @attr {string} value - current input value (v-model compatible)
+ * @attr {boolean} required - marks the inner input as required
+ * @attr {boolean} disabled - disables the inner input
+ * @attr {string} listid - kept for backwards compat, no longer required
+ * @attr {string} input-class - CSS class applied to the inner input
+ * @attr {boolean} multiple - enable multi-select tag mode
+ * @attr {boolean} repeat - allow the same item to be tagged more than once
+ * @attr {boolean} allow-custom-tag - allow user-defined tags not in the suggestion list
+ * @attr {string} object-key - property name used as the key when items are objects
+ * @attr {string} object-text - property name used as the display text when items are objects
+ * @attr {number} tag-limit - maximum number of tags (0 = unlimited)
+ * @prop {string[]|{ [key]: string, [text]: string }[]} items - suggestion list
+ * @prop {string[]|{ [key]: string, [text]: string }[]} tags - current selected tags (multi-select)
+ * @fires load - after connectedCallback finishes setup
+ * @fires input - when the input value changes (detail: string)
+ * @fires search - when the user types a value not in the list (detail: string)
+ * @fires select - when a selection changes (detail: item|item[]|null)
+ */
 class BwcCombobox extends HTMLElement {
-  // local properties
-  #items = []; // list of items
-  #tags = []; // multi-select
-  #selected = null; // single-select
-  #key = ''; // must have both, other wise string is assumed?
+  #items = [];
+  #tags = [];
+  #selected = null;
+  #key = '';
   #text = '';
 
-  #elTags = null; // div.tags element
-  #elInput = null; // input element
-  #elList = null; // datalist element
-  #elClearBtn = null; // clear button
+  #elTags = null;
+  #elInput = null;
+  #elList = null;
+  #elClearBtn = null;
 
-  #multiple = false; // hold readonly attributes
-  #repeat = false; // for multiselect, tag can be added multiple times
-  #allowCustomTag = false; // can add new items
-  #tagLimit = 0; // unlimited tags
+  #multiple = false;
+  #repeat = false;
+  #allowCustomTag = false;
+  #tagLimit = 0;
+  #tagClass = 'tag is-black';
+  #tagsClass = 'tags';
+  #highlighted = -1;
 
   constructor() {
     super();
@@ -92,13 +110,18 @@ class BwcCombobox extends HTMLElement {
   connectedCallback() {
     this.appendChild(template.content.cloneNode(true));
 
+    this.style.position = 'relative';
+    this.style.display = 'inline-block';
+
     this.#elInput = this.querySelector('input');
-    this.#elList = this.querySelector('datalist');
+    this.#elList = this.querySelector('ul');
     this.#elClearBtn = this.querySelector('.clear-btn');
 
-    this.#elList.id = this.listid; // console.log('listid', this.listid)
-    this.#elInput.setAttribute('list', this.listid);
+    this._onFocus = () => this.#showDropdown();
+    this._onKeydown = e => this.#onKeydown(e);
     this.#elInput.addEventListener('input', this._onInput);
+    this.#elInput.addEventListener('focus', this._onFocus);
+    this.#elInput.addEventListener('keydown', this._onKeydown);
 
     this.#allowCustomTag = this.hasAttribute('allow-custom-tag');
     this.#multiple = this.hasAttribute('multiple');
@@ -107,176 +130,269 @@ class BwcCombobox extends HTMLElement {
     if (this.hasAttribute('tag-limit')) this.#tagLimit = Number(this.getAttribute('tag-limit'));
     if (this.hasAttribute('object-key')) this.#key = this.getAttribute('object-key');
     if (this.hasAttribute('object-text')) this.#text = this.getAttribute('object-text');
+    if (this.hasAttribute('tag-class')) this.#tagClass = this.getAttribute('tag-class');
+    if (this.hasAttribute('tags-class')) this.#tagsClass = this.getAttribute('tags-class');
 
     if (this.#multiple) {
-      // if multiple... use tags
       this.#elTags = document.createElement('div');
-      this.#elTags.className = 'tags';
-      // this.prepend(this.#elTags)
+      this.#elTags.className = this.#tagsClass;
       this.append(this.#elTags);
     }
 
-    this.#elClearBtn.onclick = e => {
+    this.#elClearBtn.onclick = () => {
       this.#elInput.value = '';
       if (!this.#multiple) {
-        // console.log('clear button click')
         this.#selected = null;
         this.dispatchEvent(new CustomEvent('select', { detail: this.#selected }));
       }
     };
-    this.#elInput.onblur = e => {
-      // console.log('onblur', e)
-      const found = this.items.find(item => this._itemMatchInput(item));
-      if (this.#multiple) {
-        // multiple
-        if (!found) {
-          // not found
-          if (this.#allowCustomTag) {
-            // can add new
-            this._addTag(this._makeItemFromValue());
-            this.dispatchEvent(new CustomEvent('select', { detail: this.#tags }));
-          }
-        } else {
-          // if repeatable? set tags list if not there already
-          this._addTag(found);
-          this.dispatchEvent(new CustomEvent('select', { detail: this.#tags }));
-        }
-        this.value = '';
-      } else {
-        // single
-        if (!found) {
-          // not found
-          if (this.#selected) {
-            // console.log('onBlur - single select - not found and this.#selected truthy')
-            this.#selected = null;
-            this.dispatchEvent(new CustomEvent('select', { detail: this.#selected }));
-          }
-        } else {
-          if (!this.#selected) {
-            // console.log('onBlur - single select - found and this.#selected falsy')
-            this.#selected = found;
-            this.dispatchEvent(new CustomEvent('select', { detail: this.#selected }));
-          }
-        }
-      }
-    };
+    this.#elInput.onblur = () => this.#onBlur();
 
-    // console.log('combo box connected', this.required, this.disabled, this.inputClass)
     this.#elInput.value = this.value;
-    this.#elInput.className = this.inputClass || 'input'; // default to bulma - // if (this.hasAttribute('input-class')) el.setAttribute('class', this.getAttribute('input-class'))
+    this.#elInput.className = this.inputClass || 'input';
     this.required ? this.#elInput.setAttribute('required', '') : this.#elInput.removeAttribute('required');
     this.disabled ? this.#elInput.setAttribute('disabled', '') : this.#elInput.removeAttribute('disabled');
     this._setList(this.items);
 
     this.dispatchEvent(new CustomEvent('load'));
+    if (!this.#items.length) this.dispatchEvent(new CustomEvent('search', { detail: '' }));
   }
 
   disconnectedCallback() {
     this.#elInput.removeEventListener('input', this._onInput);
+    this.#elInput.removeEventListener('focus', this._onFocus);
+    this.#elInput.removeEventListener('keydown', this._onKeydown);
   }
 
-  attributeChangedCallback(name, oldVal, newVal) {
+  attributeChangedCallback(name, _oldVal, newVal) {
     const el = this.#elInput;
     switch (name) {
-      case 'value': {
-        if (el) el.value = newVal; // v-model affects this
+      case 'value':
+        if (el) el.value = newVal;
         this.dispatchEvent(new CustomEvent('input', { detail: newVal }));
         break;
-      }
-      case 'required': {
+      case 'required':
         el?.setAttribute('required', '');
         break;
-      }
-      case 'disabled': {
+      case 'disabled':
         el?.setAttribute('disabled', '');
         break;
-      }
-      case 'input-class': {
+      case 'input-class':
         if (el) el.className = newVal;
         break;
-      }
+      case 'tag-class':
+        this.#tagClass = newVal;
+        break;
+      case 'tags-class':
+        this.#tagsClass = newVal;
+        if (this.#elTags) this.#elTags.className = newVal;
+        break;
       default:
         break;
     }
   }
 
   static get observedAttributes() {
-    return ['value', 'required', 'listid', 'disabled', 'input-class'];
+    return ['value', 'required', 'listid', 'disabled', 'input-class', 'tag-class', 'tags-class'];
   }
 
+  /** @returns {string} current input value */
   get value() {
     return this.getAttribute('value');
   }
+  /** @param {string} val */
   set value(val) {
     this.setAttribute('value', val);
   }
 
+  /** @returns {boolean} */
   get required() {
     return this.hasAttribute('required');
   }
+  /** @param {boolean} val */
   set required(val) {
-    val ? this.setAttribute('required', '') : this.removeAttribute('required');
+    this.toggleAttribute('required', val);
   }
 
+  /** @returns {string} */
   get listid() {
     return this.getAttribute('listid');
   }
+  /** @param {string} val */
   set listid(val) {
     this.setAttribute('listid', val);
   }
 
+  /** @returns {boolean} */
   get disabled() {
     return this.hasAttribute('disabled');
   }
+  /** @param {boolean} val */
   set disabled(val) {
-    val ? this.setAttribute('disabled', '') : this.removeAttribute('disabled');
+    this.toggleAttribute('disabled', val);
   }
 
+  /** @returns {string} CSS class applied to the inner `<input>` */
   get inputClass() {
     return this.getAttribute('input-class');
   }
+  /** @param {string} val */
   set inputClass(val) {
     this.setAttribute('input-class', val);
   }
 
-  // properties
+  /** @returns {string} CSS class applied to each tag `<span>` */
+  get tagClass() {
+    return this.getAttribute('tag-class');
+  }
+  /** @param {string} val */
+  set tagClass(val) {
+    this.setAttribute('tag-class', val);
+  }
+
+  /** @returns {string} CSS class applied to the tags container `<div>` */
+  get tagsClass() {
+    return this.getAttribute('tags-class');
+  }
+  /** @param {string} val */
+  set tagsClass(val) {
+    this.setAttribute('tags-class', val);
+  }
+
+  /** @returns {string[]|object[]} current suggestion list */
   get items() {
     return this.#items;
   }
+  /** @param {string[]|object[]} val - replaces the suggestion list and re-renders the dropdown */
   set items(val) {
-    // console.log('set items', val.length)
     this.#items = val;
     this._setList(val);
   }
 
-  // multi-select
+  /** @returns {string[]|object[]} current selected tags (multi-select mode) */
   get tags() {
     return this.#tags;
   }
+  /** @param {string[]|object[]} val - replaces all tags */
   set tags(val) {
     this._setTags(val);
-  } // this.#tags will be set in _setTags()
+  }
 
-  // single-select
+  /** @returns {string|object|null} currently selected item (single-select mode) */
   get selected() {
     return this.#selected;
   }
+  /** @param {string|object|null} val - sets the selected item and syncs the input display */
   set selected(val) {
     this.#selected = val;
-  } // TODO set it correctly
-
-  _isStringType() {
-    // is list item and selected values string ?
-    return !(this.#key && this.#text); // console.log('_isStringType', !(this.#key && this.#text))
+    if (!this.#elInput) return;
+    if (val == null) {
+      this.#elInput.value = '';
+    } else if (this._isStringType()) {
+      this.#elInput.value = val;
+    } else {
+      this.#elInput.value = val[this.#text] ?? val[this.#key] ?? '';
+    }
   }
+
+  #showDropdown() {
+    if (this.#elList.children.length > 0) this.#elList.removeAttribute('hidden');
+  }
+
+  #hideDropdown() {
+    this.#elList.setAttribute('hidden', '');
+    for (const li of this.#elList.children) li.style.background = '';
+    this.#highlighted = -1;
+  }
+
+  #highlightItem(idx) {
+    const lis = [...this.#elList.children];
+    for (const [i, li] of lis.entries()) li.style.background = i === idx ? '#eee' : '';
+    this.#highlighted = idx;
+    lis[idx]?.scrollIntoView({ block: 'nearest' });
+  }
+
+  #selectItem(item) {
+    if (this.#multiple) {
+      if (item != null) {
+        this._addTag(item);
+        this.dispatchEvent(new CustomEvent('select', { detail: this.#tags }));
+      }
+      this.value = '';
+      this.#elInput.value = '';
+    } else {
+      this.#elInput.value = this._isStringType() ? item : item[this.#text];
+      this.value = this._isStringType() ? item : item[this.#key];
+      this.#selected = item;
+      this.dispatchEvent(new CustomEvent('select', { detail: this.#selected }));
+    }
+    this.#hideDropdown();
+  }
+
+  #onKeydown(e) {
+    if (this.#elList.hasAttribute('hidden')) return;
+    const lis = [...this.#elList.children];
+    if (!lis.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.#highlightItem(Math.min(this.#highlighted + 1, lis.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.#highlightItem(Math.max(this.#highlighted - 1, 0));
+    } else if (e.key === 'Enter' && this.#highlighted >= 0) {
+      e.preventDefault();
+      this.#selectItem(this.#items[this.#highlighted]);
+    } else if (e.key === 'Escape') {
+      this.#hideDropdown();
+    }
+  }
+
+  #onBlur() {
+    this.#hideDropdown();
+    const found = this.items.find(item => this._itemMatchInput(item));
+    if (this.#multiple) {
+      if (found) {
+        // if repeatable? set tags list if not there already
+        this._addTag(found);
+        this.dispatchEvent(new CustomEvent('select', { detail: this.#tags }));
+      } else if (this.#allowCustomTag) {
+        const newItem = this._makeItemFromValue();
+        if (newItem != null) {
+          this._addTag(newItem);
+          this.dispatchEvent(new CustomEvent('select', { detail: this.#tags }));
+        }
+      }
+      this.value = '';
+    } else if (found) {
+      // single - found but not yet selected
+      if (!this.#selected) {
+        this.#selected = found;
+        this.dispatchEvent(new CustomEvent('select', { detail: this.#selected }));
+      }
+    } else {
+      // single - not found: clear selection and input when custom tags not allowed
+      if (this.#selected) {
+        this.#selected = null;
+        this.dispatchEvent(new CustomEvent('select', { detail: this.#selected }));
+      }
+      if (!this.#allowCustomTag) this.value = '';
+    }
+  }
+
+  /** @returns {boolean} true when items are plain strings (no object-key/object-text configured) */
+  _isStringType() {
+    return !(this.#key && this.#text);
+  }
+
+  /** @returns {boolean} true when `item` matches the current input value */
   _itemMatchInput(item) {
-    // item match to text input
     return this._isStringType()
       ? item === this.value
       : item[this.#key] === this.value || item[this.#text] === this.value;
   }
+
+  /** @returns {boolean} true when two items refer to the same value */
   _matchItems(item1, item2) {
-    //  item match to another item
     if (item1 === null && item2 === null) return true;
     else if (item1 === null) return false;
     else if (item2 === null) return false;
@@ -284,14 +400,20 @@ class BwcCombobox extends HTMLElement {
       ? item1 === item2
       : item1[this.#key] === item2[this.#key] || item1[this.#text] === item2[this.#text];
   }
+
+  /** Build an item from the current input value (used for custom tags). @returns {string|object|null} */
   _makeItemFromValue() {
-    // TODO if all spaces only... return? trim white spaces?
-    return this._isStringType() ? this.value : { [this.#key]: this.value, [this.#text]: this.value };
+    const trimmed = this.value?.trim();
+    if (!trimmed) return null;
+    return this._isStringType() ? trimmed : { [this.#key]: trimmed, [this.#text]: trimmed };
   }
 
+  /** @returns {boolean} true when `tag-limit` is set and the limit has been reached */
   _tagLimitReached() {
     return this.#tagLimit && this.#elTags.children.length >= this.#tagLimit;
   }
+
+  /** Append a tag span for `item` to the tags container (no-op if limit reached or duplicate). */
   _addTag(item) {
     if (this._tagLimitReached()) return;
     const itemExists = this.#tags.find(tag =>
@@ -299,11 +421,10 @@ class BwcCombobox extends HTMLElement {
     );
     if (!this.#repeat && itemExists) return; // duplicates not allowed
     const span = document.createElement('span');
-    span.className = 'tag is-black';
+    span.className = this.#tagClass;
     span.innerText = this._isStringType() ? item : item[this.#text];
     span.value = this._isStringType() ? item : item[this.#key];
-    span.onclick = e => {
-      // e.target.innerText, e.target.value
+    span.onclick = () => {
       this._removeTag(span);
       this.dispatchEvent(new CustomEvent('select', { detail: this.#tags }));
     };
@@ -311,44 +432,45 @@ class BwcCombobox extends HTMLElement {
     this._updateTags();
     if (this._tagLimitReached()) this.#elInput.setAttribute('disabled', '');
   }
+
+  /** Sync `#tags` from the current DOM tag spans. */
   _updateTags() {
     const tags = [...this.#elTags.children];
     this.#tags = tags.map(tag =>
       this._isStringType() ? tag.innerText : { [this.#key]: tag.value, [this.#text]: tag.innerText },
     );
-    // console.log('_updateTags', this.#tags)
   }
+
+  /** Remove a tag span from the DOM and re-enable the input if below the limit. */
   _removeTag(span) {
-    this.#elTags.removeChild(span);
+    span.remove();
     this._updateTags();
     if (!this._tagLimitReached() && !this.disabled) this.#elInput.removeAttribute('disabled');
   }
 
-  _onInput(e) {
-    // whether clicked or typed
-    // console.log('_onInput', e.target.value, this.items.length)
+  /** Handle native `input` events: sync `value`, dispatch `search`/`select` as needed. */
+  _onInput() {
     const prevItem = this.#selected;
     this.value = this.#elInput.value;
 
     const found = this.items.find(item => this._itemMatchInput(item));
-    if (!found) {
-      // not found
+    if (found) {
+      this.#selected = found;
+    } else {
       this.#selected = null;
       this.dispatchEvent(new CustomEvent('search', { detail: this.value }));
-    } else {
-      this.#selected = found;
     }
     if (!this._matchItems(prevItem, this.#selected) && !this.#multiple) {
-      // console.log('_onInput - selected && provItem not match this.#selected')
       if (!this.#selected && this.allowCustomTag) {
         this.#selected = this._makeItemFromValue();
       }
       this.dispatchEvent(new CustomEvent('select', { detail: this.#selected }));
     }
+    this.#showDropdown();
   }
 
+  /** Replace all tags with `_tags` and dispatch `select`. @param {string[]|object[]} _tags */
   _setTags(_tags) {
-    // console.log('_setTags', _tags, this.#elTags)
     if (!this.#elTags) return;
     this.#elTags.innerHTML = '';
     this.#tags = [];
@@ -358,36 +480,25 @@ class BwcCombobox extends HTMLElement {
     this.dispatchEvent(new CustomEvent('select', { detail: this.#tags }));
   }
 
+  /** Rebuild the `<ul>` dropdown from `_items` and show it if the input is focused. @param {string[]|object[]} _items */
   _setList(_items) {
-    // set list items
-    // console.log('items', _items, this.value)
-    const dd = this.#elList;
-    if (!dd) return;
-    while (dd.firstChild) {
-      dd.removeChild(dd.lastChild);
-    }
+    const ul = this.#elList;
+    if (!ul) return;
+    ul.innerHTML = '';
+    this.#highlighted = -1;
     if (typeof _items !== 'object') return;
-
-    // EVENT TEST START
-    // dd.style.pointerEvents = 'all'
-    // dd.style.cursor = 'pointer'
-    // dd.onclick = (e) => console.log('whwhwhwh22a')
-    // dd.onmousedown = (e) => console.log('whwhwhwh22b')
-    // EVENT TEST END
-    _items.forEach(item => {
-      const li = document.createElement('option');
-      li.innerHTML = typeof item === 'string' ? item : item[this.#key];
-      li.value = typeof item === 'string' ? item : item[this.#text];
-      // EVENT TEST START
-      // li.style.pointerEvents = 'all'
-      // li.style.cursor = 'pointer'
-      // li.onclick = (e) => console.log('whwhwhwha')
-      // li.onmousedown = (e) => console.log('whwhwhwhb')
-      // li.addEventListener('click', (e) => console.log('whwhwhwh'), true)
-      // li.onmousedown // useless on a datalist with listid...
-      // EVENT TEST END
-      dd.appendChild(li);
+    _items.forEach((item, idx) => {
+      const li = document.createElement('li');
+      li.textContent = typeof item === 'string' ? item : item[this.#text];
+      li.style.cssText = 'padding:6px 10px;cursor:pointer;';
+      li.addEventListener('mouseover', () => this.#highlightItem(idx));
+      li.addEventListener('mousedown', e => {
+        e.preventDefault(); // prevent input blur so #onBlur doesn't fire
+        this.#selectItem(item);
+      });
+      ul.appendChild(li);
     });
+    if (document.activeElement === this.#elInput) this.#showDropdown();
   }
 }
 

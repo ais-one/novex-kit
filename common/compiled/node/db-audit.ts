@@ -7,12 +7,17 @@ import { hardDeleteLog } from './services/db/schema.ts';
 type AnyDb = NodePgDatabase<Record<string, unknown>>;
 
 /**
- * Express middleware that attaches `req.dbTransaction(callback)` to the request.
- * The callback receives a Drizzle transaction pre-loaded with session variables
- * (`app.current_user_id`, `app.current_tenant_id`, `app.session_id`, `app.transaction_id`)
- * so that PostgreSQL audit triggers can read the calling user's context.
+ * Express middleware factory that attaches `req.dbTransaction(callback)` to every request.
  *
- * @param db - A connected Drizzle instance.
+ * The callback receives a Drizzle transaction pre-loaded with four PostgreSQL session variables
+ * so that audit triggers can read the calling user's context:
+ * - `app.current_user_id`   — JWT `sub` claim
+ * - `app.current_tenant_id` — JWT `tenant_id` claim
+ * - `app.session_id`        — `x-request-id` request header
+ * - `app.transaction_id`    — freshly generated UUIDv4 per transaction
+ *
+ * @param {AnyDb} db - connected Drizzle `NodePgDatabase` instance
+ * @returns {Function} Express `RequestHandler` that sets `req.dbTransaction` and calls `next()`
  */
 export const auditMiddleware = (db: AnyDb) => {
   return async (
@@ -45,26 +50,49 @@ export const auditMiddleware = (db: AnyDb) => {
 
 type RecordId = number | string | Record<string, number | string>;
 
+/**
+ * Render one composite-key object as a SQL tuple literal, e.g. `('1', '7')`.
+ * @param {Record<string, number | string>} id - composite key object `{ order_id: 1, product_id: 7 }`
+ * @param {string[]} keys - ordered list of key names to extract from `id`
+ * @returns {string} SQL tuple string `('val1', 'val2', ...)`
+ */
 function buildTupleRow(id: Record<string, number | string>, keys: string[]): string {
   const values = keys.map(k => `'${id[k]}'`).join(', ');
   return `(${values})`;
 }
 
+/**
+ * Render an array of composite-key objects as a SQL tuple list for use in `WHERE (cols) IN (...)`.
+ * @param {Record<string, number | string>[]} ids - array of composite key objects
+ * @param {string[]} keys - ordered list of key names to extract from each object
+ * @returns {string} comma-separated tuple string, e.g. `('1', '7'), ('2', '8')`
+ */
 function buildTuples(ids: Record<string, number | string>[], keys: string[]): string {
   return ids.map(id => buildTupleRow(id, keys)).join(', ');
 }
 
+/**
+ * Render an array of column names as a double-quoted SQL column list, e.g. `"order_id", "product_id"`.
+ * @param {string[]} keys - column names to quote
+ * @returns {string} SQL column list string
+ */
 function buildColList(keys: string[]): string {
   return keys.map(k => `"${k}"`).join(', ');
 }
 
 /**
- * Hard-delete records from a table, writing a deletion audit log entry for each row.
+ * Hard-delete records from a table and write one audit log entry per deleted row.
+ * Must be called inside `req.dbTransaction` so session variables are set for the trigger.
  *
- * @param trx - Active Drizzle transaction (use inside `req.dbTransaction`).
- * @param tableName - Target table name.
- * @param recordId - Single id, array of ids, or array of composite key objects.
- * @param reason - Human-readable reason for the deletion.
+ * @param {AnyDb} trx - active Drizzle transaction obtained from `req.dbTransaction`
+ * @param {string} tableName - unquoted name of the target PostgreSQL table (e.g. `'orders'`)
+ * @param {RecordId | RecordId[]} recordId - one of:
+ *   - a single scalar id: `42` or `'uuid-...'`
+ *   - an array of scalar ids: `[1, 2, 3]`
+ *   - an array of composite-key objects: `[{ order_id: 1, product_id: 7 }]`
+ * @param {string} reason - human-readable deletion reason stored in `hard_delete_log.reason`
+ * @returns {Promise<void>}
+ * @throws if any of the specified records are not found in the table before deletion
  */
 export const hardDelete = async (
   trx: AnyDb,
@@ -85,11 +113,11 @@ export const hardDelete = async (
     const tuples = buildTuples(ids as Record<string, number | string>[], keys);
     const colList = buildColList(keys);
     const result = await trx.execute(sql.raw(`SELECT * FROM "${tableName}" WHERE (${colList}) IN (${tuples})`));
-    records = result.rows as Record<string, unknown>[];
+    records = result.rows;
   } else {
     const idList = (ids as (number | string)[]).join(', ');
     const result = await trx.execute(sql.raw(`SELECT * FROM "${tableName}" WHERE id IN (${idList})`));
-    records = result.rows as Record<string, unknown>[];
+    records = result.rows;
   }
 
   // Validate all records exist

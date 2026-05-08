@@ -26,6 +26,12 @@ let notifWSS: WebSocketServer;
 let adminWSS: WebSocketServer;
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
+/**
+ * Parse the `?token=` query param from the upgrade request URL and return the authenticated user.
+ * @param {http.IncomingMessage} req - incoming HTTP upgrade request; URL must contain `?token=<value>`
+ * @returns {Promise<AuthUser>} resolved `AuthUser` `{ id, name, role }`
+ * @throws if the token query param is absent or does not match a known user
+ */
 async function requireUser(req: http.IncomingMessage): Promise<AuthUser> {
   const params = new URLSearchParams(req.url?.split('?')[1]);
   const token = params.get('token');
@@ -36,6 +42,12 @@ async function requireUser(req: http.IncomingMessage): Promise<AuthUser> {
   return user;
 }
 
+/**
+ * Like `requireUser` but additionally asserts the authenticated user has `role === 'admin'`.
+ * @param {http.IncomingMessage} req - incoming HTTP upgrade request; URL must contain `?token=<value>`
+ * @returns {Promise<AuthUser>} resolved `AuthUser` `{ id, name, role }` where `role` is `'admin'`
+ * @throws if the token is missing/invalid or the user's role is not `'admin'`
+ */
 async function requireAdmin(req: http.IncomingMessage): Promise<AuthUser> {
   const user = await requireUser(req);
   if (user.role !== 'admin') throw new Error('Insufficient role');
@@ -43,6 +55,13 @@ async function requireAdmin(req: http.IncomingMessage): Promise<AuthUser> {
 }
 
 // ─── Reject a socket before any WS handshake ─────────────────────────────────
+/**
+ * Write a plain-text HTTP error response to the socket and destroy it, aborting the WS handshake.
+ * @param {Duplex} socket - raw duplex stream received from the `'upgrade'` event
+ * @param {number} code - HTTP status code to send (e.g. `400`, `401`, `404`)
+ * @param {string} message - HTTP status text; also used as the response body
+ * @returns {void}
+ */
 function rejectSocket(socket: Duplex, code: number, message: string): void {
   socket.write(
     `HTTP/1.1 ${code} ${message}\r\n` +
@@ -55,6 +74,12 @@ function rejectSocket(socket: Duplex, code: number, message: string): void {
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
+/**
+ * JSON-serialise `payload` and send it to every currently open client on the given server.
+ * @param {WebSocketServer} wss - target `WebSocketServer` (e.g. `chatWSS`, `notifWSS`, `adminWSS`)
+ * @param {unknown} payload - any JSON-serialisable value; sent as a UTF-8 text frame
+ * @returns {void}
+ */
 function broadcast(wss: WebSocketServer, payload: unknown): void {
   const data = JSON.stringify(payload);
   for (const client of wss.clients) {
@@ -64,12 +89,22 @@ function broadcast(wss: WebSocketServer, payload: unknown): void {
   }
 }
 
+/**
+ * Normalise a ws `RawData` value to a single contiguous `Buffer`.
+ * @param {RawData} raw - value from a ws `'message'` event: `Buffer`, `ArrayBuffer`, or `Buffer[]`
+ * @returns {Buffer} a single `Buffer` containing all bytes from `raw`
+ */
 function rawToBuffer(raw: RawData): Buffer {
   if (Buffer.isBuffer(raw)) return raw;
   if (Array.isArray(raw)) return Buffer.concat(raw);
   return Buffer.from(new Uint8Array(raw));
 }
 
+/**
+ * Parse raw WS message data as JSON.
+ * @param {RawData} raw - value from a ws `'message'` event
+ * @returns {unknown} the parsed value, or `null` on any `JSON.parse` failure
+ */
 function safeParseJSON(raw: RawData): unknown {
   try {
     return JSON.parse(rawToBuffer(raw).toString('utf8'));
@@ -80,6 +115,16 @@ function safeParseJSON(raw: RawData): unknown {
 
 const MAX_BYTES = 64 * 1024;
 
+/**
+ * Parse raw WS message data as JSON with a payload-size guard.
+ * @param {RawData} raw - value from a ws `'message'` event
+ * @param {{ maxBytes?: number }} [options] - optional config object
+ * @param {number} [options.maxBytes=65536] - maximum allowed byte length before rejecting
+ * @returns {{ ok: boolean, error: string | null, value: unknown }}
+ *   `{ ok: true, error: null, value }` on success,
+ *   `{ ok: false, error: 'PAYLOAD_TOO_LARGE', value: null }` if size exceeds `maxBytes`,
+ *   `{ ok: false, error: 'INVALID_JSON', value: null }` on parse failure
+ */
 function safeParseJSON2(
   raw: RawData,
   { maxBytes = MAX_BYTES } = {},
@@ -96,10 +141,21 @@ function safeParseJSON2(
   }
 }
 
+/**
+ * Serialise an error into a WS-ready JSON text frame.
+ * @param {string} message - human-readable error description
+ * @returns {string} JSON string `{ "type": "error", "message": "<message>" }`
+ */
 function wsError(message: string): string {
   return JSON.stringify({ type: 'error', message });
 }
 
+/**
+ * Collect live connection counts and process uptime for all WS namespaces.
+ * @returns {{ chat: number, notif: number, admin: number, uptime: number }}
+ *   `chat`, `notif`, `admin` — current open-client counts per namespace;
+ *   `uptime` — process uptime in seconds (`process.uptime()`)
+ */
 function getServerStats(): { chat: number; notif: number; admin: number; uptime: number } {
   return {
     chat: chatWSS.clients.size,
@@ -109,6 +165,11 @@ function getServerStats(): { chat: number; notif: number; admin: number; uptime:
   };
 }
 
+/**
+ * Stub token verifier — replace with real JWT validation in production.
+ * @param {string} token - raw token string extracted from the `?token=` query param
+ * @returns {Promise<AuthUser | null>} matching `AuthUser` `{ id, name, role }`, or `null` if not recognised
+ */
 async function verifyToken(token: string): Promise<AuthUser | null> {
   const users: Record<string, AuthUser> = {
     'user-token-abc': { id: 1, name: 'Alice', role: 'user' },
@@ -122,7 +183,12 @@ interface UserWebSocket extends WebSocket {
   userId?: number;
 }
 
-/** Push a notification payload to all sockets belonging to a specific user. */
+/**
+ * Push a notification payload to all open sockets that belong to a specific user.
+ * @param {number} userId - numeric user id to target (matched against `UserWebSocket.userId`)
+ * @param {unknown} payload - any JSON-serialisable notification value; sent as a UTF-8 text frame
+ * @returns {void}
+ */
 export function pushToUser(userId: number, payload: unknown): void {
   const data = JSON.stringify(payload);
   for (const client of notifWSS.clients as Set<UserWebSocket>) {
@@ -133,8 +199,15 @@ export function pushToUser(userId: number, payload: unknown): void {
 }
 
 /**
- * Attach three WebSocket namespaces (chat, notif, admin) to the given HTTP server.
- * Routes upgrade requests by URL prefix, runs per-route auth before completing the handshake.
+ * Attach three WebSocket namespaces to the given HTTP server.
+ *
+ * Routes:
+ * - `/ws/chat`  — authenticated users; broadcasts messages to all chat clients
+ * - `/ws/notif` — authenticated users; supports targeted pushes via `pushToUser()`
+ * - `/ws/admin` — admin role only; receives server stats on connect
+ *
+ * @param {http.Server} server - `http.Server` to attach the `'upgrade'` event handler to
+ * @returns {void}
  */
 export default function wsLoader(server: http.Server): void {
   chatWSS = new WebSocketServer({ noServer: true });

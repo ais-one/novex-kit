@@ -1,41 +1,63 @@
-// Using options instead of class, only below commented code is use to replace "class Ws {", and the constructor
-// const ws = { // similar except need comma after eachb option
-//   instance: null, // web socket instance
-//   options: {
-//     onmessage: null, // attach message handler
-//     endpoint: null,
-//     reconnectMS: 0, // number of retries? not implemented
-//   },
+/**
+ * WebSocket client wrapper with optional auto-reconnect on unclean close.
+ */
 class Ws {
-  constructor(options = {}, tokens = {}) {
-    this.instance = null; // web socket instance
+  instance = null;
+
+  /**
+   * @param {object} [options]
+   * @param {Function|null} [options.onmessage] - message event handler
+   * @param {string|null} [options.endpoint] - WebSocket URL to connect to
+   * @param {number} [options.reconnectMS] - ms to wait before reconnecting after an unclean close (0 = disabled)
+   */
+  constructor(options = {}) {
     this.options = {
-      onmessage: null, // attach message handler
+      onmessage: null,
       endpoint: null,
-      reconnectMS: 0, // number of retries? not implemented
+      reconnectMS: 0,
     };
     Object.assign(this.options, options);
   }
+
+  /**
+   * Merge new values into the current options.
+   * @param {Partial<typeof this.options>} options
+   */
   setOptions(options) {
     Object.assign(this.options, options);
   }
+
+  /** @returns {typeof this.options} */
   getOptions() {
     return this.options;
   }
 
+  /**
+   * Replace the message handler on both the options and the live socket (if connected).
+   * @param {Function} onmessage
+   */
   setMessage(onmessage) {
     this.options.onmessage = onmessage;
     if (this.instance) this.instance.onmessage = this.options.onmessage;
   }
+
+  /**
+   * Send a message through the open socket. No-op if not connected.
+   * @param {string|ArrayBufferLike|Blob|ArrayBufferView} message
+   */
   send(message) {
     if (this.instance) this.instance.send(message);
   }
+
+  /** Close the socket and clear the instance reference. */
   close() {
     if (this.instance) {
       this.instance.close();
       this.instance = null;
     }
   }
+
+  /** Open the WebSocket connection. No-op if already connected or no endpoint is set. */
   connect() {
     logger.info(`ws connecting... endpoint=${this.options.endpoint} reconnectMs=${this.options.reconnectMS}`);
     if (!this.options.endpoint) return;
@@ -45,16 +67,14 @@ class Ws {
 
     try {
       this.instance = new WebSocket(this.options.endpoint);
-      // this.instance.onopen = () => logger.info('ws open - connected') // TODO Log Error
-      // this.instance.onerror = (err) => logger.info(err) // TODO Log Error
       this.instance.onmessage = this.options.onmessage;
       this.instance.onclose = e => {
-        if (!e.wasClean && this.options.reconnectMs) {
+        if (!e.wasClean && this.options.reconnectMS) {
           setTimeout(
             () => {
               this.connect();
             },
-            this.options.reconnectMs > 1000 ? this.options.reconnectMs : 1000,
+            Math.max(this.options.reconnectMS, 1000),
           );
         } else {
           logger.info(`ws connection closed cleanly, code=${e.code} reason=${e.reason}`);
