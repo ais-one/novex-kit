@@ -66,7 +66,7 @@ const idleTimer = {
     document.addEventListener('click', this._reset);
     document.addEventListener('mousemove', this._reset);
     document.addEventListener('keypress', this._reset);
-    this._idleSecondsTimer = globalThis.setInterval(this._check, 1000);
+    this._idleSecondsTimer = window.setInterval(this._check, 1000);
   },
 
   /** Stop tracking idle time and remove all activity listeners. */
@@ -75,7 +75,7 @@ const idleTimer = {
     document.removeEventListener('click', this._reset);
     document.removeEventListener('mousemove', this._reset);
     document.removeEventListener('keypress', this._reset);
-    globalThis.clearInterval(this._idleSecondsTimer);
+    window.clearInterval(this._idleSecondsTimer);
   },
 };
 

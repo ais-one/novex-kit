@@ -1,3 +1,5 @@
+// TODO add retry - https://dev.to/ycmjason/javascript-fetch-retry-upon-failure-3p6g
+
 /**
  * Thin fetch wrapper with JWT bearer auth, token refresh, and optional timeout.
  * Set `credentials: 'include'` to use HttpOnly cookies instead of bearer tokens.
@@ -10,7 +12,7 @@ class Fetch {
    * @param {Function} [options.forceLogoutFn] - called on unrecoverable 401/403
    * @param {string} [options.refreshUrl] - endpoint used to exchange a refresh token for new tokens
    * @param {number} [options.timeoutMs] - abort after this many ms (0 = disabled)
-   * @param {number} [options.maxRetry] - max retry attempts on network errors and 5xx responses (exponential backoff, default `0`)
+   * @param {number} [options.maxRetry] - max retry attempts (TODO, default `0`)
    * @param {object} [tokens]
    * @param {string} [tokens.access] - JWT access token
    * @param {string} [tokens.refresh] - JWT refresh token
@@ -30,25 +32,25 @@ class Fetch {
   }
 
   /**
-   * @param {string} url
-   * @param {string} [baseUrl]
+   * Parse a URL into its components, falling back to manual extraction for relative URLs.
+   * @param {string} url - absolute or relative URL to parse
+   * @param {string} [baseUrl] - base URL prepended to relative paths
    * @returns {{ urlOrigin: string, urlPath: string, urlFull: string, urlSearch: string }}
    */
   static parseUrl(url, baseUrl = '') {
-    let urlOrigin = baseUrl;
     let urlPath = url;
-    let urlFull = baseUrl + url;
+    let urlOrigin = baseUrl;
+    let urlFull = baseUrl + urlPath;
     let urlSearch = '';
     try {
-      const parsed = new URL(url);
-      urlOrigin = parsed.origin;
-      urlPath = parsed.pathname;
-      urlFull = parsed.origin + parsed.pathname;
-      urlSearch = parsed.search;
-    } catch {
-      // url is relative — fall back to manual search extraction
-      urlSearch = url.includes('?') ? `?${url.split('?').pop()}` : '';
-    }
+      urlSearch = url.lastIndexOf('?') !== -1 ? url.split('?').pop() : ''; // handle /abc/def?aa=1&bb=2
+      if (urlSearch) urlSearch = `?${urlSearch}`; // prepend ?
+      const { origin = '', pathname = '', search = '' } = new URL(url); // http://example.com:3001/abc/ees?aa=1&bb=2
+      urlOrigin = origin;
+      urlPath = pathname;
+      urlFull = origin + pathname;
+      urlSearch = search;
+    } catch (e) {}
     return { urlOrigin, urlPath, urlFull, urlSearch };
   }
 
@@ -78,102 +80,6 @@ class Fetch {
     return this.tokens;
   }
 
-  /** @param {number} ms */
-  static #sleep(ms) {
-    return new Promise(res => setTimeout(res, ms));
-  }
-
-  /** Build a query string from a params object merged with any existing URL search. */
-  #buildQs(query, urlSearch) {
-    const qs =
-      query && typeof query === 'object' // null is also an object
-        ? '?' +
-          Object.keys(query)
-            .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(query[key])}`)
-            .join('&')
-        : query || '';
-    return qs ? qs + urlSearch.substring(1) : urlSearch;
-  }
-
-  /** Build fetch options with auth headers and optional abort signal. */
-  #buildOptions(method, headers) {
-    const opts = { method, headers: headers || { Accept: 'application/json' } };
-    if (this.options.timeoutMs > 0) {
-      const controller = new AbortController();
-      setTimeout(() => controller.abort(), this.options.timeoutMs); // err.name === 'AbortError'
-      opts.signal = controller.signal;
-    }
-    if (this.options.credentials !== 'include' && this.tokens.access) {
-      // include === HTTPONLY_TOKEN
-      opts.headers.Authorization = `Bearer ${this.tokens.access}`;
-    }
-    opts.credentials = this.options.credentials;
-    return opts;
-  }
-
-  /** Attach a serialised body to fetch options based on Content-Type. */
-  #setBody(opts, method, body) {
-    if (!['POST', 'PATCH', 'PUT'].includes(method)) return; // check if HTTP method has req body (DELETE is maybe)
-    if (body instanceof FormData) {
-      opts.body = body; // Content-Type multipart/form-data NOT NEEDED, set automatically
-    } else if (opts.headers['Content-Type'] === 'application/x-www-form-urlencoded') {
-      opts.body = new URLSearchParams(body);
-    } else if (opts.headers['Content-Type'] === 'application/octet-stream') {
-      opts.body = body; // handling stream
-    } else {
-      opts.headers['Content-Type'] = 'application/json'; // NEEDED
-      opts.body = JSON.stringify(body);
-    }
-  }
-
-  /**
-   * Retry `#fetchAndParse` on network errors and 5xx responses with exponential backoff.
-   * Returns the last Response and the opts used (needed by `#refreshAndRetry`).
-   * @returns {Promise<{ rv: Response & { data: unknown }, opts: object }>}
-   */
-  async #fetchWithRetry(urlFull, qs, method, body, headers) {
-    let opts;
-    let rv;
-    for (let attempt = 0; attempt <= this.options.maxRetry; attempt++) {
-      if (attempt > 0) await Fetch.#sleep(2 ** (attempt - 1) * 200); // 200ms, 400ms, 800ms …
-      opts = this.#buildOptions(method, headers); // fresh AbortController per attempt
-      this.#setBody(opts, method, body);
-      try {
-        rv = await this.#fetchAndParse(urlFull, qs, opts);
-        if (rv.status < 500) break; // don't retry success or client errors
-      } catch (e) {
-        if (attempt >= this.options.maxRetry) throw e;
-      }
-    }
-    return { rv, opts };
-  }
-
-  /** Execute fetch and attach parsed JSON as `.data` on the Response. */
-  async #fetchAndParse(urlFull, qs, opts) {
-    const rv = await fetch(urlFull + qs, opts);
-    const txt = await rv.text(); // handle empty body — rv.json() cannot
-    rv.data = txt.length ? JSON.parse(txt) : {};
-    return rv;
-  }
-
-  /** On 401 Token Expired, refresh tokens and retry the original request. Returns null if not applicable. */
-  async #refreshAndRetry(rv, urlFull, qs, opts, urlOrigin) {
-    if (rv.status !== 401) return null;
-    if (rv.data.message !== 'Token Expired Error' || !this.options.refreshUrl) return null;
-
-    // just throw if refresh itself errors
-    const rv1 = await this.http('POST', urlOrigin + this.options.refreshUrl, {
-      refresh_token: this.tokens.refresh,
-    }); // rv1 JSON already processed
-    this.tokens.access = rv1.data.access_token;
-    this.tokens.refresh = rv1.data.refresh_token;
-    if (opts.credentials !== 'include' && this.tokens.access) {
-      // include === HTTPONLY_TOKEN
-      opts.headers.Authorization = `Bearer ${this.tokens.access}`;
-    }
-    return this.#fetchAndParse(urlFull, qs, opts);
-  }
-
   /**
    * Execute an HTTP request, handling auth headers, body serialisation, and token refresh.
    * @param {string} method - HTTP verb (`GET`, `POST`, `PATCH`, `PUT`, `DELETE`)
@@ -181,25 +87,86 @@ class Fetch {
    * @param {object|FormData|null} [body] - request body (serialised as JSON unless FormData)
    * @param {Record<string, string>|null} [query] - query-string params appended to the URL
    * @param {Record<string, string>|null} [headers] - additional request headers
-   * @returns {Promise<Response & { data: unknown }>} - fetch Response with `.data` parsed from JSON
+   * @returns {Promise<Response & { data: unknown }>} fetch Response with `.data` parsed from JSON
    * @throws {Response} on non-2xx/3xx responses after exhausting refresh
    */
   async http(method, url, body = null, query = null, headers = null) {
-    const { urlOrigin, urlFull, urlSearch } = Fetch.parseUrl(url, this.options.baseUrl);
+    const { urlOrigin, urlPath, urlFull, urlSearch } = Fetch.parseUrl(url, this.options.baseUrl);
     try {
-      const qs = this.#buildQs(query, urlSearch);
-      const { rv: rv0, opts } = await this.#fetchWithRetry(urlFull, qs, method, body, headers);
+      const controller = new AbortController();
+      const signal = controller.signal;
+      if (this.options.timeoutMs > 0) setTimeout(() => controller.abort(), this.options.timeoutMs); // err.name === 'AbortError'
 
+      let qs =
+        query && typeof query === 'object' // null is also an object
+          ? '?' +
+            Object.keys(query)
+              .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(query[key])}`)
+              .join('&')
+          : query || '';
+      qs = qs
+        ? qs + urlSearch.substring(1) // remove the question mark
+        : urlSearch;
+
+      if (!headers) {
+        headers = {
+          Accept: 'application/json',
+        };
+      }
+      const options = { method, headers };
+      if (this.options.timeoutMs > 0) options.signal = signal;
+      if (this.options.credentials !== 'include') {
+        // include === HTTPONLY_TOKEN
+        if (this.tokens.access) options.headers.Authorization = `Bearer ${this.tokens.access}`;
+      }
+      options.credentials = this.options.credentials;
+
+      if (['POST', 'PATCH', 'PUT'].includes(method)) {
+        // check if HTTP method has req body (DELETE is maybe)
+        if (body && body instanceof FormData) {
+          options.body = body; // options.headers['Content-Type'] = 'multipart/form-data' // NOT NEEDED!!!
+        } else if (
+          options.headers['Content-Type'] &&
+          options.headers['Content-Type'] === 'application/x-www-form-urlencoded'
+        ) {
+          options.body = new URLSearchParams(body); // body should be JSON
+        } else if (options.headers['Content-Type'] && options.headers['Content-Type'] === 'application/octet-stream') {
+          options.body = body; // handling stream...
+        } else {
+          options.headers['Content-Type'] = 'application/json'; // NEEDED!!!
+          options.body = JSON.stringify(body);
+        }
+      }
+
+      const rv0 = await fetch(urlFull + qs, options);
+      const txt0 = await rv0.text(); // handle empty body as xxx.json() cannot
+      rv0.data = txt0.length ? JSON.parse(txt0) : {};
       if (rv0.status >= 200 && rv0.status < 400) return rv0;
-
-      const rv2 = await this.#refreshAndRetry(rv0, urlFull, qs, opts, urlOrigin);
-      if (rv2) return rv2;
-
-      throw rv0;
+      else if (rv0.status === 401) {
+        // no longer needed urlPath !== '/api/auth/refresh'
+        if (rv0.data.message === 'Token Expired Error' && this.options.refreshUrl) {
+          // just throw if error
+          const rv1 = await this.http('POST', urlOrigin + this.options.refreshUrl, {
+            refresh_token: this.tokens.refresh,
+          }); // rv1 JSON already processed
+          // status code should be < 400 here
+          this.tokens.access = rv1.data.access_token;
+          this.tokens.refresh = rv1.data.refresh_token;
+          if (options.credentials !== 'include') {
+            // include === HTTPONLY_TOKEN
+            if (this.tokens.access) options.headers.Authorization = `Bearer ${this.tokens.access}`;
+          }
+          const rv2 = await fetch(urlFull + qs, options);
+          const txt2 = await rv2.text();
+          rv2.data = txt2.length ? JSON.parse(txt2) : {};
+          return rv2;
+        }
+      }
+      throw rv0; // error
     } catch (e) {
       if (e?.data?.message !== 'Token Expired Error' && (e.status === 401 || e.status === 403))
         this.options.forceLogoutFn();
-      throw e;
+      throw e; // some other error
     }
   }
 

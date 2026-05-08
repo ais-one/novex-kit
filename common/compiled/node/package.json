@@ -34,7 +34,7 @@
     "@aws-sdk/client-s3": "^3.1041.0",
     "@aws-sdk/s3-request-presigner": "^3.1041.0",
     "@node-saml/node-saml": "^5.1.0",
-    "@openfga/sdk": "0.9.3",
+    "@openfga/sdk": "^0.9.5",
     "@scalar/express-api-reference": "^0.9.13",
     "@types/connect-history-api-fallback": "^1.5.4",
     "@types/multer": "^2.1.0",

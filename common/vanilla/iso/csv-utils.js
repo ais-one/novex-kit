@@ -17,87 +17,66 @@ const CHAR_CR = '\r';
 const CHAR_LF = '\n';
 
 /**
- * Advance the parser by one character and update state in place.
- * Returns the new index (may jump by 2 for escaped quotes or \r\n pairs).
- * @param {string} ch - current character
- * @param {string} next - lookahead character
- * @param {number} i - current index
- * @param {{ row: string[], field: string, inQuotes: boolean }} state
- * @param {string} delimCol
- * @param {() => void} commitRow - flush current row into rows array
- * @returns {number} next index
- */
-const processChar = (ch, next, i, state, delimCol, commitRow) => {
-  if (state.inQuotes) {
-    if (ch === QUOTE_CHAR && next === QUOTE_CHAR) {
-      state.field += QUOTE_CHAR; // "" → single "
-      return i + 2;
-    } else if (ch === QUOTE_CHAR) {
-      state.inQuotes = false;
-    } else {
-      state.field += ch;
-    }
-  } else if (ch === QUOTE_CHAR) {
-    state.inQuotes = true;
-  } else if (ch === delimCol) {
-    state.row.push(state.field);
-    state.field = '';
-  } else if (ch === CHAR_LF || ch === CHAR_CR) {
-    commitRow();
-    if (ch === CHAR_CR && next === CHAR_LF) return i + 2; // skip \r\n pair
-  } else {
-    state.field += ch;
-  }
-  return i + 1;
-};
-
-/**
  * RFC 4180-compliant CSV parser (handles quoted fields with embedded commas/newlines)
  * - 1. escaped correctly
- * - 2. validates uniform column count per row when `strict` is true
- * - 3. trims whitespace around fields when `trim` is true
+ * - 2. same number of columns in each row (TODO?)
+ * - 3. trims white space around fields (TODO?)
  * @param {string} str - CSV string to parse
  * @param {string} [delimCol] - column delimiter, default `,`
- * @param {{ trim?: boolean, strict?: boolean }} [options]
- * @param {boolean} [options.trim] - trim whitespace from each field, default `false`
- * @param {boolean} [options.strict] - throw if any row has a different column count than the first row, default `false`
  * @returns {string[][]} - array of rows, each row is an array of fields
  * @throws {Error} if the CSV contains an unclosed quoted field
- * @throws {Error} if `strict` is true and a row has an inconsistent column count
  */
-const parseCSV = (str, delimCol = DELIM_COL, { trim = false, strict = false } = {}) => {
+const parseCSV = (str, delimCol = DELIM_COL) => {
   const rows = [];
-  const state = { row: [], field: '', inQuotes: false };
-
-  const commitRow = () => {
-    state.row.push(state.field);
-    rows.push(state.row);
-    state.row = [];
-    state.field = '';
-  };
-
+  let row = [];
+  let field = '';
+  let inQuotes = false;
   let i = 0;
+
   while (i < str.length) {
-    i = processChar(str[i], str[i + 1], i, state, delimCol, commitRow);
-  }
+    const ch = str[i];
+    const next = str[i + 1];
 
-  if (state.field || state.row.length) commitRow();
-  if (state.inQuotes) throw new Error('Unclosed quoted field — invalid CSV');
-
-  if (trim) {
-    for (const row of rows) {
-      for (let j = 0; j < row.length; j++) row[j] = row[j].trim();
+    if (inQuotes) {
+      if (ch === QUOTE_CHAR && next === QUOTE_CHAR) {
+        field += QUOTE_CHAR; // "" → single "
+        i += 2;
+      } else if (ch === QUOTE_CHAR) {
+        inQuotes = false;
+        i++;
+      } else {
+        field += ch;
+        i++;
+      }
+    } else {
+      if (ch === QUOTE_CHAR) {
+        inQuotes = true;
+        i++;
+      } else if (ch === delimCol) {
+        row.push(field);
+        field = '';
+        i++;
+      } else if (ch === CHAR_LF || ch === CHAR_CR) {
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = '';
+        if (ch === CHAR_CR && next === CHAR_LF) i++; // handle \r\n
+        i++;
+      } else {
+        field += ch;
+        i++;
+      }
     }
   }
 
-  if (strict) {
-    const expected = rows[0]?.length ?? 0;
-    for (let r = 1; r < rows.length; r++) {
-      if (rows[r].length !== expected)
-        throw new Error(`Row ${r + 1} has ${rows[r].length} columns, expected ${expected}`);
-    }
+  // Push last field/row
+  if (field || row.length) {
+    row.push(field);
+    rows.push(row);
   }
 
+  if (inQuotes) throw new Error('Unclosed quoted field — invalid CSV');
   return rows;
 };
 
