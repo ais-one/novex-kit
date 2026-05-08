@@ -1,17 +1,17 @@
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
+import { Pool, type PoolConfig } from 'pg';
 import * as schema from './schema.ts';
 
 /** Wraps a Drizzle + pg Pool connection, opened/closed by the services lifecycle. */
 export default class StoreDrizzle {
-  private _pool: Pool | null = null;
-  private _db: NodePgDatabase<typeof schema> | null = null;
-  private readonly _connectionString: string | null = null;
+  private _db: (NodePgDatabase<typeof schema> & { $client: Pool }) | null = null;
+  private readonly _connectionString: string | null;
+  private readonly _poolOptions: Omit<PoolConfig, 'connectionString'>;
   name: string;
 
   constructor(optionName?: string) {
-    const connectionString = process.env[optionName ?? ''] ?? null;
-    this._connectionString = connectionString;
+    this._connectionString = process.env[optionName ?? ''] ?? null;
+    this._poolOptions = optionName ? (globalThis.__config?.[optionName] ?? {}) : {};
     this.name = optionName ?? '';
   }
 
@@ -22,15 +22,10 @@ export default class StoreDrizzle {
       return;
     }
     try {
-      this._pool = new Pool({
-        connectionString: this._connectionString,
-        min: 2,
-        max: 10,
-      });
-      this._pool.on('error', (err: Error) => logger.error(`pg pool error(${this.name}): ${err.message}`));
-      this._db = drizzle(this._pool, { schema });
-      // Verify connectivity
-      await this._pool.query('SELECT 1');
+      const pool = new Pool({ ...this._poolOptions, connectionString: this._connectionString });
+      this._db = drizzle(pool, { schema });
+      this._db.$client.on('error', (err: Error) => logger.error(`pg pool error(${this.name}): ${err.message}`));
+      await this._db.$client.query('SELECT 1');
       logger.info(`drizzle CONNECTED(${this.name})`);
     } catch (e) {
       logger.error(`drizzle ERROR(${this.name}): ${String(e)}`);
@@ -44,8 +39,7 @@ export default class StoreDrizzle {
 
   /** Gracefully drain the connection pool. */
   async close(): Promise<void> {
-    await this._pool?.end();
-    this._pool = null;
+    await this._db?.$client.end();
     this._db = null;
     logger.info(`drizzle CLOSED(${this.name})`);
   }

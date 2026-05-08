@@ -10,7 +10,6 @@ inputs:
     description: Number of commits to fetch. 0 fetches full history.
     required: false
     default: '0'
-
 runs:
   using: composite
   steps:

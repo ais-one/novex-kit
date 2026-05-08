@@ -180,3 +180,30 @@ export interface ContactData {
   last_name?: string;
   vcard?: string;
 }
+
+// // TODO: Need to be defined
+// data shape (updateType === message):
+// {
+//   messageId: number,
+//   date: string,           // ISO 8601
+//   editedDate: string | null,
+//   from: { id: number, isBot: boolean, firstName: string, lastName: string | null, username: string | null, languageCode: string | null } | null,
+//   chat: { id: number, type: string, title: string | null, username: string | null, firstName: string | null, lastName: string | null } | null,
+//   content:
+//     | { type: 'text', text: string }
+//     | { type: 'photo', fileId, fileUniqueId, width, height, fileSize: number | null, caption: string | null }
+//     | { type: 'video', fileId, fileUniqueId, width, height, duration, mimeType: string | null, fileSize: number | null, caption: string | null }
+//     | { type: 'audio', fileId, fileUniqueId, duration, performer: string | null, title: string | null, mimeType: string | null, fileSize: number | null, caption: string | null }
+//     | { type: 'voice', fileId, fileUniqueId, duration, mimeType: string | null, fileSize: number | null }
+//     | { type: 'document', fileId, fileUniqueId, fileName: string | null, mimeType: string | null, fileSize: number | null, caption: string | null }
+//     | { type: 'sticker', fileId, fileUniqueId, width, height, isAnimated, isVideo, emoji: string | null, setName: string | null }
+//     | { type: 'location', latitude, longitude, horizontalAccuracy: number | null, livePeriod: number | null }
+//     | { type: 'contact', phoneNumber, firstName, lastName: string | null, userId: number | null }
+//     | { type: 'poll', id, question, options: { text, voterCount }[], totalVoterCount, isClosed, isAnonymous, pollType, correctOptionId: number | null }
+//     | { type: 'video_note', fileId, fileUniqueId, length, duration, fileSize: number | null }
+//     | { type: 'unknown' },
+//   replyTo: <same shape> | null,
+//   forwardFrom: { date: string, fromUser, fromChat, fromMessageId: number | null, senderName: string | null } | null,
+//   entities: { type, offset, length, value, url: string | null, user, language: string | null }[],
+//   mediaGroupId: string | null,
+// }

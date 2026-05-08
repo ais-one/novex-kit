@@ -17,9 +17,9 @@ const {
   JWT_REFRESH_EXPIRY_SEC = 3600,
   JWT_REFRESH_TOKEN_BYTE_LEN = 32,
   JWT_SCOPE = '',
-} = globalThis.__config.JWT;
+} = globalThis.__config?.JWT ?? {};
 
-const { COOKIE_OPTS } = globalThis.__config;
+const { COOKIE_OPTS } = globalThis.__config?.JWT ?? {};
 
 const {
   AUTH_REFRESH_URL,

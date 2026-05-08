@@ -17,8 +17,8 @@
   "license": "ISC",
   "dependencies": {
     "@electric-sql/pglite": "^0.4.4",
-    "@electric-sql/pglite-socket": "^0.1.4",
-    "knex": "^3.2.7",
+    "@electric-sql/pglite-socket": "^0.1.5",
+    "knex": "^3.2.10",
     "knex-pglite": "^0.14.0",
     "mysql": "^2.18.1",
     "pg": "^8.20.0",
