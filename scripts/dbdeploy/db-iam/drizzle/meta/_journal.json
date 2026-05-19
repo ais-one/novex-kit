@@ -12,8 +12,8 @@
     {
       "idx": 1,
       "version": "7",
-      "when": 1747526401000,
-      "tag": "0001_updated_at_triggers",
+      "when": 1747612800000,
+      "tag": "0001_rbac_fga",
       "breakpoints": true
     }
   ]

@@ -7,6 +7,7 @@ import {
   json,
   pgTable,
   primaryKey,
+  serial,
   text,
   timestamp,
   unique,
@@ -14,7 +15,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
-// ─── users ────────────────────────────────────────────────────────────────────
+// ─── users ──────────────────────────────────────────────────────────────────────
 
 export const users = pgTable(
   'users',
@@ -57,7 +58,7 @@ export const userCredentials = pgTable(
   t => [unique().on(t.user_id, t.credential_type)],
 );
 
-// ─── user_mfa_totp ────────────────────────────────────────────────────────────
+// ─── user_mfa_totp ────────────────────────────────────────────────────────────────
 
 export const userMfaTotp = pgTable(
   'user_mfa_totp',
@@ -78,7 +79,7 @@ export const userMfaTotp = pgTable(
   t => [index('idx_iam_user_mfa_totp_user').on(t.user_id)],
 );
 
-// ─── user_mfa_recovery_codes ──────────────────────────────────────────────────
+// ─── user_mfa_recovery_codes ──────────────────────────────────────────────────────
 
 export const userMfaRecoveryCodes = pgTable(
   'user_mfa_recovery_codes',
@@ -94,7 +95,7 @@ export const userMfaRecoveryCodes = pgTable(
   t => [index('idx_iam_recovery_codes_user').on(t.user_id)],
 );
 
-// ─── user_otp_challenges ──────────────────────────────────────────────────────
+// ─── user_otp_challenges ──────────────────────────────────────────────────────────
 
 export const userOtpChallenges = pgTable(
   'user_otp_challenges',
@@ -115,7 +116,7 @@ export const userOtpChallenges = pgTable(
   t => [index('idx_iam_otp_challenges_expires').on(t.expires_at)],
 );
 
-// ─── user_federated_identities ────────────────────────────────────────────────
+// ─── user_federated_identities ─────────────────────────────────────────────────────
 
 export const userFederatedIdentities = pgTable(
   'user_federated_identities',
@@ -139,7 +140,7 @@ export const userFederatedIdentities = pgTable(
   t => [unique().on(t.provider, t.provider_user_id), index('idx_iam_federated_user').on(t.user_id)],
 );
 
-// ─── rsa_signing_keys ─────────────────────────────────────────────────────────
+// ─── rsa_signing_keys ─────────────────────────────────────────────────────────────
 
 export const rsaSigningKeys = pgTable(
   'rsa_signing_keys',
@@ -161,7 +162,7 @@ export const rsaSigningKeys = pgTable(
   t => [index('idx_iam_signing_keys_active').on(t.is_active)],
 );
 
-// ─── user_sessions ────────────────────────────────────────────────────────────
+// ─── user_sessions ───────────────────────────────────────────────────────────────
 
 export const userSessions = pgTable(
   'user_sessions',
@@ -187,7 +188,7 @@ export const userSessions = pgTable(
   t => [index('idx_iam_sessions_user').on(t.user_id), index('idx_iam_sessions_expires').on(t.expires_at)],
 );
 
-// ─── roles ────────────────────────────────────────────────────────────────────
+// ─── roles (IAM system roles) ───────────────────────────────────────────────────────
 
 export const roles = pgTable('roles', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
@@ -199,7 +200,7 @@ export const roles = pgTable('roles', {
   updated_at: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
 });
 
-// ─── user_roles ───────────────────────────────────────────────────────────────
+// ─── user_roles ─────────────────────────────────────────────────────────────────
 
 export const userRoles = pgTable(
   'user_roles',
@@ -218,7 +219,7 @@ export const userRoles = pgTable(
   t => [unique().on(t.user_id, t.role_id), index('idx_iam_user_roles_user').on(t.user_id)],
 );
 
-// ─── auth_audit_log ───────────────────────────────────────────────────────────
+// ─── auth_audit_log ──────────────────────────────────────────────────────────────
 
 export const authAuditLog = pgTable(
   'auth_audit_log',
@@ -239,5 +240,101 @@ export const authAuditLog = pgTable(
     index('idx_iam_audit_user_created').on(t.user_id, t.created_at),
     index('idx_iam_audit_event_created').on(t.event_type, t.created_at),
     index('idx_iam_audit_created').on(t.created_at),
+  ],
+);
+
+// ─── fga_config ───────────────────────────────────────────────────────────────
+
+export const fgaConfig = pgTable('fga_config', {
+  id: serial('id').primaryKey(),
+  store_id: varchar('store_id', { length: 64 }).notNull(),
+  auth_model_id: varchar('auth_model_id', { length: 64 }).notNull(),
+  label: varchar('label', { length: 80 }).notNull().default('default'),
+  api_url: varchar('api_url', { length: 255 }).notNull().default('http://127.0.0.1:8080'),
+  is_active: boolean('is_active').notNull().default(true),
+  created_at: timestamp('created_at').notNull().default(sql`now()`),
+  updated_at: timestamp('updated_at').notNull().default(sql`now()`),
+});
+
+// ─── tenants ──────────────────────────────────────────────────────────────────
+
+export const tenants = pgTable(
+  'tenants',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 100 }).notNull(),
+    slug: varchar('slug', { length: 100 }).notNull(),
+    plan: varchar('plan', { length: 50 }),
+    is_active: boolean('is_active').notNull().default(true),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
+  },
+  t => [unique().on(t.slug)],
+);
+
+// ─── tenant_roles ───────────────────────────────────────────────────────────────
+
+export const tenantRoles = pgTable(
+  'tenant_roles',
+  {
+    id: serial('id').primaryKey(),
+    tenant_id: integer('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 100 }).notNull(),
+    description: varchar('description', { length: 255 }),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
+  },
+  t => [unique().on(t.tenant_id, t.name)],
+);
+
+// ─── permissions ──────────────────────────────────────────────────────────────
+
+export const permissions = pgTable(
+  'permissions',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 100 }).notNull(),
+    description: varchar('description', { length: 255 }),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
+  },
+  t => [unique().on(t.name)],
+);
+
+// ─── role_permissions ─────────────────────────────────────────────────────────
+
+export const rolePermissions = pgTable(
+  'role_permissions',
+  {
+    role_id: integer('role_id')
+      .notNull()
+      .references(() => tenantRoles.id, { onDelete: 'cascade' }),
+    permission_id: integer('permission_id')
+      .notNull()
+      .references(() => permissions.id, { onDelete: 'cascade' }),
+  },
+  t => [primaryKey({ columns: [t.role_id, t.permission_id] })],
+);
+
+// ─── user_tenant_roles ────────────────────────────────────────────────────────
+
+export const userTenantRoles = pgTable(
+  'user_tenant_roles',
+  {
+    user_id: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tenant_id: integer('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    role_id: integer('role_id')
+      .notNull()
+      .references(() => tenantRoles.id, { onDelete: 'cascade' }),
+  },
+  t => [
+    primaryKey({ columns: [t.user_id, t.tenant_id, t.role_id] }),
+    index('idx_user_tenant_roles_lookup').on(t.user_id, t.tenant_id),
   ],
 );

@@ -1,7 +1,6 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   bigserial,
-  boolean,
   customType,
   date,
   decimal,
@@ -208,102 +207,6 @@ export const hardDeleteLog = pgTable('hard_delete_log', {
   deleted_data: jsonb('deleted_data').notNull(),
 });
 
-// ─── fga_config ───────────────────────────────────────────────────────────────
-
-export const fgaConfig = pgTable('fga_config', {
-  id: serial('id').primaryKey(),
-  store_id: varchar('store_id', { length: 64 }).notNull(),
-  auth_model_id: varchar('auth_model_id', { length: 64 }).notNull(),
-  label: varchar('label', { length: 80 }).notNull().default('default'),
-  api_url: varchar('api_url', { length: 255 }).notNull().default('http://127.0.0.1:8080'),
-  is_active: boolean('is_active').notNull().default(true),
-  created_at: timestamp('created_at').notNull().default(sql`now()`),
-  updated_at: timestamp('updated_at').notNull().default(sql`now()`),
-});
-
-// ─── tenants ──────────────────────────────────────────────────────────────────
-
-export const tenants = pgTable(
-  'tenants',
-  {
-    id: serial('id').primaryKey(),
-    name: varchar('name', { length: 100 }).notNull(),
-    slug: varchar('slug', { length: 100 }).notNull(),
-    plan: varchar('plan', { length: 50 }),
-    is_active: boolean('is_active').notNull().default(true),
-    created_at: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
-    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
-  },
-  t => [unique().on(t.slug)],
-);
-
-// ─── roles ────────────────────────────────────────────────────────────────────
-
-export const roles = pgTable(
-  'roles',
-  {
-    id: serial('id').primaryKey(),
-    tenant_id: integer('tenant_id')
-      .notNull()
-      .references(() => tenants.id, { onDelete: 'cascade' }),
-    name: varchar('name', { length: 100 }).notNull(),
-    description: varchar('description', { length: 255 }),
-    created_at: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
-    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
-  },
-  t => [unique().on(t.tenant_id, t.name)],
-);
-
-// ─── permissions ──────────────────────────────────────────────────────────────
-
-export const permissions = pgTable(
-  'permissions',
-  {
-    id: serial('id').primaryKey(),
-    name: varchar('name', { length: 100 }).notNull(),
-    description: varchar('description', { length: 255 }),
-    created_at: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
-    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
-  },
-  t => [unique().on(t.name)],
-);
-
-// ─── role_permissions ─────────────────────────────────────────────────────────
-
-export const rolePermissions = pgTable(
-  'role_permissions',
-  {
-    role_id: integer('role_id')
-      .notNull()
-      .references(() => roles.id, { onDelete: 'cascade' }),
-    permission_id: integer('permission_id')
-      .notNull()
-      .references(() => permissions.id, { onDelete: 'cascade' }),
-  },
-  t => [primaryKey({ columns: [t.role_id, t.permission_id] })],
-);
-
-// ─── user_tenant_roles ────────────────────────────────────────────────────────
-
-export const userTenantRoles = pgTable(
-  'user_tenant_roles',
-  {
-    user_id: integer('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    tenant_id: integer('tenant_id')
-      .notNull()
-      .references(() => tenants.id, { onDelete: 'cascade' }),
-    role_id: integer('role_id')
-      .notNull()
-      .references(() => roles.id, { onDelete: 'cascade' }),
-  },
-  t => [
-    primaryKey({ columns: [t.user_id, t.tenant_id, t.role_id] }),
-    index('idx_user_tenant_roles_lookup').on(t.user_id, t.tenant_id),
-  ],
-);
-
 // ─── Relations ────────────────────────────────────────────────────────────────
 
 export const studentRelations = relations(student, ({ many }) => ({
@@ -319,32 +222,6 @@ export const studentSubjectRelations = relations(studentSubject, ({ one }) => ({
   subject: one(subject, { fields: [studentSubject.subjectCode], references: [subject.code] }),
 }));
 
-export const tenantsRelations = relations(tenants, ({ many }) => ({
-  roles: many(roles),
-  userTenantRoles: many(userTenantRoles),
-}));
-
-export const rolesRelations = relations(roles, ({ one, many }) => ({
-  tenant: one(tenants, { fields: [roles.tenant_id], references: [tenants.id] }),
-  rolePermissions: many(rolePermissions),
-  userTenantRoles: many(userTenantRoles),
-}));
-
-export const permissionsRelations = relations(permissions, ({ many }) => ({
-  rolePermissions: many(rolePermissions),
-}));
-
-export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
-  role: one(roles, { fields: [rolePermissions.role_id], references: [roles.id] }),
-  permission: one(permissions, { fields: [rolePermissions.permission_id], references: [permissions.id] }),
-}));
-
-export const userTenantRolesRelations = relations(userTenantRoles, ({ one }) => ({
-  user: one(users, { fields: [userTenantRoles.user_id], references: [users.id] }),
-  tenant: one(tenants, { fields: [userTenantRoles.tenant_id], references: [tenants.id] }),
-  role: one(roles, { fields: [userTenantRoles.role_id], references: [roles.id] }),
-}));
-
 // ─── TypeScript types ─────────────────────────────────────────────────────────
 
 export type User = typeof users.$inferSelect;
@@ -353,11 +230,4 @@ export type Student = typeof student.$inferSelect;
 export type InsertStudent = typeof student.$inferInsert;
 export type Subject = typeof subject.$inferSelect;
 export type InsertSubject = typeof subject.$inferInsert;
-export type Tenant = typeof tenants.$inferSelect;
-export type InsertTenant = typeof tenants.$inferInsert;
-export type Role = typeof roles.$inferSelect;
-export type InsertRole = typeof roles.$inferInsert;
-export type Permission = typeof permissions.$inferSelect;
-export type InsertPermission = typeof permissions.$inferInsert;
 export type AuditLog = typeof auditLog.$inferSelect;
-export type FgaConfig = typeof fgaConfig.$inferSelect;

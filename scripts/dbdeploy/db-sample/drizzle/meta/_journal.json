@@ -19,15 +19,8 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1779148800000,
-      "tag": "0002_hard_delete_log_indexes_rbac",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1779152400000,
-      "tag": "0003_audit_log_indexes_rbac_fga",
+      "when": 1747612800000,
+      "tag": "0002_remove_rbac_fga",
       "breakpoints": true
     }
   ]
