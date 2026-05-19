@@ -6,12 +6,12 @@ import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 const db = new PGlite('./db-sample/dev.db');
 const server = new PGLiteSocketServer({
   db,
-  port: 55432,
+  port: 5432,
   host: '127.0.0.1',
 });
 
 await server.start();
-console.log('[serve-db] listening on 127.0.0.1:55432 (public + iam + audit schemas)');
+console.log('[serve-db] listening on 127.0.0.1:5432 (public + iam + audit schemas)');
 
 process.on('SIGINT', async () => {
   await server.stop();

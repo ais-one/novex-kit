@@ -6,7 +6,7 @@ This workspace contains all database migration and seed tooling for the project.
 - **iam** (`db-iam`) — identity and access management tables
 - **audit** (`db-audit`) — audit log and hard-delete log tables
 
-All three schemas share a single PGlite socket server on port **55432**. Migration and seeding uses **drizzle-orm** / **drizzle-kit** with per-schema `drizzle.config.ts` files.
+All three schemas share a single PGlite socket server on port **5432**. Migration and seeding uses **drizzle-orm** / **drizzle-kit** with per-schema `drizzle.config.ts` files.
 
 ---
 
@@ -20,7 +20,7 @@ Run all commands from `scripts/dbdeploy/`.
 npm run serve
 ```
 
-This starts a single PGlite socket server on `127.0.0.1:55432` serving all three schemas (`public`, `iam`, `audit`). Leave this terminal open while running migrations or seeding.
+This starts a single PGlite socket server on `127.0.0.1:5432` serving all three schemas (`public`, `iam`, `audit`). Leave this terminal open while running migrations or seeding.
 
 ### 2. Run migrations (in order)
 
@@ -54,7 +54,7 @@ npm run db:audit:seed
 
 | Script | What it does |
 |---|---|
-| `npm run serve` | Start PGlite on 55432 (public + iam + audit schemas) |
+| `npm run serve` | Start PGlite on 5432 (public + iam + audit schemas) |
 | `npm run db:migrate` | Apply pending db-sample (public) migrations |
 | `npm run db:generate` | Generate new db-sample migration from schema changes |
 | `npm run db:seed` | Run all db-sample seed files in order |
@@ -99,7 +99,7 @@ npm run db:audit:migrate  # audit schema (after public)
 
 ```
 scripts/dbdeploy/
-├── serve-db.ts                  # starts single PGlite socket server on 55432
+├── serve-db.ts                  # starts single PGlite socket server on 5432
 ├── package.json
 ├── db-sample/                   # public schema
 │   ├── .env                     # local DATABASE_URL (gitignored)
@@ -182,12 +182,12 @@ For raw SQL (triggers, functions, REVOKE/GRANT) that drizzle-kit cannot generate
 
 | Environment | URL |
 |---|---|
-| Local dev (PGlite) | `postgresql://postgres:postgres@127.0.0.1:55432/db_express?sslmode=disable` |
+| Local dev (PGlite) | `postgresql://postgres:postgres@127.0.0.1:5432/db_express?sslmode=disable` |
 | Staging / production (real PostgreSQL) | `postgresql://<user>:<pass>@<host>:5432/<db>` |
 
 The `.env` files in each schema subdirectory contain the local `DATABASE_URL`. drizzle-kit reads it automatically.
 
-> **Note:** Port `55432` is the local PGlite socket server. Real PostgreSQL instances use the standard port `5432`.
+> **Note:** Port `5432` is the local PGlite socket server. Real PostgreSQL instances use the standard port `5432`.
 
 ---
 
