@@ -1,12 +1,12 @@
 /**
  * DB-backed RBAC service — tenant-scoped roles and permissions.
  *
- * Tables required (created by migration 20260416000001_rbac_tables):
+ * Tables required (in db-iam, migration 0002_rbac_fga):
  *   tenants           — registered tenants
- *   roles             — named roles, each scoped to a tenant
+ *   tenant_roles      — named roles, each scoped to a tenant
  *   permissions       — global permission strings (e.g. "users:read")
- *   role_permissions  — M:N join between roles and permissions
- *   user_tenant_roles — M:N:N join of user × tenant × role
+ *   role_permissions  — M:N join between tenant_roles and permissions
+ *   user_tenant_roles — M:N:N join of user × tenant × role (user_id is uuid)
  *
  * This service is optional — when not configured, createToken falls back to
  * the flat DB roles column or FGA as before.
@@ -27,7 +27,7 @@
 
 import { and, eq } from 'drizzle-orm';
 import type { NextFunction, Request, Response } from 'express';
-import { permissions, rolePermissions, roles, tenants, userTenantRoles } from '../services/db/schema.ts';
+import { permissions, rolePermissions, tenantRoles, tenants, userTenantRoles } from '../services/db-iam/schema.ts';
 
 let _userServiceName: string;
 // biome-ignore lint/suspicious/noExplicitAny: lookup returns the underlying drizzle instance
@@ -55,19 +55,19 @@ const isConfigured = () => _lookup !== null;
  * Fetch the user's active tenant for embedding in the JWT.
  * Returns tenant_id, tenant_plan, and the coarse roles held in that tenant.
  */
-const getActiveTenant = async (userId: string | number, defaultTenantId?: string | number) => {
+const getActiveTenant = async (userId: string, defaultTenantId?: string | number) => {
   if (!_lookup) return null;
   try {
     const rows = await db()
       .select({
         tenant_id: tenants.id,
         tenant_plan: tenants.plan,
-        role_name: roles.name,
+        role_name: tenantRoles.name,
       })
       .from(userTenantRoles)
       .innerJoin(tenants, eq(tenants.id, userTenantRoles.tenant_id))
-      .innerJoin(roles, eq(roles.id, userTenantRoles.role_id))
-      .where(and(eq(userTenantRoles.user_id, Number(userId)), eq(tenants.is_active, true)));
+      .innerJoin(tenantRoles, eq(tenantRoles.id, userTenantRoles.role_id))
+      .where(and(eq(userTenantRoles.user_id, userId), eq(tenants.is_active, true)));
 
     if (rows.length === 0) return null;
 
@@ -95,21 +95,21 @@ const getActiveTenant = async (userId: string | number, defaultTenantId?: string
 /**
  * Fetch all tenant memberships for a user with their roles and resolved permissions.
  */
-const getUserTenantsData = async (userId: string | number, defaultTenantId?: string | number) => {
+const getUserTenantsData = async (userId: string, defaultTenantId?: string | number) => {
   if (!_lookup) return null;
   try {
     const rows = await db()
       .select({
         tenant_id: userTenantRoles.tenant_id,
-        role_name: roles.name,
+        role_name: tenantRoles.name,
         permission_name: permissions.name,
       })
       .from(userTenantRoles)
-      .innerJoin(roles, eq(roles.id, userTenantRoles.role_id))
+      .innerJoin(tenantRoles, eq(tenantRoles.id, userTenantRoles.role_id))
       .innerJoin(tenants, eq(tenants.id, userTenantRoles.tenant_id))
-      .leftJoin(rolePermissions, eq(rolePermissions.role_id, roles.id))
+      .leftJoin(rolePermissions, eq(rolePermissions.role_id, tenantRoles.id))
       .leftJoin(permissions, eq(permissions.id, rolePermissions.permission_id))
-      .where(and(eq(userTenantRoles.user_id, Number(userId)), eq(tenants.is_active, true)));
+      .where(and(eq(userTenantRoles.user_id, userId), eq(tenants.is_active, true)));
 
     if (rows.length === 0) return null;
 
@@ -140,7 +140,7 @@ const getUserTenantsData = async (userId: string | number, defaultTenantId?: str
 };
 
 /** Assign a role to a user within a tenant (idempotent). */
-const assignRole = async (userId: number, tenantId: number, roleId: number) => {
+const assignRole = async (userId: string, tenantId: number, roleId: number) => {
   await db()
     .insert(userTenantRoles)
     .values({ user_id: userId, tenant_id: tenantId, role_id: roleId })
@@ -148,7 +148,7 @@ const assignRole = async (userId: number, tenantId: number, roleId: number) => {
 };
 
 /** Revoke a role from a user within a tenant. */
-const revokeRole = async (userId: number, tenantId: number, roleId: number) => {
+const revokeRole = async (userId: string, tenantId: number, roleId: number) => {
   await db()
     .delete(userTenantRoles)
     .where(

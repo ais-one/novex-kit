@@ -7,9 +7,18 @@
   "private": true,
   "scripts": {
     "serve": "node serve-db.ts",
-    "seed": "node --env-file=db-sample/.env db-sample/seed.ts",
+    "db:seed": "node --env-file=db-sample/.env db-sample/seed.ts",
     "db:generate": "cd db-sample && drizzle-kit generate",
     "db:migrate": "cd db-sample && drizzle-kit migrate",
+    "db:studio": "cd db-sample && drizzle-kit studio",
+    "db:iam:generate": "cd db-iam && drizzle-kit generate",
+    "db:iam:migrate": "cd db-iam && drizzle-kit migrate",
+    "db:iam:studio": "cd db-iam && drizzle-kit studio",
+    "db:iam:seed": "node --env-file=db-iam/.env db-iam/seed.ts",
+    "db:audit:generate": "cd db-audit && drizzle-kit generate",
+    "db:audit:migrate": "cd db-audit && drizzle-kit migrate",
+    "db:audit:studio": "cd db-audit && drizzle-kit studio",
+    "db:audit:seed": "node --env-file=db-audit/.env db-audit/seed.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -18,8 +27,6 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.4.4",
     "@electric-sql/pglite-socket": "^0.1.5",
-    "knex": "^3.2.10",
-    "knex-pglite": "^0.14.0",
     "mysql": "^2.18.1",
     "pg": "^8.20.0",
     "ts-to-zod": "^5.1.0"

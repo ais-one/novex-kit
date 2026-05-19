@@ -1,18 +1,18 @@
 /**
  * OpenFGA seed — creates the store, writes the authorization model, and
  * populates initial relationship tuples that mirror the seed users in
- * initial_users.ts.
+ * initial_iam_users.ts.
  *
  * Prerequisites
  * ─────────────
  * 1. OpenFGA server must be running and reachable (default: http://127.0.0.1:8080).
  *    Quick start: docker run -p 8080:8080 openfga/openfga run
- * 2. The `fga_config` table must exist (run migration 20260416000000_fga_config).
+ * 2. The `fga_config` table must exist in db-iam (run migration 0001_rbac_fga).
  */
 
 import { eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { fgaConfig } from '../../../../common/compiled/node/services/db/schema.ts';
+import { fgaConfig } from '../../../../common/compiled/node/services/db-iam/schema.ts';
 
 const FGA_API_URL = process.env.FGA_API_URL || 'http://127.0.0.1:8080';
 

@@ -4,8 +4,6 @@ import * as auth from './auth/routes.ts';
 import base from './base/routes.ts';
 import categoriesRoute from './categories/routes.ts';
 import fido from './fido/routes.ts';
-import permissionsRoute from './permissions/routes.ts';
-import rolesRoute from './roles/routes.ts';
 import sse from './sse/routes.ts';
 import tests from './tests/routes.ts';
 import usersRoute from './users/routes.ts';
@@ -26,8 +24,6 @@ export default ({ app }) => {
     router.use('/', base), // http://127.0.0.1:3000/api/sample-api/
     router.use('/categories', categoriesRoute), // http://127.0.0.1:3000/api/sample-api/categories/
     router.use('/users', usersRoute), // http://127.0.0.1:3000/api/sample-api/users/
-    router.use('/roles', rolesRoute), // http://127.0.0.1:3000/api/sample-api/roles/
-    router.use('/permissions', permissionsRoute), // http://127.0.0.1:3000/api/sample-api/permissions/
     router.use('/webhooks', webhooks),
     router.use('/sse', sse),
     router.use('/tests', tests), // for tests

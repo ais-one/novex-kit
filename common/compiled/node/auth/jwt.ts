@@ -48,7 +48,7 @@ export const setup = (tokenServiceName = 'keyv', userServiceName = 'knex1', look
   storeSetup(tokenServiceName, userServiceName, lookup);
 
   if (fgaConfig) fga.setup(fgaConfig);
-  if (rbacConfig?.enabled) rbac.setup(userServiceName, lookup);
+  if (rbacConfig?.enabled) rbac.setup(rbacConfig.serviceName ?? userServiceName, lookup);
 };
 
 export const getSecret = mode => {
