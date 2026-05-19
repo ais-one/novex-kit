@@ -46,9 +46,8 @@ const addMarkers = () => {
   markerInstances.length = 0;
 
   for (const loc of props.markers) {
-    const m = L.marker([loc.lat, loc.lng])
-      .addTo(mapInstance)
-      .bindPopup(`<strong>${loc.title}</strong>${loc.desc ? `<br>${loc.desc}` : ''}`);
+    const descHtml = loc.desc ? `<br>${loc.desc}` : '';
+    const m = L.marker([loc.lat, loc.lng]).addTo(mapInstance).bindPopup(`<strong>${loc.title}</strong>${descHtml}`);
 
     m.on('click', () => emit('marker-click', loc));
     markerInstances.push(m);
