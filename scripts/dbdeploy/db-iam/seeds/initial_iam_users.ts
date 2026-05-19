@@ -11,7 +11,7 @@
  */
 // biome-ignore lint/suspicious/noExplicitAny: schema type not needed for seed scripts
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { users } from '../../../../common/compiled/node/services/db-iam/schema.ts';
+import { iamUsers } from '../../../../common/compiled/node/services/db-iam/schema.ts';
 
 export const TEST_USER_IDS = {
   test: '00000000-0000-0000-0000-000000000001',
@@ -21,9 +21,9 @@ export const TEST_USER_IDS = {
 
 // biome-ignore lint/suspicious/noExplicitAny: schema type not needed for seed scripts
 export async function seed(db: NodePgDatabase<any>): Promise<void> {
-  await db.delete(users);
+  await db.delete(iamUsers);
 
-  await db.insert(users).values([
+  await db.insert(iamUsers).values([
     {
       id: TEST_USER_IDS.test,
       username: 'test',

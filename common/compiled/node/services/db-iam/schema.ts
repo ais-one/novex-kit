@@ -5,7 +5,7 @@ import {
   index,
   integer,
   json,
-  pgTable,
+  pgSchema,
   primaryKey,
   serial,
   text,
@@ -15,9 +15,11 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
+const iamSchema = pgSchema('iam');
+
 // ─── users ──────────────────────────────────────────────────────────────────────
 
-export const users = pgTable(
+export const iamUsers = iamSchema.table(
   'users',
   {
     id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
@@ -41,13 +43,13 @@ export const users = pgTable(
 
 // ─── user_credentials ─────────────────────────────────────────────────────────
 
-export const userCredentials = pgTable(
+export const userCredentials = iamSchema.table(
   'user_credentials',
   {
     id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
     user_id: uuid('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => iamUsers.id, { onDelete: 'cascade' }),
     credential_type: varchar('credential_type', { length: 20 }).notNull().default('password'),
     credential_hash: text('credential_hash').notNull(),
     must_change: boolean('must_change').notNull().default(false),
@@ -60,13 +62,13 @@ export const userCredentials = pgTable(
 
 // ─── user_mfa_totp ────────────────────────────────────────────────────────────────
 
-export const userMfaTotp = pgTable(
+export const userMfaTotp = iamSchema.table(
   'user_mfa_totp',
   {
     id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
     user_id: uuid('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => iamUsers.id, { onDelete: 'cascade' }),
     label: varchar('label', { length: 100 }),
     secret_encrypted: text('secret_encrypted').notNull(),
     algorithm: varchar('algorithm', { length: 10 }).notNull().default('SHA1'),
@@ -81,13 +83,13 @@ export const userMfaTotp = pgTable(
 
 // ─── user_mfa_recovery_codes ──────────────────────────────────────────────────────
 
-export const userMfaRecoveryCodes = pgTable(
+export const userMfaRecoveryCodes = iamSchema.table(
   'user_mfa_recovery_codes',
   {
     id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
     user_id: uuid('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => iamUsers.id, { onDelete: 'cascade' }),
     code_hash: text('code_hash').notNull(),
     used_at: timestamp('used_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
@@ -97,11 +99,11 @@ export const userMfaRecoveryCodes = pgTable(
 
 // ─── user_otp_challenges ──────────────────────────────────────────────────────────
 
-export const userOtpChallenges = pgTable(
+export const userOtpChallenges = iamSchema.table(
   'user_otp_challenges',
   {
     id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
-    user_id: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').references(() => iamUsers.id, { onDelete: 'cascade' }),
     channel: varchar('channel', { length: 10 }).notNull(),
     recipient: text('recipient').notNull(),
     purpose: varchar('purpose', { length: 30 }).notNull(),
@@ -118,13 +120,13 @@ export const userOtpChallenges = pgTable(
 
 // ─── user_federated_identities ─────────────────────────────────────────────────────
 
-export const userFederatedIdentities = pgTable(
+export const userFederatedIdentities = iamSchema.table(
   'user_federated_identities',
   {
     id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
     user_id: uuid('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => iamUsers.id, { onDelete: 'cascade' }),
     provider: varchar('provider', { length: 80 }).notNull(),
     provider_user_id: varchar('provider_user_id', { length: 255 }).notNull(),
     provider_email: varchar('provider_email', { length: 255 }),
@@ -142,7 +144,7 @@ export const userFederatedIdentities = pgTable(
 
 // ─── rsa_signing_keys ─────────────────────────────────────────────────────────────
 
-export const rsaSigningKeys = pgTable(
+export const rsaSigningKeys = iamSchema.table(
   'rsa_signing_keys',
   {
     id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
@@ -164,13 +166,13 @@ export const rsaSigningKeys = pgTable(
 
 // ─── user_sessions ───────────────────────────────────────────────────────────────
 
-export const userSessions = pgTable(
+export const userSessions = iamSchema.table(
   'user_sessions',
   {
     id: uuid('id').primaryKey(),
     user_id: uuid('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => iamUsers.id, { onDelete: 'cascade' }),
     signing_key_id: uuid('signing_key_id')
       .notNull()
       .references(() => rsaSigningKeys.id),
@@ -190,7 +192,7 @@ export const userSessions = pgTable(
 
 // ─── roles (IAM system roles) ───────────────────────────────────────────────────────
 
-export const roles = pgTable('roles', {
+export const roles = iamSchema.table('roles', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   name: varchar('name', { length: 50 }).unique().notNull(),
   description: text('description'),
@@ -202,17 +204,17 @@ export const roles = pgTable('roles', {
 
 // ─── user_roles ─────────────────────────────────────────────────────────────────
 
-export const userRoles = pgTable(
+export const userRoles = iamSchema.table(
   'user_roles',
   {
     id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
     user_id: uuid('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => iamUsers.id, { onDelete: 'cascade' }),
     role_id: uuid('role_id')
       .notNull()
       .references(() => roles.id, { onDelete: 'restrict' }),
-    granted_by: uuid('granted_by').references(() => users.id, { onDelete: 'set null' }),
+    granted_by: uuid('granted_by').references(() => iamUsers.id, { onDelete: 'set null' }),
     granted_at: timestamp('granted_at', { withTimezone: true }).notNull().default(sql`now()`),
     expires_at: timestamp('expires_at', { withTimezone: true }),
   },
@@ -221,12 +223,12 @@ export const userRoles = pgTable(
 
 // ─── auth_audit_log ──────────────────────────────────────────────────────────────
 
-export const authAuditLog = pgTable(
+export const authAuditLog = iamSchema.table(
   'auth_audit_log',
   {
     id: bigserial('id', { mode: 'number' }).primaryKey(),
-    user_id: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
-    actor_id: uuid('actor_id').references(() => users.id, { onDelete: 'set null' }),
+    user_id: uuid('user_id').references(() => iamUsers.id, { onDelete: 'set null' }),
+    actor_id: uuid('actor_id').references(() => iamUsers.id, { onDelete: 'set null' }),
     event_type: varchar('event_type', { length: 50 }).notNull(),
     channel: varchar('channel', { length: 20 }),
     provider: varchar('provider', { length: 80 }),
@@ -245,7 +247,7 @@ export const authAuditLog = pgTable(
 
 // ─── fga_config ───────────────────────────────────────────────────────────────
 
-export const fgaConfig = pgTable('fga_config', {
+export const fgaConfig = iamSchema.table('fga_config', {
   id: serial('id').primaryKey(),
   store_id: varchar('store_id', { length: 64 }).notNull(),
   auth_model_id: varchar('auth_model_id', { length: 64 }).notNull(),
@@ -258,7 +260,7 @@ export const fgaConfig = pgTable('fga_config', {
 
 // ─── tenants ──────────────────────────────────────────────────────────────────
 
-export const tenants = pgTable(
+export const tenants = iamSchema.table(
   'tenants',
   {
     id: serial('id').primaryKey(),
@@ -274,7 +276,7 @@ export const tenants = pgTable(
 
 // ─── tenant_roles ───────────────────────────────────────────────────────────────
 
-export const tenantRoles = pgTable(
+export const tenantRoles = iamSchema.table(
   'tenant_roles',
   {
     id: serial('id').primaryKey(),
@@ -291,7 +293,7 @@ export const tenantRoles = pgTable(
 
 // ─── permissions ──────────────────────────────────────────────────────────────
 
-export const permissions = pgTable(
+export const permissions = iamSchema.table(
   'permissions',
   {
     id: serial('id').primaryKey(),
@@ -305,7 +307,7 @@ export const permissions = pgTable(
 
 // ─── role_permissions ─────────────────────────────────────────────────────────
 
-export const rolePermissions = pgTable(
+export const rolePermissions = iamSchema.table(
   'role_permissions',
   {
     role_id: integer('role_id')
@@ -320,12 +322,12 @@ export const rolePermissions = pgTable(
 
 // ─── user_tenant_roles ────────────────────────────────────────────────────────
 
-export const userTenantRoles = pgTable(
+export const userTenantRoles = iamSchema.table(
   'user_tenant_roles',
   {
     user_id: uuid('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => iamUsers.id, { onDelete: 'cascade' }),
     tenant_id: integer('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),

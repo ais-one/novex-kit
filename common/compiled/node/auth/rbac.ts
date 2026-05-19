@@ -55,7 +55,7 @@ const isConfigured = () => _lookup !== null;
  * Fetch the user's active tenant for embedding in the JWT.
  * Returns tenant_id, tenant_plan, and the coarse roles held in that tenant.
  */
-const getActiveTenant = async (userId: string | number, defaultTenantId?: string | number) => {
+const getActiveTenant = async (userId: string, defaultTenantId?: string | number) => {
   if (!_lookup) return null;
   try {
     const rows = await db()
@@ -67,7 +67,7 @@ const getActiveTenant = async (userId: string | number, defaultTenantId?: string
       .from(userTenantRoles)
       .innerJoin(tenants, eq(tenants.id, userTenantRoles.tenant_id))
       .innerJoin(tenantRoles, eq(tenantRoles.id, userTenantRoles.role_id))
-      .where(and(eq(userTenantRoles.user_id, String(userId)), eq(tenants.is_active, true)));
+      .where(and(eq(userTenantRoles.user_id, userId), eq(tenants.is_active, true)));
 
     if (rows.length === 0) return null;
 
@@ -95,7 +95,7 @@ const getActiveTenant = async (userId: string | number, defaultTenantId?: string
 /**
  * Fetch all tenant memberships for a user with their roles and resolved permissions.
  */
-const getUserTenantsData = async (userId: string | number, defaultTenantId?: string | number) => {
+const getUserTenantsData = async (userId: string, defaultTenantId?: string | number) => {
   if (!_lookup) return null;
   try {
     const rows = await db()
@@ -109,7 +109,7 @@ const getUserTenantsData = async (userId: string | number, defaultTenantId?: str
       .innerJoin(tenants, eq(tenants.id, userTenantRoles.tenant_id))
       .leftJoin(rolePermissions, eq(rolePermissions.role_id, tenantRoles.id))
       .leftJoin(permissions, eq(permissions.id, rolePermissions.permission_id))
-      .where(and(eq(userTenantRoles.user_id, String(userId)), eq(tenants.is_active, true)));
+      .where(and(eq(userTenantRoles.user_id, userId), eq(tenants.is_active, true)));
 
     if (rows.length === 0) return null;
 

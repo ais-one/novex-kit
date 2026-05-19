@@ -1,30 +1,20 @@
 import { PGlite } from '@electric-sql/pglite';
 import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 
-const dbSample = new PGlite('./db-sample/dev.db');
-const serverSample = new PGLiteSocketServer({
-  db: dbSample,
-  port: 5432,
+// Single shared database — db-sample (public schema) and db-iam (iam schema)
+// both live in this one PGlite instance.
+const db = new PGlite('./db-sample/dev.db');
+const server = new PGLiteSocketServer({
+  db,
+  port: 55432,
   host: '127.0.0.1',
 });
 
-const dbIam = new PGlite('./db-iam/dev.db');
-const serverIam = new PGLiteSocketServer({
-  db: dbIam,
-  port: 5433,
-  host: '127.0.0.1',
-});
-
-await serverSample.start();
-console.log('[serve-db] db-sample listening on 127.0.0.1:5432');
-
-await serverIam.start();
-console.log('[serve-db] db-iam    listening on 127.0.0.1:5433');
+await server.start();
+console.log('[serve-db] listening on 127.0.0.1:55432 (public + iam schemas)');
 
 process.on('SIGINT', async () => {
-  await serverSample.stop();
-  await dbSample.close();
-  await serverIam.stop();
-  await dbIam.close();
+  await server.stop();
+  await db.close();
   process.exit(0);
 });
