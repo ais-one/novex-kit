@@ -1,7 +1,6 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   bigserial,
-  customType,
   date,
   decimal,
   index,
@@ -20,17 +19,7 @@ import {
 
 // ─── Custom PostgreSQL types ──────────────────────────────────────────────────
 
-const inet = customType<{ data: string }>({
-  dataType() {
-    return 'inet';
-  },
-});
-
-const textArray = customType<{ data: string[] }>({
-  dataType() {
-    return 'text[]';
-  },
-});
+// (inet and textArray have moved to common/compiled/node/services/db-audit/schema.ts)
 
 // ─── users ────────────────────────────────────────────────────────────────────
 
@@ -176,37 +165,6 @@ export const t4tAuditLogs = pgTable(
   t => [index('idx_t4t_audit_logs').on(t.timestamp, t.db_name, t.op)],
 );
 
-// ─── audit_log ────────────────────────────────────────────────────────────────
-
-export const auditLog = pgTable('audit_log', {
-  id: bigserial('id', { mode: 'number' }).primaryKey(),
-  changed_at: timestamp('changed_at', { withTimezone: true }).notNull().default(sql`now()`),
-  table_name: text('table_name').notNull(),
-  operation: text('operation').notNull(),
-  app_user_id: text('app_user_id'),
-  tenant_id: text('tenant_id'),
-  session_id: text('session_id'),
-  transaction_id: uuid('transaction_id'),
-  db_user: text('db_user').notNull().default(sql`session_user`),
-  ip_addr: inet('ip_addr').default(sql`inet_client_addr()`),
-  app_name: text('app_name').default(sql`current_setting('application_name', true)`),
-  old_data: jsonb('old_data'),
-  new_data: jsonb('new_data'),
-  changed_fields: textArray('changed_fields'),
-});
-
-// ─── hard_delete_log ──────────────────────────────────────────────────────────
-
-export const hardDeleteLog = pgTable('hard_delete_log', {
-  id: bigserial('id', { mode: 'number' }).primaryKey(),
-  deleted_at: timestamp('deleted_at', { withTimezone: true }).notNull().default(sql`now()`),
-  table_name: text('table_name').notNull(),
-  record_id: text('record_id').notNull(),
-  deleted_by: text('deleted_by').notNull(),
-  reason: text('reason').notNull(),
-  deleted_data: jsonb('deleted_data').notNull(),
-});
-
 // ─── Relations ────────────────────────────────────────────────────────────────
 
 export const studentRelations = relations(student, ({ many }) => ({
@@ -230,4 +188,3 @@ export type Student = typeof student.$inferSelect;
 export type InsertStudent = typeof student.$inferInsert;
 export type Subject = typeof subject.$inferSelect;
 export type InsertSubject = typeof subject.$inferInsert;
-export type AuditLog = typeof auditLog.$inferSelect;

@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { NextFunction, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { hardDeleteLog } from './services/db/schema.ts';
+import { hardDeleteLog } from './services/db-audit/schema.ts';
 
 type AnyDb = NodePgDatabase<Record<string, unknown>>;
 
