@@ -1,7 +1,16 @@
 {
   "$schema": "../../scripts/generators/generate-crud.config.schema.json",
-  "exclude": ["fgaConfig"],
-  "schemaOnly": ["auditLog", "hardDeleteLog", "t4tAuditLogs"],
+  "exclude": ["fgaConfig", "rsaSigningKeys", "userCredentials", "userMfaRecoveryCodes", "userOtpChallenges"],
+  "schemaOnly": [
+    "auditLog",
+    "hardDeleteLog",
+    "t4tAuditLogs",
+    "authAuditLog",
+    "userSessions",
+    "userMfaTotp",
+    "userFederatedIdentities",
+    "userRoles"
+  ],
   "tables": {
     "users": {
       "excludeFromBody": [
@@ -22,6 +31,13 @@
     "student": {
       "excludeFromBody": ["secret"],
       "excludeFromResponse": ["secret"]
+    },
+    "iamUsers": {
+      "excludeFromBody": ["email_verified_at", "phone_verified_at", "deleted_at"],
+      "excludeFromResponse": []
+    },
+    "roles": {
+      "excludeFromBody": ["is_system"]
     }
   }
 }

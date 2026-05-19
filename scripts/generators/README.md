@@ -41,20 +41,53 @@ node ../../scripts/generators/generate-crud.ts \
 
 Skips tables with composite primary keys or no primary key.
 
+#### Multiple schemas
+
+When your app uses more than one Drizzle schema file (e.g. `db/schema.ts`, `db-iam/schema.ts`,
+`db-audit/schema.ts`), run the generator once per schema file. All runs share the same
+`generate-crud.config.json` — each run only processes the tables found in the schema file
+it was given, so config entries for other schemas are silently ignored.
+
+All schemas pointing to the same database use the same `--db` service name.
+
+```sh
+# public schema
+npm run generate:crud
+
+# IAM schema (same DB service — just a different PostgreSQL schema namespace)
+npm run generate:crud:iam
+
+# audit schema
+npm run generate:crud:audit
+
+# or run all three in sequence
+npm run generate:crud:all
+```
+
+Tables created with `pgSchema('name').table(...)` are detected and handled identically to
+plain `pgTable(...)` tables. The generated controller imports the table from the correct
+schema module (`--schema-module`), and Drizzle automatically qualifies the SQL with the
+right schema prefix at query time.
+
 #### Config file
 
 Optionally place a `generate-crud.config.json` next to `package.json` to control
-which tables and fields are included or excluded:
+which tables and fields are included or excluded.
+**One config file covers all schema runs** — entries for tables not present in the current
+schema are silently ignored.
 
 ```json
 {
   "$schema": "../../scripts/generators/generate-crud.config.schema.json",
-  "exclude": ["fgaConfig"],
-  "schemaOnly": ["auditLog"],
+  "exclude": ["fgaConfig", "rsaSigningKeys", "userCredentials"],
+  "schemaOnly": ["auditLog", "hardDeleteLog", "authAuditLog", "userSessions"],
   "tables": {
     "users": {
       "excludeFromBody": ["password", "salt"],
       "excludeFromResponse": ["password", "salt"]
+    },
+    "iamUsers": {
+      "excludeFromBody": ["email_verified_at", "phone_verified_at", "deleted_at"]
     }
   }
 }
@@ -244,3 +277,8 @@ node ../../scripts/generators/generate-openapi.ts \
 
 The `*ResponseSchema` export from each schema file is used as the GET response body shape.
 Tables without a `ResponseSchema` export fall back to a generic object schema.
+
+**No changes needed for multiple schemas.** The openapi generator scans `src/<table>/schema.js`
+and `src/<table>/generated/schema.js` — it reads Zod files, not Drizzle schemas. Tables from
+`db/schema.ts`, `db-iam/schema.ts`, and `db-audit/schema.ts` all land under the same `src/`
+directory after generation, so a single `npm run docs:generate` picks them all up automatically.

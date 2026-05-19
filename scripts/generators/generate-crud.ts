@@ -156,7 +156,7 @@ function sqlTypeToZodCode(sqlType: string): string {
       return 'z.string()';
     case 'jsonb':
     case 'json':
-      return 'z.record(z.unknown())';
+      return 'z.unknown()'; // json columns may hold any shape (object or array)
     case 'uuid':
       return 'z.string().uuid()';
     case 'inet':
