@@ -12,8 +12,6 @@
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import { seed as seedOpenfga } from './seeds/initial_openfga.ts';
-import { seed as seedRbac } from './seeds/initial_rbac.ts';
 import { seed as seedTestdata } from './seeds/initial_testdata.ts';
 import { seed as seedUsers } from './seeds/initial_users.ts';
 
@@ -30,8 +28,6 @@ const db = drizzle(pool);
 const seeds: Record<string, (db: NodePgDatabase<any>) => Promise<void>> = {
   initial_users: seedUsers,
   initial_testdata: seedTestdata,
-  initial_rbac: seedRbac,
-  initial_openfga: seedOpenfga,
 };
 
 const target = process.argv[2];
