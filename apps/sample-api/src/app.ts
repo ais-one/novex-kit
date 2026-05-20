@@ -16,6 +16,11 @@ dbAudit.configure({ hardDeleteLog });
 logger.info(`Starting...`);
 const { app, express, server } = preRoute();
 await services.start(app, server);
+
+if (!store.isConfigured()) throw new Error('store.configure() was not called — users table missing');
+if (!rbac.isConfigured()) throw new Error('rbac.configure() was not called — IAM tables missing');
+if (!dbAudit.isConfigured()) throw new Error('dbAudit.configure() was not called — hardDeleteLog table missing');
+
 apiRoutes({ app }); // TODO route prefix & versioning
 postRoute(app, express);
 

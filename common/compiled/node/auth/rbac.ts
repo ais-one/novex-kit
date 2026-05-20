@@ -73,8 +73,11 @@ const setup = (userServiceName: string, lookup: (name: string) => any) => {
   _lookup = lookup;
 };
 
-/** Returns true when the RBAC service has been initialised. */
-const isConfigured = () => _lookup !== null;
+/** Returns true when configure() has been called with all required Drizzle table references. */
+export const isConfigured = () => _permissions !== null;
+
+/** Returns true when the RBAC service has been initialised (setup() called). */
+const isSetup = () => _lookup !== null;
 
 /**
  * Fetch the user's active tenant for embedding in the JWT.
@@ -212,7 +215,7 @@ export {
   getActiveTenant,
   getUserTenantsData,
   grantPermission,
-  isConfigured,
+  isSetup,
   requireRole,
   revokePermission,
   revokeRole,

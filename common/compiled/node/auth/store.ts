@@ -8,6 +8,9 @@ export const configure = ({ users }: { users: unknown }) => {
   _users = users;
 };
 
+/** Returns true if configure() has been called with a table reference. */
+export const isConfigured = () => _users !== null;
+
 let _tokenServiceName: string;
 let _tokenServiceType: string;
 let _userServiceName: string;

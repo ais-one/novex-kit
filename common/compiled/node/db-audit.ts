@@ -11,6 +11,9 @@ export const configure = ({ hardDeleteLog }: { hardDeleteLog: unknown }) => {
   _hardDeleteLog = hardDeleteLog;
 };
 
+/** Returns true if configure() has been called with a table reference. */
+export const isConfigured = () => _hardDeleteLog !== null;
+
 type AnyDb = NodePgDatabase<Record<string, unknown>>;
 
 /**
