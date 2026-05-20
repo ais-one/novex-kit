@@ -11,7 +11,7 @@
  */
 // biome-ignore lint/suspicious/noExplicitAny: schema type not needed for seed scripts
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { iamUsers } from '../../../../common/compiled/node/services/db-iam/schema.ts';
+import { iamUsers } from '../../../../apps/sample-api/src/database/schema-iam.ts';
 
 export const TEST_USER_IDS = {
   test: '00000000-0000-0000-0000-000000000001',

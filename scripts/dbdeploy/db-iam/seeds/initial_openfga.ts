@@ -12,7 +12,7 @@
 
 import { eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { fgaConfig } from '../../../../common/compiled/node/services/db-iam/schema.ts';
+import { fgaConfig } from '../../../../apps/sample-api/src/database/schema-iam.ts';
 
 const FGA_API_URL = process.env.FGA_API_URL || 'http://127.0.0.1:8080';
 

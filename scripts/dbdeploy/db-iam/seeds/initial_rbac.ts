@@ -18,7 +18,7 @@ import {
   tenantRoles,
   tenants,
   userTenantRoles,
-} from '../../../../common/compiled/node/services/db-iam/schema.ts';
+} from '../../../../apps/sample-api/src/database/schema-iam.ts';
 import { TEST_USER_IDS } from './initial_iam_users.ts';
 
 // biome-ignore lint/suspicious/noExplicitAny: schema type not needed for seed scripts

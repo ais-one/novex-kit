@@ -4,8 +4,8 @@
 // Source table: iamUsers
 // ─────────────────────────────────────────────────────────────────────────────
 import * as realServices from '@common/node/services';
-import { iamUsers as table } from '@common/node/services/db-iam/schema';
 import { eq } from 'drizzle-orm';
+import { iamUsers as table } from '../../database/schema-iam.ts';
 
 // biome-ignore lint/suspicious/noExplicitAny: services interface varies by store type
 let services: any = realServices;

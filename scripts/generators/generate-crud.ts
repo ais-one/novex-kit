@@ -7,12 +7,14 @@
 //
 // Usage (run from the target app directory):
 //   node ../../scripts/generators/generate-crud.ts \
-//     --schema   ../../common/compiled/node/services/db/schema.ts \
-//     --schema-module @common/node/services/db/schema \
+//     --schema   ./src/database/schema.ts \
 //     --app      . \
 //     --db       drizzle1 \
 //     [--tables  categories,student] \
 //     [--route-prefix /api/sample-api]
+//
+//   --schema-module is optional. When omitted, the relative .ts import path is
+//   computed automatically from --schema relative to the generated controller location.
 //
 // Output layout (relative to --app):
 //   src/<table>/generated/schema.js      ← ALWAYS overwritten (Zod schemas)
@@ -23,7 +25,7 @@
 //   src/<table>/routes.ts                ← created ONCE  (your sidecar)
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 // ─── CLI argument parsing ─────────────────────────────────────────────────────
@@ -50,19 +52,19 @@ function parseArgs(argv: string[]): Record<string, string> {
 
 const args = parseArgs(process.argv.slice(2));
 const schemaFilePath = args.schema;
-const schemaModule = args['schema-module'];
 const appDir = args.app;
 const dbName = args.db;
 const tablesFilter = args.tables ? args.tables.split(',').map(s => s.trim()) : null;
 const routePrefix = args['route-prefix'] ?? '';
 
-if (!schemaFilePath || !schemaModule || !appDir || !dbName) {
+if (!schemaFilePath || !appDir || !dbName) {
   console.error(`
 Usage: node scripts/generators/generate-crud.ts \\
   --schema         <path>    Path to Drizzle schema .ts file (relative to cwd)
-  --schema-module  <spec>    Module import specifier for generated code
   --app            <dir>     App root directory (relative to cwd)
   --db             <name>    Drizzle service name passed to services.get()
+  [--schema-module <spec>]   Override the import path embedded in generated controllers
+                             (auto-computed from --schema when omitted)
   [--tables        <t1,t2>]  Comma-separated table variable names to process
   [--route-prefix  <prefix>] URL prefix printed in mount hint (e.g. /api/sample-api)
 `);
@@ -658,6 +660,16 @@ export default express
 
 const appRoot = resolve(process.cwd(), appDir);
 const schemaPath = resolve(process.cwd(), schemaFilePath);
+
+// Compute the relative .ts import path from the generated controller location to the schema.
+// Controllers are always at src/{entity}/generated/controller.ts — use a placeholder entity
+// to compute depth (it's the same for every entity).
+const computedSchemaModule = (() => {
+  const controllerDir = resolve(appRoot, 'src', '_entity_', 'generated');
+  const rel = relative(controllerDir, schemaPath).replace(/\\/g, '/');
+  return rel.startsWith('.') ? rel : `./${rel}`;
+})();
+const schemaModule = args['schema-module'] || computedSchemaModule;
 
 // Load config file if present at app root
 const configPath = resolve(appRoot, 'generate-crud.config.json');

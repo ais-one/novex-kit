@@ -2,7 +2,14 @@ import { sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { NextFunction, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { hardDeleteLog } from './services/db-audit/schema.ts';
+
+// biome-ignore lint/suspicious/noExplicitAny: configurable table reference injected by the app
+let _hardDeleteLog: any = null;
+
+/** Register the hardDeleteLog Drizzle table. Call once at app startup before using hardDelete(). */
+export const configure = ({ hardDeleteLog }: { hardDeleteLog: unknown }) => {
+  _hardDeleteLog = hardDeleteLog;
+};
 
 type AnyDb = NodePgDatabase<Record<string, unknown>>;
 
@@ -145,7 +152,7 @@ export const hardDelete = async (
       };
 
   // Write audit log entries
-  await trx.insert(hardDeleteLog).values(
+  await trx.insert(_hardDeleteLog).values(
     records.map(record => ({
       table_name: tableName,
       record_id: toRecordIdStr(record),
