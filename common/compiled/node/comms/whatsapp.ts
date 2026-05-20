@@ -32,7 +32,7 @@ export const sendMsg = async (text: string, to: string): Promise<Response | { er
       }),
     });
 
-    return result
+    return result;
   } catch (e) {
     return { err: String(e) };
   }
