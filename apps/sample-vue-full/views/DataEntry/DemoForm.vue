@@ -323,7 +323,7 @@ const handleRemove = file => {
 };
 
 const beforeUpload = file => {
-  if (!form1.files.find(f => f.name === file.name)) {
+  if (!form1.files.some(f => f.name === file.name)) {
     form1.files = [...form1.files, file];
   }
   return false;

@@ -466,7 +466,7 @@ const onClear = () => {
 
 .field-hint {
   font-size: 11px;
-  color: #94a3b8;
+  color: #475569;
   margin-top: 4px;
 }
 
@@ -514,7 +514,7 @@ const onClear = () => {
 
 .endpoint-desc {
   font-size: 11px;
-  color: #94a3b8;
+  color: #475569;
   margin-top: 2px;
 }
 

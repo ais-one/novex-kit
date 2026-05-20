@@ -554,12 +554,12 @@ const onClear = () => {
 
 .force-label.include {
   background: #dcfce7;
-  color: #16a34a;
+  color: #166534;
 }
 
 .force-label.exclude {
   background: #fee2e2;
-  color: #dc2626;
+  color: #991b1b;
 }
 
 /* Result box */

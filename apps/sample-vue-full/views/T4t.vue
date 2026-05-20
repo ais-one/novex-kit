@@ -441,7 +441,7 @@ export default {
       if (table.loading) return;
       table.loading = true;
       try {
-        const filters = JSON.parse(JSON.stringify(table.filters));
+        const filters = structuredClone(table.filters);
         for (const [index, filter] of filters.entries()) {
           const attrsType = table.config.cols[filter?.col]?.ui?.attrs?.type;
           if (attrsType === 'datetime-local') {
