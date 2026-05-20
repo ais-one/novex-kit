@@ -371,13 +371,12 @@ const resetForm = () => {
 }
 
 .section-title {
-  color: #0f172a !important;
+  color: #64748b !important;
   margin: 4px 0 0 !important;
   font-size: 13px !important;
   font-weight: 600 !important;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #64748b !important;
 }
 
 /* Base card */
