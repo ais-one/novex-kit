@@ -452,7 +452,7 @@ const onClear = () => {
 
 :deep(.ant-form-item-label > label) {
   font-size: 13px;
-  color: #64748b;
+  color: #475569;
   font-weight: 500;
 }
 
@@ -460,7 +460,7 @@ const onClear = () => {
   display: flex;
   align-items: center;
   font-size: 13px;
-  color: #64748b;
+  color: #475569;
   font-weight: 500;
 }
 
@@ -482,7 +482,7 @@ const onClear = () => {
 
 :deep(.mini-stat .ant-statistic-title) {
   font-size: 11px;
-  color: #64748b;
+  color: #475569;
   font-weight: 500;
   margin-bottom: 2px;
 }
@@ -523,7 +523,7 @@ const onClear = () => {
   padding: 0 4px;
   border-radius: 3px;
   font-size: 11px;
-  color: #64748b;
+  color: #475569;
 }
 
 /* Result box */
