@@ -1,5 +1,15 @@
 import { and, eq, type SQL, sql } from 'drizzle-orm';
-import { users } from '../services/db/schema.ts';
+
+// biome-ignore lint/suspicious/noExplicitAny: configurable table reference injected by the app
+let _users: any = null;
+
+/** Register the users Drizzle table. Call once at app startup before auth functions are used. */
+export const configure = ({ users }: { users: unknown }) => {
+  _users = users;
+};
+
+/** Returns true if configure() has been called with a table reference. */
+export const isConfigured = () => _users !== null;
 
 let _tokenServiceName: string;
 let _tokenServiceType: string;
@@ -33,10 +43,9 @@ export const setup = (tokenServiceName: string, userServiceName: string, lookup:
 /** Persist or replace a user's refresh token. Uses upsert for drizzle, set for keyv. */
 export const setRefreshToken = async (id: string | number, refresh_token: string) => {
   if (_tokenServiceType === 'drizzle') {
-    await db()
-      .insert(sql.table(JWT_REFRESH_STORE_NAME))
-      .values({ id, refresh_token })
-      .onConflictDoUpdate({ target: sql`id`, set: { refresh_token } });
+    await db().execute(
+      sql`INSERT INTO ${sql.identifier(JWT_REFRESH_STORE_NAME)} (id, refresh_token) VALUES (${id}, ${refresh_token}) ON CONFLICT (id) DO UPDATE SET refresh_token = ${refresh_token}`,
+    );
   } else {
     await tokenStore().set(id, refresh_token);
   }
@@ -64,13 +73,13 @@ export const revokeRefreshToken = async (id: string | number) => {
 
 /** Find a single user record matching the given fields. Returns null if not found. */
 export const findUser = async (where: Record<string, unknown>) => {
-  if (_userServiceType === 'drizzle') {
+  if (_userServiceType === 'drizzle' && _users) {
     const conditions: SQL[] = Object.entries(where).map(([key, val]) =>
-      eq(users[key as keyof typeof users.$inferSelect] as SQL<unknown>, val as SQL<unknown>),
+      eq(_users[key] as SQL<unknown>, val as SQL<unknown>),
     );
     const result = await db()
       .select()
-      .from(users)
+      .from(_users)
       .where(and(...conditions))
       .limit(1);
     return result[0] ?? null;
@@ -80,12 +89,12 @@ export const findUser = async (where: Record<string, unknown>) => {
 
 /** Update fields on a user record matching the given fields. */
 export const updateUser = async (where: Record<string, unknown>, payload: Record<string, unknown>) => {
-  if (_userServiceType === 'drizzle') {
+  if (_userServiceType === 'drizzle' && _users) {
     const conditions: SQL[] = Object.entries(where).map(([key, val]) =>
-      eq(users[key as keyof typeof users.$inferSelect] as SQL<unknown>, val as SQL<unknown>),
+      eq(_users[key] as SQL<unknown>, val as SQL<unknown>),
     );
     await db()
-      .update(users)
+      .update(_users)
       .set(payload)
       .where(and(...conditions));
   }

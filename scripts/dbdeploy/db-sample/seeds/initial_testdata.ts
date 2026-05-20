@@ -7,7 +7,7 @@ import {
   student,
   studentSubject,
   subject,
-} from '../../../../common/compiled/node/services/db/schema.ts';
+} from '../../../../apps/sample-api/src/database/schema.ts';
 import countriesJson from './icc.json' with { type: 'json' };
 import statesJson from './state.json' with { type: 'json' };
 

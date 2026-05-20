@@ -4,8 +4,8 @@
 // Source table: categories
 // ─────────────────────────────────────────────────────────────────────────────
 import * as realServices from '@common/node/services';
-import { categories as table } from '@common/node/services/db/schema';
 import { eq } from 'drizzle-orm';
+import { categories as table } from '../../database/schema.ts';
 
 // biome-ignore lint/suspicious/noExplicitAny: services interface varies by store type
 let services: any = realServices;

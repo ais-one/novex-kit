@@ -19,7 +19,7 @@ import {
 
 // ─── Custom PostgreSQL types ──────────────────────────────────────────────────
 
-// (inet and textArray have moved to common/compiled/node/services/db-audit/schema.ts)
+// (inet and textArray are defined in ../db-audit/schema.ts)
 
 // ─── users ────────────────────────────────────────────────────────────────────
 

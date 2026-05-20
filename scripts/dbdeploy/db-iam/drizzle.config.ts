@@ -2,7 +2,7 @@ import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
   dialect: 'postgresql',
-  schema: '../../../common/compiled/node/services/db-iam/schema.ts',
+  schema: '../../../apps/sample-api/src/database/schema-iam.ts',
   out: './drizzle',
   schemaFilter: ['iam'],
   dbCredentials: {

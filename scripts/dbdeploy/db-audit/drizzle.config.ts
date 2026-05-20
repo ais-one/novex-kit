@@ -2,7 +2,7 @@ import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
   dialect: 'postgresql',
-  schema: '../../../common/compiled/node/services/db-audit/schema.ts',
+  schema: '../../../apps/sample-api/src/database/schema-audit.ts',
   out: './drizzle',
   schemaFilter: ['audit'],
   dbCredentials: {

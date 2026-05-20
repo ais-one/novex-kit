@@ -4,7 +4,7 @@
 // Source table: users
 // ─────────────────────────────────────────────────────────────────────────────
 import * as realServices from '@common/node/services';
-import { users as table } from '@common/node/services/db/schema';
+import { users as table } from '../../database/schema.ts';
 import { eq } from 'drizzle-orm';
 
 // biome-ignore lint/suspicious/noExplicitAny: services interface varies by store type
