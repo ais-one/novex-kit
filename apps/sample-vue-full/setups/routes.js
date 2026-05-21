@@ -61,6 +61,8 @@ export const SECURE_ROUTES = [
     component: async () => import('../views/Favv/DemoCascade2Api.vue'),
   },
 
+  { path: '/whatsapp/test', name: 'WhatsApp Test', component: async () => import('../views/WhatsAppTest.vue') },
+
   { path: '/demo-view/fill', name: 'Fill No Param', component: async () => import('../views/Demo/Filler.vue') },
   {
     path: '/demo-view/fill/:param',
