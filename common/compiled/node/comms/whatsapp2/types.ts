@@ -225,3 +225,56 @@ export interface WaParsedWebhook {
   messages: WaParsedMessage[];
   statuses: WaDeliveryStatus[];
 }
+
+// ─── Template Management ──────────────────────────────────────────────────────
+
+export interface WaTemplateComponent {
+  type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS';
+  format?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION';
+  text?: string;
+  buttons?: Array<{
+    type: 'QUICK_REPLY' | 'PHONE_NUMBER' | 'URL' | 'OTP' | 'CATALOG' | 'MPM' | 'COPY_CODE' | 'VOICE_CALL';
+    text: string;
+    phone_number?: string;
+    url?: string;
+    otp_type?: string;
+  }>;
+  example?: {
+    header_text?: string[];
+    header_url?: string[];
+    body_text?: string[][];
+    header_handle?: string[];
+  };
+}
+
+export interface WaTemplateCreate {
+  name: string;
+  language: string;
+  category: 'AUTHENTICATION' | 'MARKETING' | 'UTILITY';
+  components: WaTemplateComponent[];
+  allow_category_change?: boolean;
+}
+
+export interface WaTemplateUpdate {
+  components: WaTemplateComponent[];
+}
+
+export interface WaTemplateSummary {
+  id: string;
+  name: string;
+  status:
+    | 'APPROVED'
+    | 'PENDING'
+    | 'REJECTED'
+    | 'DISABLED'
+    | 'IN_APPEAL'
+    | 'PAUSED'
+    | 'PENDING_DELETION'
+    | 'DELETED'
+    | string;
+  category: string;
+  language: string;
+  components: WaTemplateComponent[];
+  quality_score?: { score: string };
+  rejected_reason?: string;
+}
