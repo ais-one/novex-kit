@@ -86,6 +86,57 @@ export interface WaTemplateOpts {
   components?: unknown[];
 }
 
+export interface WaCtaUrlOpts extends WaMessageOpts {
+  /** Main message text (required). */
+  body: string;
+  /** Optional text header above the body. */
+  header?: string;
+  /** Optional grey footer below the button. */
+  footer?: string;
+  /** Label on the CTA button (max 20 chars). */
+  displayText: string;
+  /** URL to open when the button is tapped. */
+  url: string;
+}
+
+export interface WaAddressRequestOpts extends WaMessageOpts {
+  /** Message body text asking the user for their address (required). */
+  body: string;
+  /** Optional grey footer. */
+  footer?: string;
+  /**
+   * ISO 3166-1 alpha-2 country code.
+   * Currently only India ('IN') and Saudi Arabia ('SA') are supported by Meta.
+   */
+  country: string;
+}
+
+export interface WaFlowOpts extends WaMessageOpts {
+  /** Main message text (required). */
+  body: string;
+  /** Optional text header. */
+  header?: string;
+  /** Optional grey footer. */
+  footer?: string;
+  /** Flow ID from the WhatsApp Flows Builder. */
+  flowId: string;
+  /** Unique token for this flow session — store it to track completion. */
+  flowToken: string;
+  /** Label on the button that opens the flow (max 20 chars). */
+  flowCta: string;
+  /** 'navigate' opens a screen directly; 'data_exchange' triggers a server call first. */
+  flowAction?: 'navigate' | 'data_exchange';
+  /** Required when flowAction is 'navigate' — the screen ID to open. */
+  screen?: string;
+  /** Extra payload merged into the flow's first screen data. */
+  flowActionPayload?: Record<string, unknown>;
+  /**
+   * 'published' (default) sends the latest published version.
+   * 'draft' sends the current draft — useful for testing before publishing.
+   */
+  mode?: 'published' | 'draft';
+}
+
 // ─── Inbound ──────────────────────────────────────────────────────────────────
 
 export interface WaInboundText {

@@ -9,9 +9,12 @@
 //   process.env.WHATSAPP_PHONE_NUMBER_ID
 
 import type {
+  WaAddressRequestOpts,
   WaButtonsOpts,
   WaContact,
+  WaCtaUrlOpts,
   WaDocumentOpts,
+  WaFlowOpts,
   WaListOpts,
   WaLocation,
   WaMediaInput,
@@ -23,7 +26,7 @@ import type {
 
 // ─── Core ────────────────────────────────────────────────────────────────────
 
-const API_VERSION = 'v23.0';
+const API_VERSION = 'v25.0';
 
 export class WhatsAppError extends Error {
   code: number;
@@ -35,22 +38,27 @@ export class WhatsAppError extends Error {
   }
 }
 
+const DEBUG = process.env.WA_DEBUG === '1' || process.env.WA_DEBUG === 'true';
+function waLog(direction: '→' | '←', label: string, data: unknown) {
+  if (DEBUG) logger.debug(`[WA ${direction}] ${label}`, { payload: data });
+}
+
 async function apiRequest(token: string, phoneNumberId: string, body: Record<string, unknown>) {
   const url = `https://graph.facebook.com/${API_VERSION}/${phoneNumberId}/messages`;
+  const fullBody = { messaging_product: 'whatsapp', recipient_type: 'individual', ...body };
+  waLog('→', `POST ${url}`, fullBody);
+
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      recipient_type: 'individual',
-      ...body,
-    }),
+    body: JSON.stringify(fullBody),
   });
 
   const data = (await res.json()) as { error?: { message: string; code: number; type: string } };
+  waLog('←', `${res.status}`, data);
 
   if (!res.ok || data.error) {
     throw new WhatsAppError(
@@ -429,20 +437,19 @@ export async function sendReaction(token: string, phoneNumberId: string, to: str
  */
 export async function markAsRead(token: string, phoneNumberId: string, messageId: string) {
   const url = `https://graph.facebook.com/${API_VERSION}/${phoneNumberId}/messages`;
+  const markBody = { messaging_product: 'whatsapp', status: 'read', message_id: messageId };
+  waLog('→', `POST ${url}`, markBody);
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      status: 'read',
-      message_id: messageId,
-    }),
+    body: JSON.stringify(markBody),
   });
 
   const data = (await res.json()) as { error?: { message: string; code: number; type: string } };
+  waLog('←', `${res.status}`, data);
   if (!res.ok || data.error) {
     throw new WhatsAppError(
       data.error?.message ?? `HTTP ${res.status}`,
@@ -454,13 +461,255 @@ export async function markAsRead(token: string, phoneNumberId: string, messageId
   return data;
 }
 
+// ─── Typing Indicator ────────────────────────────────────────────────────────
+
+/**
+ * Show a "typing..." indicator to the recipient AND mark their message as read.
+ *
+ * IMPORTANT: This uses the same endpoint as markAsRead and requires the `message_id`
+ * of the received message (from your inbound webhook). The typing indicator is dismissed
+ * after 25 seconds or when you send the next message, whichever comes first.
+ *
+ * Only works within the 24-hour customer service window.
+ * Telegram equivalent: sendChatAction({ action: 'typing' })
+ *
+ * @param messageId  The wamid of the received message (from your inbound webhook).
+ *
+ * @example
+ * await sendTypingIndicator(token, phoneId, 'wamid.HBgLMTY...');
+ */
+export async function sendTypingIndicator(token: string, phoneNumberId: string, messageId: string) {
+  const url = `https://graph.facebook.com/${API_VERSION}/${phoneNumberId}/messages`;
+  const typingBody = {
+    messaging_product: 'whatsapp',
+    status: 'read',
+    message_id: messageId,
+    typing_indicator: { type: 'text' },
+  };
+  waLog('→', `POST ${url}`, typingBody);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(typingBody),
+  });
+
+  const data = (await res.json()) as { error?: { message: string; code: number; type: string } };
+  waLog('←', `${res.status}`, data);
+  if (!res.ok || data.error) {
+    throw new WhatsAppError(
+      data.error?.message ?? `HTTP ${res.status}`,
+      data.error?.code ?? res.status,
+      data.error?.type ?? 'unknown',
+    );
+  }
+
+  return data;
+}
+
+// ─── CTA URL Button ───────────────────────────────────────────────────────────
+
+/**
+ * Send an interactive button that opens a URL when tapped.
+ * WhatsApp-only — Telegram uses inline keyboard buttons with `url` field instead.
+ *
+ * @example
+ * await sendCtaUrlButton(token, phoneId, '+60123456789', {
+ *   body: 'Visit our website for more info.',
+ *   displayText: 'Visit us',
+ *   url: 'https://example.com',
+ * });
+ */
+export async function sendCtaUrlButton(token: string, phoneNumberId: string, to: string, opts: WaCtaUrlOpts) {
+  return apiRequest(token, phoneNumberId, {
+    to,
+    type: 'interactive',
+    interactive: {
+      type: 'cta_url',
+      ...(opts.header ? { header: { type: 'text', text: opts.header } } : {}),
+      body: { text: opts.body },
+      ...(opts.footer ? { footer: { text: opts.footer } } : {}),
+      action: {
+        name: 'cta_url',
+        parameters: {
+          display_text: opts.displayText,
+          url: opts.url,
+        },
+      },
+    },
+    ...replyContext(opts),
+  });
+}
+
+// ─── Address Request ──────────────────────────────────────────────────────────
+
+/**
+ * Prompt the user to share their delivery address.
+ * WhatsApp-only. Currently only supported in India ('IN') and Saudi Arabia ('SA').
+ *
+ * @example
+ * await sendAddressRequest(token, phoneId, '+919876543210', {
+ *   body: 'Please share your delivery address to confirm your order.',
+ *   country: 'IN',
+ * });
+ */
+export async function sendAddressRequest(token: string, phoneNumberId: string, to: string, opts: WaAddressRequestOpts) {
+  return apiRequest(token, phoneNumberId, {
+    to,
+    type: 'interactive',
+    interactive: {
+      type: 'address_message',
+      body: { text: opts.body },
+      ...(opts.footer ? { footer: { text: opts.footer } } : {}),
+      action: {
+        name: 'address_message',
+        parameters: { country: opts.country },
+      },
+    },
+    ...replyContext(opts),
+  });
+}
+
+// ─── WhatsApp Flows ───────────────────────────────────────────────────────────
+
+/**
+ * Open a WhatsApp Flow — a multi-step structured form inside WhatsApp.
+ * WhatsApp-only. The flow must be built and published in Meta's Flows Builder first.
+ * @see https://developers.facebook.com/documentation/business-messaging/whatsapp/flows/
+ *
+ * @example
+ * await sendFlow(token, phoneId, '+60123456789', {
+ *   body: 'Book your appointment below.',
+ *   flowId: '1234567890',
+ *   flowToken: crypto.randomUUID(),
+ *   flowCta: 'Book now',
+ *   flowAction: 'navigate',
+ *   screen: 'APPOINTMENT_SCREEN',
+ * });
+ */
+export async function sendFlow(token: string, phoneNumberId: string, to: string, opts: WaFlowOpts) {
+  return apiRequest(token, phoneNumberId, {
+    to,
+    type: 'interactive',
+    interactive: {
+      type: 'flow',
+      ...(opts.header ? { header: { type: 'text', text: opts.header } } : {}),
+      body: { text: opts.body },
+      ...(opts.footer ? { footer: { text: opts.footer } } : {}),
+      action: {
+        name: 'flow',
+        parameters: {
+          flow_message_version: '3',
+          flow_token: opts.flowToken,
+          flow_id: opts.flowId,
+          flow_cta: opts.flowCta,
+          flow_action: opts.flowAction ?? 'navigate',
+          mode: opts.mode ?? 'published',
+          ...(opts.screen
+            ? { flow_action_payload: { screen: opts.screen, ...(opts.flowActionPayload ?? {}) } }
+            : opts.flowActionPayload
+              ? { flow_action_payload: opts.flowActionPayload }
+              : {}),
+        },
+      },
+    },
+    ...replyContext(opts),
+  });
+}
+
+// ─── Media Upload ─────────────────────────────────────────────────────────────
+
+/**
+ * Upload a local file to WhatsApp's media servers and return a reusable `media_id`.
+ *
+ * WhatsApp requires a 2-step process for local files:
+ *   1. Upload here to get a `media_id` (stays valid for 30 days).
+ *   2. Pass `{ id: mediaId }` to sendImage, sendDocument, sendAudio, etc.
+ *
+ * For files already hosted at a public URL, skip this — use `{ link: 'https://...' }` directly.
+ *
+ * @param file      Raw file content as a `Buffer` or `Blob`.
+ * @param mimeType  MIME type, e.g. `'application/pdf'`, `'image/jpeg'`.
+ * @param filename  Optional file name (shown to recipient for documents).
+ *
+ * @example
+ * const { id } = await uploadMedia(token, phoneId, pdfBuffer, 'application/pdf', 'report.pdf');
+ * await sendDocument(token, phoneId, to, { id }, { filename: 'report.pdf' });
+ */
+export async function uploadMedia(
+  token: string,
+  phoneNumberId: string,
+  file: Buffer | Blob,
+  mimeType: string,
+  filename = 'file',
+): Promise<{ id: string }> {
+  const url = `https://graph.facebook.com/${API_VERSION}/${phoneNumberId}/media`;
+  const form = new FormData();
+  form.append('messaging_product', 'whatsapp');
+  form.append('type', mimeType);
+  // Buffer extends Uint8Array<ArrayBufferLike>; cast to ArrayBuffer to satisfy BlobPart typing
+  // (safe at runtime — Node.js Buffers are always backed by a plain ArrayBuffer)
+  const blobContent: BlobPart = file instanceof Blob ? file : (file.buffer as ArrayBuffer);
+  form.append('file', new Blob([blobContent], { type: mimeType }), filename);
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+
+  const data = (await res.json()) as { id?: string; error?: { message: string; code: number; type: string } };
+  if (!res.ok || data.error) {
+    throw new WhatsAppError(
+      data.error?.message ?? `HTTP ${res.status}`,
+      data.error?.code ?? res.status,
+      data.error?.type ?? 'unknown',
+    );
+  }
+
+  return { id: data.id! };
+}
+
+// ─── Media Download ───────────────────────────────────────────────────────────
+
+/**
+ * Resolve an inbound `media_id` to a temporary download URL.
+ *
+ * When users send images, audio, documents, etc. to your bot, the webhook payload
+ * contains only a `media_id`. Call this to get a short-lived (~5 min) URL, then
+ * fetch that URL with the same Bearer token to download the binary.
+ *
+ * @param mediaId  The `id` field from an inbound media message.
+ *
+ * @example
+ * // In your webhook handler:
+ * if (msg.content.type === 'image') {
+ *   const url = await getMediaUrl(token, msg.content.id);
+ *   const file = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+ *   const buffer = Buffer.from(await file.arrayBuffer());
+ * }
+ */
+export async function getMediaUrl(token: string, mediaId: string): Promise<string> {
+  const res = await fetch(`https://graph.facebook.com/${API_VERSION}/${mediaId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const data = (await res.json()) as { url?: string; error?: { message: string; code: number; type: string } };
+  if (!res.ok || data.error) {
+    throw new WhatsAppError(
+      data.error?.message ?? `HTTP ${res.status}`,
+      data.error?.code ?? res.status,
+      data.error?.type ?? 'unknown',
+    );
+  }
+
+  return data.url!;
+}
+
 // ─── NOT available in WhatsApp Cloud API ──────────────────────────────────────
 // The following features exist in Telegram but have no Cloud API equivalent:
-//
-// TODO: sendTypingIndicator
-//   — Available in Cloud API within the 24h customer service window.
-//     POST /{PHONE_NUMBER_ID}/messages with { "type": "typing_indicator" }.
-//     (Telegram: sendChatAction({ action: 'typing' }))
 //
 // TODO: sendPoll
 //   — Polls are a native WhatsApp app feature; not exposed via Cloud API.
@@ -477,3 +726,12 @@ export async function markAsRead(token: string, phoneNumberId: string, messageId
 // TODO: sendGame / sendInvoice
 //   — No Telegram-style games or built-in payment flow in Cloud API.
 //     WhatsApp Pay exists but is region-locked (IN/BR only) and not in Cloud API.
+//
+// NOT available: editMessage / deleteMessage / forwardMessage / copyMessage / pinMessage
+//   — WhatsApp Cloud API has no message edit, delete, forward, copy, or pin endpoints.
+//
+// NOT available: sendVideoNote / sendAnimation / sendMediaGroup / sendDice / sendVenue
+//   — WhatsApp Cloud API has no round video, GIF, album, dice, or Foursquare venue types.
+//
+// NOT available: editLiveLocation
+//   — WhatsApp Cloud API has no live location update endpoint.
