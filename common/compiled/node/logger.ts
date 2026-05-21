@@ -4,15 +4,30 @@ const LOG_LEVELS: Record<string, number> = { error: 0, warn: 1, info: 2, debug: 
 const currentLevel = LOG_LEVELS[process.env.LOG_LEVEL ?? ''] ?? LOG_LEVELS.info;
 const { npm_package_name, npm_package_version } = process.env;
 
+/** JSON.stringify replacer that replaces circular references with '[Circular]'. */
+function safeReplacer() {
+  const seen = new WeakSet();
+  return (_key: string, value: unknown) => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) return '[Circular]';
+      seen.add(value);
+    }
+    return value;
+  };
+}
+
 const log = (level: string, message: unknown, meta: Record<string, unknown> = {}) => {
   if (LOG_LEVELS[level] > currentLevel) return;
-  const entry = JSON.stringify({
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    service: `${npm_package_name}@${npm_package_version}`,
-    ...meta,
-  });
+  const entry = JSON.stringify(
+    {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      service: `${npm_package_name}@${npm_package_version}`,
+      ...meta,
+    },
+    safeReplacer(),
+  );
   // biome-ignore lint/suspicious/noConsole: Using console for logging
   level === 'error' ? console.error(entry) : console.log(entry);
 };
