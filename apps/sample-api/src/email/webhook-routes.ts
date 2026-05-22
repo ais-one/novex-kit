@@ -145,6 +145,8 @@ export default express
       // - Update user engagement scores
       // - Remove bounced addresses from mailing lists
     } catch (err: unknown) {
-      logger.error('[Email Events] Parse failed', { error: err instanceof Error ? err.message : String(err) });
+      logger.error('[Email Events] Parse failed', {
+        error: err instanceof Error ? err.message : 'An unexpected error occurred',
+      });
     }
   });

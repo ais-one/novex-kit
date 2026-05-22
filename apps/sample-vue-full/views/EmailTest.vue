@@ -199,4 +199,8 @@ async function send() {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+.email-test-wrap {
+  padding: 16px;
+}
+</style>

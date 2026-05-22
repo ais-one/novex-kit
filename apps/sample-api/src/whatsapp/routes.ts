@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { str } from '@common/iso/str';
 import { parseWebhook } from '@common/node/comms/whatsapp2/inbound';
 import {
   getMediaUrl,
@@ -41,6 +42,106 @@ import express from 'express';
 //   WHATSAPP_VERIFY_TOKEN    — your own secret string (used once during webhook registration)
 //   WHATSAPP_TOKEN           — permanent system user access token
 //   WHATSAPP_PHONE_NUMBER_ID — phone number ID from Meta App Dashboard
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function mediaFrom(p: Record<string, unknown>): WaMediaInput {
+  if (typeof p.id === 'string') return { id: p.id };
+  if (typeof p.link === 'string') return { link: p.link };
+  throw new Error('Either id or link is required for media');
+}
+
+// ─── Type handlers for /test ──────────────────────────────────────────────────
+
+async function handleText(token: string, phoneId: string, dest: string, p: Record<string, unknown>) {
+  return sendText(token, phoneId, dest, str(p.body), { preview_url: Boolean(p.preview_url) });
+}
+
+async function handleMedia(type: string, token: string, phoneId: string, dest: string, p: Record<string, unknown>) {
+  const media = mediaFrom(p);
+  const caption = typeof p.caption === 'string' ? p.caption : undefined;
+  switch (type) {
+    case 'image':
+      return sendImage(token, phoneId, dest, media, { caption });
+    case 'audio':
+      return sendAudio(token, phoneId, dest, media);
+    case 'video':
+      return sendVideo(token, phoneId, dest, media, { caption });
+    case 'sticker':
+      return sendSticker(token, phoneId, dest, media);
+    case 'document':
+      return sendDocument(token, phoneId, dest, media, {
+        caption,
+        filename: typeof p.filename === 'string' ? p.filename : undefined,
+      });
+    default:
+      return undefined;
+  }
+}
+
+async function handleTestType(
+  type: string,
+  token: string,
+  phoneId: string,
+  dest: string,
+  p: Record<string, unknown>,
+  res: Response,
+): Promise<unknown> {
+  switch (type) {
+    case 'text':
+      return handleText(token, phoneId, dest, p);
+    case 'image':
+    case 'audio':
+    case 'video':
+    case 'sticker':
+    case 'document':
+      return handleMedia(type, token, phoneId, dest, p);
+    case 'location':
+      return sendLocation(token, phoneId, dest, {
+        latitude: Number(p.latitude),
+        longitude: Number(p.longitude),
+        name: typeof p.name === 'string' ? p.name : undefined,
+        address: typeof p.address === 'string' ? p.address : undefined,
+      });
+    case 'contacts':
+      return sendContacts(token, phoneId, dest, p.contacts as WaContact[]);
+    case 'buttons':
+      return sendButtons(token, phoneId, dest, p as unknown as WaButtonsOpts);
+    case 'list':
+      return sendList(token, phoneId, dest, p as unknown as WaListOpts);
+    case 'template':
+      return sendTemplate(token, phoneId, dest, p as unknown as WaTemplateOpts);
+    case 'reaction':
+      return sendReaction(token, phoneId, dest, str(p.message_id), str(p.emoji));
+    case 'read':
+      return markAsRead(token, phoneId, str(p.message_id));
+    case 'typing': {
+      const msgId = str(p.message_id);
+      if (!msgId) {
+        res.status(400).json({ ok: false, error: 'message_id is required for typing indicator' });
+        return null;
+      }
+      return sendTypingIndicator(token, phoneId, msgId);
+    }
+    case 'cta_url':
+      return sendCtaUrlButton(token, phoneId, dest, p as unknown as WaCtaUrlOpts);
+    case 'address_request':
+      return sendAddressRequest(token, phoneId, dest, p as unknown as WaAddressRequestOpts);
+    case 'flow':
+      return sendFlow(token, phoneId, dest, p as unknown as WaFlowOpts);
+    case 'get_media_url': {
+      const mediaId = str(p.media_id);
+      if (!mediaId) {
+        res.status(400).json({ ok: false, error: 'media_id is required' });
+        return null;
+      }
+      return { url: await getMediaUrl(token, mediaId) };
+    }
+    default:
+      res.status(400).json({ ok: false, error: `Unknown type: ${str(type)}` });
+      return null;
+  }
+}
 
 export default express
   .Router()
@@ -138,7 +239,7 @@ export default express
       await sendText(token, phoneId, to, message);
       res.json({ ok: true });
     } catch (err: unknown) {
-      res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
     }
   })
 
@@ -156,7 +257,7 @@ export default express
 
     const { type, to, ...p } = req.body as Record<string, unknown>;
 
-    if (!type) {
+    if (!type || typeof type !== 'string') {
       res.status(400).json({ ok: false, error: 'type is required' });
       return;
     }
@@ -167,121 +268,12 @@ export default express
     }
 
     try {
-      let result: unknown;
       const dest = to as string;
-
-      switch (type) {
-        case 'text':
-          result = await sendText(token, phoneId, dest, String(p.body ?? ''), {
-            preview_url: Boolean(p.preview_url),
-          });
-          break;
-
-        case 'image':
-          result = await sendImage(token, phoneId, dest, mediaFrom(p), {
-            caption: p.caption ? String(p.caption) : undefined,
-          });
-          break;
-
-        case 'audio':
-          result = await sendAudio(token, phoneId, dest, mediaFrom(p));
-          break;
-
-        case 'document':
-          result = await sendDocument(token, phoneId, dest, mediaFrom(p), {
-            caption: p.caption ? String(p.caption) : undefined,
-            filename: p.filename ? String(p.filename) : undefined,
-          });
-          break;
-
-        case 'video':
-          result = await sendVideo(token, phoneId, dest, mediaFrom(p), {
-            caption: p.caption ? String(p.caption) : undefined,
-          });
-          break;
-
-        case 'sticker':
-          result = await sendSticker(token, phoneId, dest, mediaFrom(p));
-          break;
-
-        case 'location':
-          result = await sendLocation(token, phoneId, dest, {
-            latitude: Number(p.latitude),
-            longitude: Number(p.longitude),
-            name: p.name ? String(p.name) : undefined,
-            address: p.address ? String(p.address) : undefined,
-          });
-          break;
-
-        case 'contacts':
-          result = await sendContacts(token, phoneId, dest, p.contacts as WaContact[]);
-          break;
-
-        case 'buttons':
-          result = await sendButtons(token, phoneId, dest, p as unknown as WaButtonsOpts);
-          break;
-
-        case 'list':
-          result = await sendList(token, phoneId, dest, p as unknown as WaListOpts);
-          break;
-
-        case 'template':
-          result = await sendTemplate(token, phoneId, dest, p as unknown as WaTemplateOpts);
-          break;
-
-        case 'reaction':
-          result = await sendReaction(token, phoneId, dest, String(p.message_id ?? ''), String(p.emoji ?? ''));
-          break;
-
-        case 'read':
-          result = await markAsRead(token, phoneId, String(p.message_id ?? ''));
-          break;
-
-        case 'typing': {
-          const msgId = String(p.message_id ?? '');
-          if (!msgId) {
-            res.status(400).json({ ok: false, error: 'message_id is required for typing indicator' });
-            return;
-          }
-          result = await sendTypingIndicator(token, phoneId, msgId);
-          break;
-        }
-
-        case 'cta_url':
-          result = await sendCtaUrlButton(token, phoneId, dest, p as unknown as WaCtaUrlOpts);
-          break;
-
-        case 'address_request':
-          result = await sendAddressRequest(token, phoneId, dest, p as unknown as WaAddressRequestOpts);
-          break;
-
-        case 'flow':
-          result = await sendFlow(token, phoneId, dest, p as unknown as WaFlowOpts);
-          break;
-
-        case 'get_media_url': {
-          const mediaId = String(p.media_id ?? '');
-          if (!mediaId) {
-            res.status(400).json({ ok: false, error: 'media_id is required' });
-            return;
-          }
-          result = { url: await getMediaUrl(token, mediaId) };
-          break;
-        }
-
-        default:
-          res.status(400).json({ ok: false, error: `Unknown type: ${type}` });
-          return;
-      }
-
+      const result = await handleTestType(type, token, phoneId, dest, p, res);
+      if (result === null) return; // response already sent by handler
       res.json({ ok: true, result });
     } catch (err: unknown) {
-      res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+      res.status(500).json({ ok: false, error: message });
     }
   });
-
-function mediaFrom(p: Record<string, unknown>): WaMediaInput {
-  if (p.id) return { id: String(p.id) };
-  if (p.link) return { link: String(p.link) };
-  throw new Error('Either id or link is required for media');
-}

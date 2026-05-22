@@ -9,6 +9,7 @@
 // express raw body) for the inbound route. The parsed fields arrive as req.body
 // (text fields) and req.files (attachments).
 
+import { str } from '@common/iso/str';
 import type { SgInboundAttachment, SgInboundEmail } from './types.ts';
 
 export type { SgInboundAttachment, SgInboundEmail };
@@ -94,19 +95,19 @@ export function parseInboundEmail(
   }
 
   return {
-    from: String(fields.from ?? ''),
-    to: String(fields.to ?? ''),
-    cc: String(fields.cc ?? ''),
-    subject: String(fields.subject ?? ''),
-    text: String(fields.text ?? ''),
-    html: String(fields.html ?? ''),
+    from: str(fields.from),
+    to: str(fields.to),
+    cc: str(fields.cc),
+    subject: str(fields.subject),
+    text: str(fields.text),
+    html: str(fields.html),
     envelope,
-    headers: String(fields.headers ?? ''),
-    senderIp: String(fields.sender_ip ?? ''),
-    spf: String(fields.SPF ?? ''),
-    dkim: String(fields.dkim ?? ''),
+    headers: str(fields.headers),
+    senderIp: str(fields.sender_ip),
+    spf: str(fields.SPF),
+    dkim: str(fields.dkim),
     spamScore: Number.isNaN(spamScore) ? null : spamScore,
-    spamReport: fields.spam_report ? String(fields.spam_report) : null,
+    spamReport: typeof fields.spam_report === 'string' ? fields.spam_report : null,
     attachmentCount,
     attachments,
     charsets,

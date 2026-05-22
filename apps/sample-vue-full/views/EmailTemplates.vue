@@ -547,4 +547,8 @@ const saveVersion = async () => {
 };
 </script>
 
-<style scoped></style>
+<style scoped>
+.email-tmpl-wrap {
+  padding: 16px;
+}
+</style>

@@ -11,9 +11,38 @@
 // Headers: X-Twilio-Email-Event-Webhook-Signature, X-Twilio-Email-Event-Webhook-Timestamp
 
 import crypto from 'node:crypto';
+import { str } from '@common/iso/str';
 import type { SgEvent, SgEventType } from './types.ts';
 
 export type { SgEvent, SgEventType };
+
+/** Extract categories from raw event — can be string, array, or absent */
+function parseCategories(raw: Record<string, unknown>): string[] {
+  if (Array.isArray(raw.category)) return raw.category.map(v => str(v));
+  if (raw.category && typeof raw.category === 'string') return [raw.category];
+  return [];
+}
+
+/** Extract optional fields from raw event into the typed SgEvent */
+function assignOptionalFields(event: SgEvent, raw: Record<string, unknown>): void {
+  // Bounce fields
+  if (typeof raw.reason === 'string') event.reason = raw.reason;
+  if (typeof raw.type === 'string') event.bounceType = raw.type;
+  if (typeof raw.status === 'string') event.status = raw.status;
+
+  // Click fields
+  if (typeof raw.url === 'string') event.url = raw.url;
+
+  // Open fields
+  if (typeof raw.useragent === 'string') event.userAgent = raw.useragent;
+  if (raw.sg_machine_open) event.sgMachineOpen = raw.sg_machine_open === true || raw.sg_machine_open === 'true';
+
+  // Drop fields
+  if (raw.event === 'dropped' && typeof raw.reason === 'string') event.dropReason = raw.reason;
+
+  // Deferred fields
+  if (raw.attempt) event.attempt = Number(raw.attempt);
+}
 
 // ─── Event parser ─────────────────────────────────────────────────────────────
 
@@ -41,12 +70,12 @@ export function parseEventWebhook(body: unknown): SgEvent[] {
 
   return body.map((raw: Record<string, unknown>) => {
     const event: SgEvent = {
-      event: String(raw.event ?? 'unknown') as SgEventType,
-      email: String(raw.email ?? ''),
+      event: str(raw.event, 'unknown') as SgEventType,
+      email: str(raw.email),
       timestamp: Number(raw.timestamp ?? 0),
       date: new Date(Number(raw.timestamp ?? 0) * 1000).toISOString(),
-      sgMessageId: String(raw.sg_message_id ?? ''),
-      categories: Array.isArray(raw.category) ? raw.category.map(String) : raw.category ? [String(raw.category)] : [],
+      sgMessageId: str(raw.sg_message_id),
+      categories: parseCategories(raw),
       customArgs: {},
     };
 
@@ -80,24 +109,7 @@ export function parseEventWebhook(body: unknown): SgEvent[] {
       }
     }
 
-    // Bounce fields
-    if (raw.reason) event.reason = String(raw.reason);
-    if (raw.type) event.bounceType = String(raw.type);
-    if (raw.status) event.status = String(raw.status);
-
-    // Click fields
-    if (raw.url) event.url = String(raw.url);
-
-    // Open fields
-    if (raw.useragent) event.userAgent = String(raw.useragent);
-    if (raw.sg_machine_open) event.sgMachineOpen = raw.sg_machine_open === true || raw.sg_machine_open === 'true';
-
-    // Drop fields
-    if (raw.event === 'dropped' && raw.reason) event.dropReason = String(raw.reason);
-
-    // Deferred fields
-    if (raw.attempt) event.attempt = Number(raw.attempt);
-
+    assignOptionalFields(event, raw);
     return event;
   });
 }

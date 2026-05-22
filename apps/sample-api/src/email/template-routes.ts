@@ -22,7 +22,7 @@ import express from 'express';
 //                  Permissions: Template Engine (Full Access)
 
 function handleError(res: Response, err: unknown, context: string) {
-  const msg = err instanceof Error ? err.message : String(err);
+  const msg = err instanceof Error ? err.message : 'An unexpected error occurred';
   logger.error(`[Email Templates] ${context} failed`, { error: msg });
   res.status(500).json({ ok: false, error: msg });
 }
