@@ -1,20 +1,9 @@
+import { safeReplacer } from '@common/iso/util';
 import type { NextFunction, Request, Response } from 'express';
 
 const LOG_LEVELS: Record<string, number> = { error: 0, warn: 1, info: 2, debug: 3 };
 const currentLevel = LOG_LEVELS[process.env.LOG_LEVEL ?? ''] ?? LOG_LEVELS.info;
 const { npm_package_name, npm_package_version } = process.env;
-
-/** JSON.stringify replacer that replaces circular references with '[Circular]'. */
-function safeReplacer() {
-  const seen = new WeakSet();
-  return (_key: string, value: unknown) => {
-    if (typeof value === 'object' && value !== null) {
-      if (seen.has(value)) return '[Circular]';
-      seen.add(value);
-    }
-    return value;
-  };
-}
 
 const log = (level: string, message: unknown, meta: Record<string, unknown> = {}) => {
   if (LOG_LEVELS[level] > currentLevel) return;
