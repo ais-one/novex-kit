@@ -67,13 +67,19 @@ const TEMPLATES = {
     subject: 'Test Email',
     html: '<p>Hello from <strong>email2</strong>!</p><p>This is a test sent via the SendGrid v3 API.</p>',
   },
-  dynamic: {
+  dynamic: () => ({
     templateId: 'd-xxxx (replace with your template ID)',
     data: {
       name: 'World',
       link: 'https://example.com',
     },
-  },
+    '_docs (remove this)': 'All fields below are optional. Delete what you do not need.',
+    cc: [{ email: 'cc@example.com', name: 'CC Person' }],
+    bcc: [{ email: 'bcc@example.com' }],
+    replyTo: { email: 'reply@example.com', name: 'Reply Here' },
+    sendAt: Math.floor(Date.now() / 1000) + 3600,
+    attachments: [{ content: 'SGVsbG8=', filename: 'hello.txt', type: 'text/plain' }],
+  }),
   attachment: {
     subject: 'Email with Attachment',
     html: '<p>Please find the attached file.</p>',

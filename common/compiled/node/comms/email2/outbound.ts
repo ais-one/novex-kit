@@ -237,7 +237,30 @@ export async function sendScheduledEmail(
 }
 
 /**
- * Cancel all pending sends in a batch (created via `sendScheduledEmail`).
+ * Schedule a dynamic template email for future delivery (max 72 hours from now).
+ * Returns the batchId which can be passed to `cancelScheduledEmail` to cancel before delivery.
+ *
+ * @param sendAt Unix timestamp in seconds. Must be ≤ 72 hours in the future.
+ *
+ * @example
+ * const inOneHour = Math.floor(Date.now() / 1000) + 3600;
+ * const { batchId } = await sendScheduledDynamicEmail('user@example.com', 'd-xxxx', { name: 'Alice' }, inOneHour);
+ * // Later: await cancelScheduledEmail(batchId);
+ */
+export async function sendScheduledDynamicEmail(
+  to: string | string[],
+  templateId: string,
+  dynamicData: Record<string, unknown>,
+  sendAt: number,
+  opts: SgSendEmailOpts = {},
+) {
+  const batchId = opts.batchId ?? (await generateBatchId());
+  await sendDynamicEmail(to, templateId, dynamicData, { ...opts, sendAt, batchId });
+  return { batchId };
+}
+
+/**
+ * Cancel all pending sends in a batch (created via `sendScheduledEmail` or `sendScheduledDynamicEmail`).
  * Only works before the scheduled send_at time arrives.
  *
  * @example
@@ -265,9 +288,19 @@ export async function cancelScheduledEmail(batchId: string) {
   throw new SendGridError(data.errors?.[0]?.message ?? `HTTP ${res.status}`, res.status, data.errors ?? []);
 }
 
-// ─── Internal ─────────────────────────────────────────────────────────────────
+// ─── Utilities ────────────────────────────────────────────────────────────────
 
-async function generateBatchId(): Promise<string> {
+/**
+ * Generate a SendGrid batch ID for use with scheduled sends.
+ * Pass the returned ID as `opts.batchId` to any send function along with `opts.sendAt`,
+ * then use `cancelScheduledEmail(batchId)` to cancel before delivery.
+ *
+ * @example
+ * const batchId = await generateBatchId();
+ * await sendDynamicEmail(to, templateId, data, { sendAt: inOneHour, batchId });
+ * // Later: await cancelScheduledEmail(batchId);
+ */
+export async function generateBatchId(): Promise<string> {
   const key = getApiKey();
   const url = 'https://api.sendgrid.com/v3/mail/batch';
   sgLog('→', `POST ${url}`, {});
