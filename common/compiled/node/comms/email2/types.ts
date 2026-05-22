@@ -140,3 +140,111 @@ export interface SgTemplateVersionData {
   /** Editor type used in the SendGrid dashboard UI */
   editor?: 'code' | 'design';
 }
+
+// ─── Inbound Parse ────────────────────────────────────────────────────────────
+
+export interface SgInboundAttachment {
+  /** Original filename */
+  filename: string;
+  /** MIME type (e.g. "application/pdf") */
+  type: string;
+  /** Content-ID for inline attachments */
+  contentId?: string;
+  /** Raw file content as Buffer (from multer/busboy) */
+  content?: Buffer;
+  /** File size in bytes */
+  size?: number;
+}
+
+export interface SgInboundEmail {
+  /** Sender address — e.g. "John Doe <john@example.com>" */
+  from: string;
+  /** Recipient address(es) — e.g. "inbound@parse.yourdomain.com" */
+  to: string;
+  /** CC addresses (if any) */
+  cc: string;
+  /** Email subject line */
+  subject: string;
+  /** Plain-text body */
+  text: string;
+  /** HTML body */
+  html: string;
+  /** Envelope JSON — { from: string, to: string[] } */
+  envelope: { from: string; to: string[] };
+  /** Full email headers as a single string */
+  headers: string;
+  /** Sender IP address */
+  senderIp: string;
+  /** SPF verification result (e.g. "pass", "fail", "softfail", "neutral", "none") */
+  spf: string;
+  /** DKIM verification result */
+  dkim: string;
+  /** Spam score (only present if "Check incoming emails for spam" is enabled in SendGrid) */
+  spamScore: number | null;
+  /** Spam report details (only present if spam checking is enabled) */
+  spamReport: string | null;
+  /** Number of attachments */
+  attachmentCount: number;
+  /** Parsed attachments */
+  attachments: SgInboundAttachment[];
+  /** Character set info (JSON string from SendGrid) */
+  charsets: Record<string, string>;
+}
+
+// ─── Event Webhook ────────────────────────────────────────────────────────────
+
+export type SgEventType =
+  | 'processed'
+  | 'dropped'
+  | 'delivered'
+  | 'deferred'
+  | 'bounce'
+  | 'open'
+  | 'click'
+  | 'spamreport'
+  | 'unsubscribe'
+  | 'group_unsubscribe'
+  | 'group_resubscribe';
+
+export interface SgEvent {
+  /** Event type */
+  event: SgEventType;
+  /** Recipient email address */
+  email: string;
+  /** Unix timestamp (seconds) when the event occurred */
+  timestamp: number;
+  /** ISO 8601 date string (derived from timestamp) */
+  date: string;
+  /** SendGrid internal message ID */
+  sgMessageId: string;
+  /** Categories assigned to the original send */
+  categories: string[];
+  /** Custom args passed during send (for event correlation) */
+  customArgs: Record<string, string>;
+
+  // ── Bounce-specific fields ──
+  /** Bounce reason (e.g. "550 5.1.1 The email account does not exist") */
+  reason?: string;
+  /** Bounce type: "bounce" (hard) or "blocked" (soft/policy) */
+  bounceType?: string;
+  /** SMTP status code (e.g. "550") */
+  status?: string;
+
+  // ── Click-specific fields ──
+  /** The URL that was clicked */
+  url?: string;
+
+  // ── Open-specific fields ──
+  /** User agent string of the email client */
+  userAgent?: string;
+  /** Whether this open was triggered by Apple Mail Privacy Protection (machine open) */
+  sgMachineOpen?: boolean;
+
+  // ── Drop-specific fields ──
+  /** Why the email was dropped (e.g. "Bounced Address", "Invalid") */
+  dropReason?: string;
+
+  // ── Deferred-specific fields ──
+  /** Number of delivery attempts so far */
+  attempt?: number;
+}
