@@ -136,7 +136,7 @@ export async function sendDynamicEmail(
   to: string | string[],
   templateId: string,
   dynamicData: Record<string, unknown>,
-  opts: SendEmailOpts = {},
+  opts: SgSendEmailOpts = {},
 ) {
   const { senderName, senderEmail } = getCredentials();
   const personalization: SgPersonalization = {
@@ -152,6 +152,7 @@ export async function sendDynamicEmail(
     template_id: templateId,
     headers: { 'X-Entity-Ref-ID': randomHash(), ...opts.headers },
   };
+  if (opts.attachments?.length) body.attachments = opts.attachments;
   applyOpts(body, opts);
   return sgMailSend(body);
 }
