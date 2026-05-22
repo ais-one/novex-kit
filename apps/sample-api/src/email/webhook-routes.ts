@@ -1,8 +1,8 @@
 import { parseEventWebhook, verifyEventWebhookSignature } from '@common/node/comms/email2/events';
 import { parseInboundEmail } from '@common/node/comms/email2/inbound';
+import { memoryUpload } from '@common/node/express/upload';
 import type { Request, Response } from 'express';
 import express from 'express';
-import multer from 'multer';
 
 // SendGrid Inbound Parse + Event Webhook routes
 // Docs:
@@ -12,7 +12,7 @@ import multer from 'multer';
 // Required env vars:
 //   SENDGRID_EVENT_WEBHOOK_KEY — ECDSA public key for verifying event webhook signatures (optional, skips verification if not set)
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = memoryUpload({ limits: { fileSize: 30 * 1024 * 1024, files: 20 } });
 
 export default express
   .Router()
@@ -31,9 +31,17 @@ export default express
     res.sendStatus(200);
 
     try {
-      const files = req.files as
-        | Array<{ fieldname?: string; originalname?: string; mimetype?: string; buffer?: Buffer; size?: number }>
-        | undefined;
+      const files = (
+        req as unknown as {
+          files?: Array<{
+            fieldname?: string;
+            originalname?: string;
+            mimetype?: string;
+            buffer?: Buffer;
+            size?: number;
+          }>;
+        }
+      ).files;
       const email = parseInboundEmail(req.body, files);
 
       logger.info('[Email Inbound] Received', {

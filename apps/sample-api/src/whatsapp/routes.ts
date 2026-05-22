@@ -54,7 +54,11 @@ export default express
     const challenge = req.query['hub.challenge'];
 
     if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-      res.status(200).send(challenge);
+      // Echo challenge as plain text — sanitize to prevent reflected XSS
+      res
+        .set('Content-Type', 'text/plain')
+        .status(200)
+        .send(String(challenge ?? ''));
     } else {
       res.sendStatus(403);
     }
