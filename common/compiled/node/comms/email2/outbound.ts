@@ -215,6 +215,32 @@ export async function sendBulkEmail(
 }
 
 /**
+ * Send a dynamic template to multiple recipients in a single API call (up to 1000 personalizations).
+ * Each personalization can have its own dynamic_template_data, CC/BCC, and subject override.
+ *
+ * @example
+ * await sendBulkDynamicEmail('d-xxxx', [
+ *   { to: [{ email: 'alice@example.com' }], dynamic_template_data: { name: 'Alice' } },
+ *   { to: [{ email: 'bob@example.com' }], dynamic_template_data: { name: 'Bob' } },
+ * ]);
+ */
+export async function sendBulkDynamicEmail(
+  templateId: string,
+  personalizations: SgPersonalization[],
+  opts: SendEmailOpts = {},
+) {
+  const { senderName, senderEmail } = getCredentials();
+  const body: Record<string, unknown> = {
+    personalizations,
+    from: { name: senderName, email: senderEmail },
+    template_id: templateId,
+    headers: { 'X-Entity-Ref-ID': randomHash(), ...opts.headers },
+  };
+  applyOpts(body, opts);
+  return sgMailSend(body);
+}
+
+/**
  * Schedule an email for future delivery (max 72 hours from now).
  * Returns the batchId which can be passed to `cancelScheduledEmail` to cancel before delivery.
  *

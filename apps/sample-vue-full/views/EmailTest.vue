@@ -58,15 +58,23 @@ const TYPES = [
   { value: 'dynamic', label: 'Dynamic Template' },
   { value: 'attachment', label: 'With Attachment' },
   { value: 'bulk', label: 'Bulk (multiple recipients)' },
+  { value: 'bulk-dynamic', label: 'Bulk Dynamic Template' },
   { value: 'scheduled', label: 'Scheduled Send' },
   { value: 'cancel', label: 'Cancel Scheduled' },
 ];
 
 const TEMPLATES = {
-  html: {
+  html: () => ({
     subject: 'Test Email',
     html: '<p>Hello from <strong>email2</strong>!</p><p>This is a test sent via the SendGrid v3 API.</p>',
-  },
+    '_docs (remove this)': 'All fields below are optional. Delete what you do not need.',
+    cc: [{ email: 'cc@example.com', name: 'CC Person' }],
+    bcc: [{ email: 'bcc@example.com' }],
+    replyTo: { email: 'reply@example.com', name: 'Reply Here' },
+    attachments: [{ content: 'SGVsbG8=', filename: 'hello.txt', type: 'text/plain' }],
+    sendAt: Math.floor(Date.now() / 1000) + 3600,
+    categories: ['test', 'newsletter'],
+  }),
   dynamic: () => ({
     templateId: 'd-xxxx (replace with your template ID)',
     data: {
@@ -79,8 +87,9 @@ const TEMPLATES = {
     replyTo: { email: 'reply@example.com', name: 'Reply Here' },
     sendAt: Math.floor(Date.now() / 1000) + 3600,
     attachments: [{ content: 'SGVsbG8=', filename: 'hello.txt', type: 'text/plain' }],
+    categories: ['test'],
   }),
-  attachment: {
+  attachment: () => ({
     subject: 'Email with Attachment',
     html: '<p>Please find the attached file.</p>',
     attachments: [
@@ -90,19 +99,49 @@ const TEMPLATES = {
         type: 'text/plain',
       },
     ],
-  },
-  bulk: {
+    '_docs (remove this)': 'All fields below are optional. Delete what you do not need.',
+    cc: [{ email: 'cc@example.com', name: 'CC Person' }],
+    bcc: [{ email: 'bcc@example.com' }],
+    replyTo: { email: 'reply@example.com', name: 'Reply Here' },
+    sendAt: Math.floor(Date.now() / 1000) + 3600,
+    categories: ['test'],
+  }),
+  bulk: () => ({
     subject: 'Bulk Test',
-    html: '<p>Hello!</p>',
+    html: '<p>Hello! This is a bulk email sent to multiple recipients.</p>',
     personalizations: [
-      { to: [{ email: 'replace-recipient-1@example.com' }] },
-      { to: [{ email: 'replace-recipient-2@example.com' }] },
+      { to: [{ email: 'recipient-1@example.com' }] },
+      { to: [{ email: 'recipient-2@example.com' }], subject: 'Custom subject for recipient 2' },
     ],
-  },
+    '_docs (remove this)':
+      'All fields below are optional. Delete what you do not need. Each personalization can override subject and add cc/bcc.',
+    attachments: [{ content: 'SGVsbG8=', filename: 'hello.txt', type: 'text/plain' }],
+    replyTo: { email: 'reply@example.com', name: 'Reply Here' },
+    sendAt: Math.floor(Date.now() / 1000) + 3600,
+    categories: ['bulk-test'],
+  }),
+  'bulk-dynamic': () => ({
+    templateId: 'd-xxxx (replace with your template ID)',
+    personalizations: [
+      { to: [{ email: 'recipient-1@example.com' }], dynamic_template_data: { name: 'Alice' } },
+      { to: [{ email: 'recipient-2@example.com' }], dynamic_template_data: { name: 'Bob' } },
+    ],
+    '_docs (remove this)':
+      'All fields below are optional. Delete what you do not need. Each personalization can have its own cc, bcc, subject override, and dynamic_template_data.',
+    replyTo: { email: 'reply@example.com', name: 'Reply Here' },
+    sendAt: Math.floor(Date.now() / 1000) + 3600,
+    categories: ['bulk-dynamic-test'],
+  }),
   scheduled: () => ({
     subject: 'Scheduled Email',
     html: '<p>This email was scheduled to be delivered in 1 hour.</p>',
     sendAt: Math.floor(Date.now() / 1000) + 3600,
+    '_docs (remove this)': 'All fields below are optional. Delete what you do not need.',
+    cc: [{ email: 'cc@example.com', name: 'CC Person' }],
+    bcc: [{ email: 'bcc@example.com' }],
+    replyTo: { email: 'reply@example.com', name: 'Reply Here' },
+    attachments: [{ content: 'SGVsbG8=', filename: 'hello.txt', type: 'text/plain' }],
+    categories: ['scheduled-test'],
   }),
   cancel: {
     batchId: 'replace-with-batch-id-from-scheduled-response',
@@ -111,7 +150,7 @@ const TEMPLATES = {
 
 const type = ref('html');
 const to = ref('');
-const bodyJson = ref(JSON.stringify(TEMPLATES.html, null, 2));
+const bodyJson = ref(JSON.stringify(TEMPLATES.html(), null, 2));
 const jsonError = ref('');
 const loading = ref(false);
 const result = ref(null);

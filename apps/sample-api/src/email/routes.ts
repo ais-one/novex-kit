@@ -1,5 +1,6 @@
 import {
   cancelScheduledEmail,
+  sendBulkDynamicEmail,
   sendBulkEmail,
   sendDynamicEmail,
   sendEmail,
@@ -43,9 +44,17 @@ export default express
       const dest = to as string | string[];
 
       switch (type) {
-        case 'html':
-          result = await sendEmail(dest, String(p.subject ?? 'Test Email'), String(p.html ?? ''));
+        case 'html': {
+          const opts: SgSendEmailOpts = {};
+          if (p.cc) opts.cc = p.cc as SgSendEmailOpts['cc'];
+          if (p.bcc) opts.bcc = p.bcc as SgSendEmailOpts['bcc'];
+          if (p.replyTo) opts.replyTo = p.replyTo as SgSendEmailOpts['replyTo'];
+          if (p.attachments) opts.attachments = p.attachments as SgAttachment[];
+          if (p.sendAt) opts.sendAt = Number(p.sendAt);
+          if (p.categories) opts.categories = p.categories as string[];
+          result = await sendEmail(dest, String(p.subject ?? 'Test Email'), String(p.html ?? ''), opts);
           break;
+        }
 
         case 'dynamic': {
           const opts: SgSendEmailOpts = {};
@@ -64,22 +73,50 @@ export default express
           break;
         }
 
-        case 'attachment':
+        case 'attachment': {
+          const opts: SgSendEmailOpts = {};
+          if (p.cc) opts.cc = p.cc as SgSendEmailOpts['cc'];
+          if (p.bcc) opts.bcc = p.bcc as SgSendEmailOpts['bcc'];
+          if (p.replyTo) opts.replyTo = p.replyTo as SgSendEmailOpts['replyTo'];
+          if (p.sendAt) opts.sendAt = Number(p.sendAt);
+          if (p.categories) opts.categories = p.categories as string[];
           result = await sendEmailWithAttachments(
             dest,
             String(p.subject ?? 'Test Email'),
             String(p.html ?? ''),
             (p.attachments as SgAttachment[]) ?? [],
+            opts,
           );
           break;
+        }
 
-        case 'bulk':
+        case 'bulk': {
+          const opts: SgSendEmailOpts = {};
+          if (p.attachments) opts.attachments = p.attachments as SgAttachment[];
+          if (p.sendAt) opts.sendAt = Number(p.sendAt);
+          if (p.categories) opts.categories = p.categories as string[];
+          if (p.replyTo) opts.replyTo = p.replyTo as SgSendEmailOpts['replyTo'];
           result = await sendBulkEmail(
             (p.personalizations as SgPersonalization[]) ?? [],
             String(p.subject ?? 'Bulk Email'),
             String(p.html ?? ''),
+            opts,
           );
           break;
+        }
+
+        case 'bulk-dynamic': {
+          const opts: SgSendEmailOpts = {};
+          if (p.sendAt) opts.sendAt = Number(p.sendAt);
+          if (p.categories) opts.categories = p.categories as string[];
+          if (p.replyTo) opts.replyTo = p.replyTo as SgSendEmailOpts['replyTo'];
+          result = await sendBulkDynamicEmail(
+            String(p.templateId ?? ''),
+            (p.personalizations as SgPersonalization[]) ?? [],
+            opts,
+          );
+          break;
+        }
 
         case 'scheduled': {
           const sendAt = Number(p.sendAt);
@@ -87,7 +124,19 @@ export default express
             res.status(400).json({ ok: false, error: 'sendAt (unix timestamp) is required for scheduled type' });
             return;
           }
-          result = await sendScheduledEmail(dest, String(p.subject ?? 'Scheduled Email'), String(p.html ?? ''), sendAt);
+          const opts: SgSendEmailOpts = {};
+          if (p.cc) opts.cc = p.cc as SgSendEmailOpts['cc'];
+          if (p.bcc) opts.bcc = p.bcc as SgSendEmailOpts['bcc'];
+          if (p.replyTo) opts.replyTo = p.replyTo as SgSendEmailOpts['replyTo'];
+          if (p.attachments) opts.attachments = p.attachments as SgAttachment[];
+          if (p.categories) opts.categories = p.categories as string[];
+          result = await sendScheduledEmail(
+            dest,
+            String(p.subject ?? 'Scheduled Email'),
+            String(p.html ?? ''),
+            sendAt,
+            opts,
+          );
           break;
         }
 
