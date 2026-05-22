@@ -1,40 +1,68 @@
 const { test, expect } = require('@playwright/test');
 
-// https://github.com/calm1205/vite-playwright-msw/blob/main/src/__tests__/index.spec.ts
+// Shared login helper — reused across test suites
+async function loginWithMsw(page) {
+  await page.goto('/');
+  await page.getByTestId('username').fill('test@example.com');
+  await page.getByTestId('password').fill('password123');
+  await page.getByTestId('login').click();
+  await page.getByTestId('pin').fill('111111');
+  await page.getByTestId('otp').click();
+  await page.waitForURL('**/dashboard');
+}
 
-const BASE_URL = 'http://127.0.0.1:8080/';
-test.describe('New Todo', () => {
-  test.beforeEach(async ({ page }) => await page.goto(BASE_URL));
+test.describe('Sign-in flow', () => {
+  test('completes login and OTP and lands on dashboard', async ({ page }) => {
+    await loginWithMsw(page);
+    await expect(page).toHaveURL(/dashboard/);
+  });
 
-  test('basic test', async ({ page }) => {
-    page.on('console', msg => {
-      console.log(msg);
-    });
-    await page.waitForTimeout(2000);
+  test('shows OTP screen after submitting login credentials', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('username').fill('test@example.com');
+    await page.getByTestId('password').fill('password123');
+    await page.getByTestId('login').click();
+    await expect(page.getByTestId('pin')).toBeVisible();
+    await expect(page.getByTestId('otp')).toBeVisible();
+  });
+});
 
-    // await page.goto('http://127.0.0.1:8080/')
+test.describe('Dashboard', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginWithMsw(page);
+  });
 
-    // await page.locator('text=Login').click()
-    await page.locator('[data-cy="login"]').click();
-    // await page.waitForURL('**/') // need timeout
-    await expect(page.url()).toEqual(BASE_URL);
+  test('renders the dashboard page after login', async ({ page }) => {
+    await expect(page).toHaveURL(/dashboard/);
+    await expect(page.locator('.secure-layout, .dashboard, main')).toBeVisible();
+  });
 
-    const xx = await page.locator('[data-cy="otp"]').click();
-    console.log('>>>>', xx);
-    // .click()
+  test('sidebar is visible with navigation links', async ({ page }) => {
+    await expect(page.locator('.ant-layout-sider, aside')).toBeVisible();
+  });
+});
 
-    // await page.locator('text=Login').click()
-    // await expect(page.url()).toEqual(BASE_URL)
+test.describe('T4t Student table', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginWithMsw(page);
+    await page.goto('/t4t/student');
+    await page.waitForLoadState('networkidle');
+  });
 
-    await page.waitForURL('**/dashboard'); // need timeout
-    await expect(page.url()).toEqual(`${BASE_URL}dashboard`);
+  test('loads the student table with mock data', async ({ page }) => {
+    await expect(page.getByRole('cell', { name: 'Alice' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Bob' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Carol' })).toBeVisible();
+  });
 
-    // console.log(page.url())
-    // await page.waitForTimeout(2000)
-    // await page.waitForNavigation()
-    // Get page after a specific action (e.g. clicking a link)
-    // await page.goto('https://playwright.dev/')
-    // const title = page.locator('.navbar__inner .navbar__title')
-    // await expect(title).toHaveText('Playwright')
+  test('opens the filter drawer when Filter button is clicked', async ({ page }) => {
+    await page.getByRole('button', { name: /filter/i }).click();
+    await expect(page.getByText('Add Filter')).toBeVisible();
+    await expect(page.getByText('Apply')).toBeVisible();
+  });
+
+  test('opens the create drawer when Create button is clicked', async ({ page }) => {
+    await page.getByRole('button', { name: /create/i }).click();
+    await expect(page.getByText('Create Record')).toBeVisible();
   });
 });

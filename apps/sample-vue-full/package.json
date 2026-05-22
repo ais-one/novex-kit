@@ -8,7 +8,7 @@
     "dev:mocked": "vite --mode mocked",
     "build": "vite build --mode production",
     "lint": "biome check .",
-    "test:e2e": "echo \"Run frontend and backend before playwright test\" && exit 0"
+    "test:e2e": "playwright test --config playwright.config.cjs"
   },
   "keywords": [],
   "author": "",
