@@ -88,3 +88,55 @@ export interface SendEmailOpts {
 export interface SgSendEmailOpts extends SendEmailOpts {
   attachments?: SgAttachment[];
 }
+
+// ─── Template Management ──────────────────────────────────────────────────────
+
+export interface SgTemplateVersion {
+  /** UUID of the version */
+  id: string;
+  /** Parent template ID (d-xxxx) */
+  template_id: string;
+  /** 1 = active (the version that gets sent), 0 = inactive draft */
+  active: 0 | 1;
+  /** Display name for this version */
+  name: string;
+  /** Email subject line */
+  subject?: string;
+  /** Full HTML body */
+  html_content?: string;
+  /** Plain-text fallback */
+  plain_content?: string;
+  /** Whether to auto-generate plain_content from html_content */
+  generate_plain_content?: boolean;
+  /** 'code' (raw HTML editor) or 'design' (drag-and-drop) */
+  editor?: 'code' | 'design';
+  updated_at?: string;
+  thumbnail_url?: string;
+}
+
+export interface SgTemplate {
+  /** Template ID — always starts with d- for dynamic templates */
+  id: string;
+  name: string;
+  generation: 'legacy' | 'dynamic';
+  updated_at?: string;
+  versions?: SgTemplateVersion[];
+}
+
+/** Payload for creating or updating a template version. */
+export interface SgTemplateVersionData {
+  /** Display name for this version */
+  name: string;
+  /** Email subject line — supports Handlebars: {{subject}} */
+  subject?: string;
+  /** Full HTML body — supports Handlebars: {{name}} */
+  html_content?: string;
+  /** Plain-text fallback */
+  plain_content?: string;
+  /** Auto-generate plain content from HTML (default true) */
+  generate_plain_content?: boolean;
+  /** 1 = make this the active version immediately */
+  active?: 0 | 1;
+  /** Editor type used in the SendGrid dashboard UI */
+  editor?: 'code' | 'design';
+}

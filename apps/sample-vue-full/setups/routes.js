@@ -67,6 +67,8 @@ export const SECURE_ROUTES = [
     name: 'WA Templates',
     component: async () => import('../views/WhatsAppTemplates.vue'),
   },
+  { path: '/email/test', name: 'Email Test', component: async () => import('../views/EmailTest.vue') },
+  { path: '/email/templates', name: 'Email Templates', component: async () => import('../views/EmailTemplates.vue') },
 
   { path: '/demo-view/fill', name: 'Fill No Param', component: async () => import('../views/Demo/Filler.vue') },
   {
