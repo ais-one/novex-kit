@@ -1,6 +1,15 @@
 // SendGrid v3 Mail Send API — shared types
 // Docs: https://docs.sendgrid.com/api-reference/mail-send/mail-send
 
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+/** Credentials required for all SendGrid operations. */
+export interface SendGridAuth {
+  apiKey: string;
+  senderName: string;
+  senderEmail: string;
+}
+
 // ─── Outbound ─────────────────────────────────────────────────────────────────
 
 export interface SgEmailAddress {

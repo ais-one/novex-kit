@@ -7,17 +7,16 @@ import {
   sendEmailWithAttachments,
   sendScheduledEmail,
 } from '@common/node/comms/sendgrid/outbound';
-import type { SgAttachment, SgPersonalization, SgSendEmailOpts } from '@common/node/comms/sendgrid/types';
+import type { SendGridAuth, SgAttachment, SgPersonalization, SgSendEmailOpts } from '@common/node/comms/sendgrid/types';
+import { resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
 import type { Request, Response } from 'express';
 import express from 'express';
 
 // SendGrid email test dispatcher
 // Docs: https://docs.sendgrid.com/api-reference/mail-send/mail-send
 //
-// Required env vars (set in .env.local):
-//   SENDGRID_KEY          — API key from SendGrid Dashboard → Settings → API Keys
-//   SENDGRID_SENDER_NAME  — display name in From field
-//   SENDGRID_SENDER_EMAIL — verified sender email address
+// Credentials are resolved per-tenant from the database via resolveCommsCredentials().
+// Each tenant must configure their own SendGrid API key and sender identity.
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,21 +34,22 @@ function buildOpts(p: Record<string, unknown>): SgSendEmailOpts {
 
 // ─── Type handlers ────────────────────────────────────────────────────────────
 
-async function handleHtml(dest: string | string[], p: Record<string, unknown>) {
+async function handleHtml(auth: SendGridAuth, dest: string | string[], p: Record<string, unknown>) {
   const opts = buildOpts(p);
-  return sendEmail(dest, String(p.subject ?? 'Test Email'), String(p.html ?? ''), opts);
+  return sendEmail(auth, dest, String(p.subject ?? 'Test Email'), String(p.html ?? ''), opts);
 }
 
-async function handleDynamic(dest: string | string[], p: Record<string, unknown>) {
+async function handleDynamic(auth: SendGridAuth, dest: string | string[], p: Record<string, unknown>) {
   const opts = buildOpts(p);
-  return sendDynamicEmail(dest, String(p.templateId ?? ''), (p.data as Record<string, unknown>) ?? {}, opts);
+  return sendDynamicEmail(auth, dest, String(p.templateId ?? ''), (p.data as Record<string, unknown>) ?? {}, opts);
 }
 
-async function handleAttachment(dest: string | string[], p: Record<string, unknown>) {
+async function handleAttachment(auth: SendGridAuth, dest: string | string[], p: Record<string, unknown>) {
   const opts = buildOpts(p);
   // attachments are passed as both the required param and in opts (sendEmailWithAttachments merges them)
   delete opts.attachments;
   return sendEmailWithAttachments(
+    auth,
     dest,
     String(p.subject ?? 'Test Email'),
     String(p.html ?? ''),
@@ -58,9 +58,10 @@ async function handleAttachment(dest: string | string[], p: Record<string, unkno
   );
 }
 
-async function handleBulk(p: Record<string, unknown>) {
+async function handleBulk(auth: SendGridAuth, p: Record<string, unknown>) {
   const opts = buildOpts(p);
   return sendBulkEmail(
+    auth,
     (p.personalizations as SgPersonalization[]) ?? [],
     String(p.subject ?? 'Bulk Email'),
     String(p.html ?? ''),
@@ -68,27 +69,32 @@ async function handleBulk(p: Record<string, unknown>) {
   );
 }
 
-async function handleBulkDynamic(p: Record<string, unknown>) {
+async function handleBulkDynamic(auth: SendGridAuth, p: Record<string, unknown>) {
   const opts = buildOpts(p);
-  return sendBulkDynamicEmail(String(p.templateId ?? ''), (p.personalizations as SgPersonalization[]) ?? [], opts);
+  return sendBulkDynamicEmail(
+    auth,
+    String(p.templateId ?? ''),
+    (p.personalizations as SgPersonalization[]) ?? [],
+    opts,
+  );
 }
 
-async function handleScheduled(dest: string | string[], p: Record<string, unknown>, res: Response) {
+async function handleScheduled(auth: SendGridAuth, dest: string | string[], p: Record<string, unknown>, res: Response) {
   const sendAt = Number(p.sendAt);
   if (!sendAt || Number.isNaN(sendAt)) {
     res.status(400).json({ ok: false, error: 'sendAt (unix timestamp) is required for scheduled type' });
     return null;
   }
   const opts = buildOpts(p);
-  return sendScheduledEmail(dest, String(p.subject ?? 'Scheduled Email'), String(p.html ?? ''), sendAt, opts);
+  return sendScheduledEmail(auth, dest, String(p.subject ?? 'Scheduled Email'), String(p.html ?? ''), sendAt, opts);
 }
 
-async function handleCancel(p: Record<string, unknown>, res: Response) {
+async function handleCancel(auth: SendGridAuth, p: Record<string, unknown>, res: Response) {
   if (!p.batchId) {
     res.status(400).json({ ok: false, error: 'batchId is required for cancel type' });
     return null;
   }
-  return cancelScheduledEmail(String(p.batchId ?? ''));
+  return cancelScheduledEmail(auth, String(p.batchId ?? ''));
 }
 
 // ─── Route ────────────────────────────────────────────────────────────────────
@@ -97,10 +103,32 @@ export default express
   .Router()
 
   // ── POST /api/sample-api/sendgrid/test ────────────────────────────────────────
-  // Multi-type test dispatcher — no auth.
+  // Multi-type test dispatcher.
   // Body: { type, to, ...type-specific fields }
+  // Requires authenticated user with tenant_id for credential resolution.
   // See EmailTest.vue for sample payloads per type.
   .post('/test', async (req: Request, res: Response) => {
+    const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
+    if (!tenantId) {
+      res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
+      return;
+    }
+
+    let auth: SendGridAuth;
+    try {
+      const config = await resolveCommsCredentials(tenantId, 'email');
+      auth = {
+        apiKey: config.credentials.api_key,
+        senderName: config.senderIdentity.sender_name,
+        senderEmail: config.senderIdentity.sender_email,
+      };
+    } catch (err: unknown) {
+      res
+        .status(500)
+        .json({ ok: false, error: err instanceof Error ? err.message : 'Failed to resolve email credentials' });
+      return;
+    }
+
     const { type, to, ...p } = req.body as Record<string, unknown>;
 
     if (!type || typeof type !== 'string') {
@@ -119,26 +147,26 @@ export default express
 
       switch (type) {
         case 'html':
-          result = await handleHtml(dest, p);
+          result = await handleHtml(auth, dest, p);
           break;
         case 'dynamic':
-          result = await handleDynamic(dest, p);
+          result = await handleDynamic(auth, dest, p);
           break;
         case 'attachment':
-          result = await handleAttachment(dest, p);
+          result = await handleAttachment(auth, dest, p);
           break;
         case 'bulk':
-          result = await handleBulk(p);
+          result = await handleBulk(auth, p);
           break;
         case 'bulk-dynamic':
-          result = await handleBulkDynamic(p);
+          result = await handleBulkDynamic(auth, p);
           break;
         case 'scheduled':
-          result = await handleScheduled(dest, p, res);
+          result = await handleScheduled(auth, dest, p, res);
           if (result === null) return;
           break;
         case 'cancel':
-          result = await handleCancel(p, res);
+          result = await handleCancel(auth, p, res);
           if (result === null) return;
           break;
         default:

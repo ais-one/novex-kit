@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
 import { parseWebhook } from '@common/node/comms/whatsapp2/inbound';
 import {
   getMediaUrl,
@@ -222,7 +223,8 @@ export default express
   })
 
   // ── POST /api/sample-api/whatsapp/send ──────────────────────────────────────
-  // Simple text send — no auth. Body: { to, message }
+  // Simple text send. Body: { to, message }
+  // Requires authenticated user with tenant_id for credential resolution.
   .post('/send', async (req: Request, res: Response) => {
     const { to, message } = req.body as { to?: string; message?: string };
     if (!to || !message) {
@@ -230,11 +232,14 @@ export default express
       return;
     }
     try {
-      const { WHATSAPP_TOKEN: token = '', WHATSAPP_PHONE_NUMBER_ID: phoneId = '' } = process.env;
-      if (!token || !phoneId) {
-        res.status(500).json({ ok: false, error: 'WHATSAPP_TOKEN or WHATSAPP_PHONE_NUMBER_ID not set' });
+      const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
+      if (!tenantId) {
+        res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
         return;
       }
+      const config = await resolveCommsCredentials(tenantId, 'whatsapp');
+      const token = config.credentials.token;
+      const phoneId = config.senderIdentity.phone_number_id;
       await sendText(token, phoneId, to, message);
       res.json({ ok: true });
     } catch (err: unknown) {
@@ -243,14 +248,27 @@ export default express
   })
 
   // ── POST /api/sample-api/whatsapp/test ──────────────────────────────────────
-  // Multi-type test dispatcher — no auth.
+  // Multi-type test dispatcher.
   // Body: { type, to, ...type-specific fields }
+  // Requires authenticated user with tenant_id for credential resolution.
   // See WhatsAppTest.vue for sample payloads per type.
   .post('/test', async (req: Request, res: Response) => {
-    const { WHATSAPP_TOKEN: token = '', WHATSAPP_PHONE_NUMBER_ID: phoneId = '' } = process.env;
+    const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
+    if (!tenantId) {
+      res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
+      return;
+    }
 
-    if (!token || !phoneId) {
-      res.status(500).json({ ok: false, error: 'WHATSAPP_TOKEN or WHATSAPP_PHONE_NUMBER_ID not set' });
+    let token: string;
+    let phoneId: string;
+    try {
+      const config = await resolveCommsCredentials(tenantId, 'whatsapp');
+      token = config.credentials.token;
+      phoneId = config.senderIdentity.phone_number_id;
+    } catch (err: unknown) {
+      res
+        .status(500)
+        .json({ ok: false, error: err instanceof Error ? err.message : 'Failed to resolve WhatsApp credentials' });
       return;
     }
 

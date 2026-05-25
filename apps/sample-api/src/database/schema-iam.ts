@@ -5,6 +5,7 @@ import {
   index,
   integer,
   json,
+  jsonb,
   pgSchema,
   primaryKey,
   serial,
@@ -339,4 +340,24 @@ export const userTenantRoles = iamSchema.table(
     primaryKey({ columns: [t.user_id, t.tenant_id, t.role_id] }),
     index('idx_user_tenant_roles_lookup').on(t.user_id, t.tenant_id),
   ],
+);
+
+// ─── tenant_comms_config ──────────────────────────────────────────────────────
+
+export const tenantCommsConfig = iamSchema.table(
+  'tenant_comms_config',
+  {
+    id: serial('id').primaryKey(),
+    tenant_id: integer('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    channel: varchar('channel', { length: 50 }).notNull(),
+    provider: varchar('provider', { length: 50 }).notNull(),
+    credentials: text('credentials').notNull(),
+    sender_identity: jsonb('sender_identity').notNull().default({}),
+    is_active: boolean('is_active').notNull().default(true),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
+  },
+  t => [unique().on(t.tenant_id, t.channel, t.provider)],
 );

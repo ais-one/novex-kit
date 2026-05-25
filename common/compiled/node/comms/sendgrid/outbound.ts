@@ -1,15 +1,15 @@
 // SendGrid v3 Mail Send API — outbound helpers
 // Docs: https://docs.sendgrid.com/api-reference/mail-send/mail-send
 //
-// All functions read credentials from env at call time:
-//   SENDGRID_KEY          — required for all operations
-//   SENDGRID_SENDER_NAME  — display name in From field
-//   SENDGRID_SENDER_EMAIL — From email address (must be a verified sender)
-//   SENDGRID_URL          — optional override (defaults to SendGrid global endpoint)
-//   SENDGRID_DEBUG        — set to 'true' to log every request and response body
+// All functions accept a SendGridAuth object as the first parameter.
+// The caller is responsible for providing credentials (e.g. from tenant config resolver).
+//
+// Optional env vars:
+//   SENDGRID_URL   — override the SendGrid API endpoint (defaults to global endpoint)
+//   SENDGRID_DEBUG — set to 'true' to log every request and response body
 
 import crypto from 'node:crypto';
-import type { SendEmailOpts, SgAttachment, SgPersonalization, SgSendEmailOpts } from './types.ts';
+import type { SendEmailOpts, SendGridAuth, SgAttachment, SgPersonalization, SgSendEmailOpts } from './types.ts';
 
 const BASE_URL = 'https://api.sendgrid.com/v3/mail/send';
 
@@ -36,28 +36,13 @@ function randomHash() {
   return crypto.createHash('sha256').update(Date.now().toString()).digest('hex').slice(0, 15);
 }
 
-function getApiKey(): string {
-  const key = process.env.SENDGRID_KEY;
-  if (!key) throw new Error('SENDGRID_KEY is not defined');
-  return key;
-}
-
-function getCredentials() {
-  const key = getApiKey();
-  const { SENDGRID_SENDER_NAME: senderName, SENDGRID_SENDER_EMAIL: senderEmail } = process.env;
-  if (!senderName) throw new Error('SENDGRID_SENDER_NAME is not defined');
-  if (!senderEmail) throw new Error('SENDGRID_SENDER_EMAIL is not defined');
-  return { key, senderName, senderEmail };
-}
-
-async function sgMailSend(body: Record<string, unknown>) {
-  const key = getApiKey();
+async function sgMailSend(apiKey: string, body: Record<string, unknown>) {
   const url = process.env.SENDGRID_URL ?? BASE_URL;
   sgLog('→', `POST ${url}`, body);
 
   const res = await fetch(url, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
 
@@ -90,27 +75,27 @@ function toAddresses(to: string | string[]) {
 // ─── Outbound functions ───────────────────────────────────────────────────────
 
 /**
- * Send an HTML email. Upgraded replacement for the v1 `sendEmail` helper.
+ * Send an HTML email.
  * Supports CC/BCC, reply-to, plain text fallback, attachments, categories, tracking, and scheduling.
  *
  * @example
- * await sendEmail('user@example.com', 'Hello', '<p>World</p>');
- * await sendEmail(['a@x.com', 'b@x.com'], 'Hi', '<p>Hi</p>', { cc: [{ email: 'mgr@x.com' }] });
+ * await sendEmail(auth, 'user@example.com', 'Hello', '<p>World</p>');
+ * await sendEmail(auth, ['a@x.com', 'b@x.com'], 'Hi', '<p>Hi</p>', { cc: [{ email: 'mgr@x.com' }] });
  */
 export async function sendEmail(
+  auth: SendGridAuth,
   to: string | string[],
   subject: string,
   htmlContent: string,
   opts: SgSendEmailOpts = {},
 ) {
-  const { senderName, senderEmail } = getCredentials();
   const personalization: SgPersonalization = { to: toAddresses(to) };
   if (opts.cc?.length) personalization.cc = opts.cc;
   if (opts.bcc?.length) personalization.bcc = opts.bcc;
 
   const body: Record<string, unknown> = {
     personalizations: [personalization],
-    from: { name: senderName, email: senderEmail },
+    from: { name: auth.senderName, email: auth.senderEmail },
     subject,
     content: [
       ...(opts.plainContent ? [{ type: 'text/plain', value: opts.plainContent }] : []),
@@ -121,24 +106,23 @@ export async function sendEmail(
 
   if (opts.attachments?.length) body.attachments = opts.attachments;
   applyOpts(body, opts);
-  return sgMailSend(body);
+  return sgMailSend(auth.apiKey, body);
 }
 
 /**
  * Send an email using a stored SendGrid dynamic template (Handlebars).
- * Upgraded replacement for the v1 `sendDynamicEmail` — templateId is an explicit parameter,
- * not hardcoded from env, so different templates can be used per call.
+ * templateId is an explicit parameter so different templates can be used per call.
  *
  * @example
- * await sendDynamicEmail('user@example.com', 'd-xxxx', { firstName: 'Alice', resetLink: 'https://...' });
+ * await sendDynamicEmail(auth, 'user@example.com', 'd-xxxx', { firstName: 'Alice', resetLink: 'https://...' });
  */
 export async function sendDynamicEmail(
+  auth: SendGridAuth,
   to: string | string[],
   templateId: string,
   dynamicData: Record<string, unknown>,
   opts: SgSendEmailOpts = {},
 ) {
-  const { senderName, senderEmail } = getCredentials();
   const personalization: SgPersonalization = {
     to: toAddresses(to),
     dynamic_template_data: dynamicData,
@@ -148,13 +132,13 @@ export async function sendDynamicEmail(
 
   const body: Record<string, unknown> = {
     personalizations: [personalization],
-    from: { name: senderName, email: senderEmail },
+    from: { name: auth.senderName, email: auth.senderEmail },
     template_id: templateId,
     headers: { 'X-Entity-Ref-ID': randomHash(), ...opts.headers },
   };
   if (opts.attachments?.length) body.attachments = opts.attachments;
   applyOpts(body, opts);
-  return sgMailSend(body);
+  return sgMailSend(auth.apiKey, body);
 }
 
 /**
@@ -164,18 +148,19 @@ export async function sendDynamicEmail(
  * @example
  * import { readFileSync } from 'node:fs';
  * const content = readFileSync('./invoice.pdf').toString('base64');
- * await sendEmailWithAttachments('user@example.com', 'Invoice', '<p>See attached.</p>', [
+ * await sendEmailWithAttachments(auth, 'user@example.com', 'Invoice', '<p>See attached.</p>', [
  *   { content, filename: 'invoice.pdf', type: 'application/pdf' },
  * ]);
  */
 export async function sendEmailWithAttachments(
+  auth: SendGridAuth,
   to: string | string[],
   subject: string,
   htmlContent: string,
   attachments: SgAttachment[],
   opts: SendEmailOpts = {},
 ) {
-  return sendEmail(to, subject, htmlContent, { ...opts, attachments });
+  return sendEmail(auth, to, subject, htmlContent, { ...opts, attachments });
 }
 
 /**
@@ -183,7 +168,7 @@ export async function sendEmailWithAttachments(
  * Each personalization can override subject, add CC/BCC, or set per-recipient dynamic template data.
  *
  * @example
- * await sendBulkEmail(
+ * await sendBulkEmail(auth,
  *   [
  *     { to: [{ email: 'alice@example.com' }], dynamic_template_data: { name: 'Alice' } },
  *     { to: [{ email: 'bob@example.com' }], dynamic_template_data: { name: 'Bob' } },
@@ -193,15 +178,15 @@ export async function sendEmailWithAttachments(
  * );
  */
 export async function sendBulkEmail(
+  auth: SendGridAuth,
   personalizations: SgPersonalization[],
   subject: string,
   htmlContent: string,
   opts: SgSendEmailOpts = {},
 ) {
-  const { senderName, senderEmail } = getCredentials();
   const body: Record<string, unknown> = {
     personalizations,
-    from: { name: senderName, email: senderEmail },
+    from: { name: auth.senderName, email: auth.senderEmail },
     subject,
     content: [
       ...(opts.plainContent ? [{ type: 'text/plain', value: opts.plainContent }] : []),
@@ -211,7 +196,7 @@ export async function sendBulkEmail(
   };
   if (opts.attachments?.length) body.attachments = opts.attachments;
   applyOpts(body, opts);
-  return sgMailSend(body);
+  return sgMailSend(auth.apiKey, body);
 }
 
 /**
@@ -219,25 +204,25 @@ export async function sendBulkEmail(
  * Each personalization can have its own dynamic_template_data, CC/BCC, and subject override.
  *
  * @example
- * await sendBulkDynamicEmail('d-xxxx', [
+ * await sendBulkDynamicEmail(auth, 'd-xxxx', [
  *   { to: [{ email: 'alice@example.com' }], dynamic_template_data: { name: 'Alice' } },
  *   { to: [{ email: 'bob@example.com' }], dynamic_template_data: { name: 'Bob' } },
  * ]);
  */
 export async function sendBulkDynamicEmail(
+  auth: SendGridAuth,
   templateId: string,
   personalizations: SgPersonalization[],
   opts: SendEmailOpts = {},
 ) {
-  const { senderName, senderEmail } = getCredentials();
   const body: Record<string, unknown> = {
     personalizations,
-    from: { name: senderName, email: senderEmail },
+    from: { name: auth.senderName, email: auth.senderEmail },
     template_id: templateId,
     headers: { 'X-Entity-Ref-ID': randomHash(), ...opts.headers },
   };
   applyOpts(body, opts);
-  return sgMailSend(body);
+  return sgMailSend(auth.apiKey, body);
 }
 
 /**
@@ -248,17 +233,18 @@ export async function sendBulkDynamicEmail(
  *
  * @example
  * const inOneHour = Math.floor(Date.now() / 1000) + 3600;
- * const { batchId } = await sendScheduledEmail('user@example.com', 'Reminder', '<p>Hi</p>', inOneHour);
+ * const { batchId } = await sendScheduledEmail(auth, 'user@example.com', 'Reminder', '<p>Hi</p>', inOneHour);
  */
 export async function sendScheduledEmail(
+  auth: SendGridAuth,
   to: string | string[],
   subject: string,
   htmlContent: string,
   sendAt: number,
   opts: SgSendEmailOpts = {},
 ) {
-  const batchId = opts.batchId ?? (await generateBatchId());
-  await sendEmail(to, subject, htmlContent, { ...opts, sendAt, batchId });
+  const batchId = opts.batchId ?? (await generateBatchId(auth));
+  await sendEmail(auth, to, subject, htmlContent, { ...opts, sendAt, batchId });
   return { batchId };
 }
 
@@ -270,18 +256,19 @@ export async function sendScheduledEmail(
  *
  * @example
  * const inOneHour = Math.floor(Date.now() / 1000) + 3600;
- * const { batchId } = await sendScheduledDynamicEmail('user@example.com', 'd-xxxx', { name: 'Alice' }, inOneHour);
- * // Later: await cancelScheduledEmail(batchId);
+ * const { batchId } = await sendScheduledDynamicEmail(auth, 'user@example.com', 'd-xxxx', { name: 'Alice' }, inOneHour);
+ * // Later: await cancelScheduledEmail(auth, batchId);
  */
 export async function sendScheduledDynamicEmail(
+  auth: SendGridAuth,
   to: string | string[],
   templateId: string,
   dynamicData: Record<string, unknown>,
   sendAt: number,
   opts: SgSendEmailOpts = {},
 ) {
-  const batchId = opts.batchId ?? (await generateBatchId());
-  await sendDynamicEmail(to, templateId, dynamicData, { ...opts, sendAt, batchId });
+  const batchId = opts.batchId ?? (await generateBatchId(auth));
+  await sendDynamicEmail(auth, to, templateId, dynamicData, { ...opts, sendAt, batchId });
   return { batchId };
 }
 
@@ -290,17 +277,16 @@ export async function sendScheduledDynamicEmail(
  * Only works before the scheduled send_at time arrives.
  *
  * @example
- * await cancelScheduledEmail(batchId);
+ * await cancelScheduledEmail(auth, batchId);
  */
-export async function cancelScheduledEmail(batchId: string) {
-  const key = getApiKey();
+export async function cancelScheduledEmail(auth: SendGridAuth, batchId: string) {
   const url = 'https://api.sendgrid.com/v3/user/scheduled_sends';
   const payload = { batch_id: batchId, status: 'cancel' };
   sgLog('→', `POST ${url}`, payload);
 
   const res = await fetch(url, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${auth.apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
 
@@ -319,21 +305,20 @@ export async function cancelScheduledEmail(batchId: string) {
 /**
  * Generate a SendGrid batch ID for use with scheduled sends.
  * Pass the returned ID as `opts.batchId` to any send function along with `opts.sendAt`,
- * then use `cancelScheduledEmail(batchId)` to cancel before delivery.
+ * then use `cancelScheduledEmail(auth, batchId)` to cancel before delivery.
  *
  * @example
- * const batchId = await generateBatchId();
- * await sendDynamicEmail(to, templateId, data, { sendAt: inOneHour, batchId });
- * // Later: await cancelScheduledEmail(batchId);
+ * const batchId = await generateBatchId(auth);
+ * await sendDynamicEmail(auth, to, templateId, data, { sendAt: inOneHour, batchId });
+ * // Later: await cancelScheduledEmail(auth, batchId);
  */
-export async function generateBatchId(): Promise<string> {
-  const key = getApiKey();
+export async function generateBatchId(auth: SendGridAuth): Promise<string> {
   const url = 'https://api.sendgrid.com/v3/mail/batch';
   sgLog('→', `POST ${url}`, {});
 
   const res = await fetch(url, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${auth.apiKey}`, 'Content-Type': 'application/json' },
   });
 
   const data = (await res.json()) as { batch_id?: string };

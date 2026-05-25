@@ -73,6 +73,7 @@ export const SECURE_ROUTES = [
     name: 'Email Templates',
     component: async () => import('../views/SendgridTemplates.vue'),
   },
+  { path: '/comms-config', name: 'Comms Config', component: async () => import('../views/TenantCommsConfig.vue') },
 
   { path: '/demo-view/fill', name: 'Fill No Param', component: async () => import('../views/Demo/Filler.vue') },
   {

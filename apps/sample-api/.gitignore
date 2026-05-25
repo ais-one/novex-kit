@@ -49,6 +49,7 @@ src/*/routes.ts
 !src/sendgrid/template-routes.ts
 !src/sendgrid/webhook-routes.ts
 !src/sse/routes.ts
+!src/tenant-comms/routes.ts
 !src/tests/routes.ts
 !src/webhooks/routes.ts
 !src/webpush/routes.ts
