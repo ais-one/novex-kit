@@ -1,4 +1,4 @@
-// SendGrid v3 Mail Send API — outbound helpers (email2)
+// SendGrid v3 Mail Send API — outbound helpers
 // Docs: https://docs.sendgrid.com/api-reference/mail-send/mail-send
 //
 // All functions read credentials from env at call time:

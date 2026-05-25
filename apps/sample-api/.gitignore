@@ -44,8 +44,10 @@ src/*/routes.ts
 # but these are listed explicitly for clarity.
 !src/auth/routes.ts
 !src/base/routes.ts
-!src/email/routes.ts
 !src/fido/routes.ts
+!src/sendgrid/routes.ts
+!src/sendgrid/template-routes.ts
+!src/sendgrid/webhook-routes.ts
 !src/sse/routes.ts
 !src/tests/routes.ts
 !src/webhooks/routes.ts

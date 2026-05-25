@@ -1,4 +1,4 @@
-// SendGrid v3 Dynamic Templates API — template management helpers (email2)
+// SendGrid v3 Dynamic Templates API — template management helpers
 // Docs: https://docs.sendgrid.com/api-reference/transactional-templates/
 //
 // Uses the same SENDGRID_KEY as outbound.ts — no additional env vars needed.

@@ -1,6 +1,6 @@
 <template>
   <div class="email-test-wrap">
-    <a-card title="Email Test Sender (email2)" style="max-width: 640px; margin: 40px auto">
+    <a-card title="SendGrid Email Test" style="max-width: 640px; margin: 40px auto">
       <a-form layout="vertical" @submit.prevent="send">
         <a-row :gutter="12">
           <a-col :span="10">
@@ -66,7 +66,7 @@ const TYPES = [
 const TEMPLATES = {
   html: () => ({
     subject: 'Test Email',
-    html: '<p>Hello from <strong>email2</strong>!</p><p>This is a test sent via the SendGrid v3 API.</p>',
+    html: '<p>Hello from <strong>SendGrid</strong>!</p><p>This is a test sent via the SendGrid v3 API.</p>',
     '_docs (remove this)': 'All fields below are optional. Delete what you do not need.',
     cc: [{ email: 'cc@example.com', name: 'CC Person' }],
     bcc: [{ email: 'bcc@example.com' }],
@@ -185,7 +185,7 @@ async function send() {
   loading.value = true;
   result.value = null;
   try {
-    const res = await fetch(`${API_URL}/api/sample-api/email/test`, {
+    const res = await fetch(`${API_URL}/api/sample-api/sendgrid/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

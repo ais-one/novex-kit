@@ -1,4 +1,4 @@
-// SendGrid v3 Inbound Parse — webhook payload parser (email2)
+// SendGrid v3 Inbound Parse — webhook payload parser
 // Docs: https://docs.sendgrid.com/for-developers/parsing-email/setting-up-the-inbound-parse-webhook
 //
 // SendGrid Inbound Parse POSTs a multipart/form-data payload to your webhook URL
@@ -9,7 +9,6 @@
 // express raw body) for the inbound route. The parsed fields arrive as req.body
 // (text fields) and req.files (attachments).
 
-import { str } from '@common/iso/str';
 import type { SgInboundAttachment, SgInboundEmail } from './types.ts';
 
 export type { SgInboundAttachment, SgInboundEmail };
@@ -95,17 +94,17 @@ export function parseInboundEmail(
   }
 
   return {
-    from: str(fields.from),
-    to: str(fields.to),
-    cc: str(fields.cc),
-    subject: str(fields.subject),
-    text: str(fields.text),
-    html: str(fields.html),
+    from: String(fields.from ?? ''),
+    to: String(fields.to ?? ''),
+    cc: String(fields.cc ?? ''),
+    subject: String(fields.subject ?? ''),
+    text: String(fields.text ?? ''),
+    html: String(fields.html ?? ''),
     envelope,
-    headers: str(fields.headers),
-    senderIp: str(fields.sender_ip),
-    spf: str(fields.SPF),
-    dkim: str(fields.dkim),
+    headers: String(fields.headers ?? ''),
+    senderIp: String(fields.sender_ip ?? ''),
+    spf: String(fields.SPF ?? ''),
+    dkim: String(fields.dkim ?? ''),
     spamScore: Number.isNaN(spamScore) ? null : spamScore,
     spamReport: typeof fields.spam_report === 'string' ? fields.spam_report : null,
     attachmentCount,

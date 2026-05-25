@@ -1,5 +1,4 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { str } from '@common/iso/str';
 import { parseWebhook } from '@common/node/comms/whatsapp2/inbound';
 import {
   getMediaUrl,
@@ -54,7 +53,7 @@ function mediaFrom(p: Record<string, unknown>): WaMediaInput {
 // ─── Type handlers for /test ──────────────────────────────────────────────────
 
 async function handleText(token: string, phoneId: string, dest: string, p: Record<string, unknown>) {
-  return sendText(token, phoneId, dest, str(p.body), { preview_url: Boolean(p.preview_url) });
+  return sendText(token, phoneId, dest, String(p.body ?? ''), { preview_url: Boolean(p.preview_url) });
 }
 
 async function handleMedia(type: string, token: string, phoneId: string, dest: string, p: Record<string, unknown>) {
@@ -112,11 +111,11 @@ async function handleTestType(
     case 'template':
       return sendTemplate(token, phoneId, dest, p as unknown as WaTemplateOpts);
     case 'reaction':
-      return sendReaction(token, phoneId, dest, str(p.message_id), str(p.emoji));
+      return sendReaction(token, phoneId, dest, String(p.message_id ?? ''), String(p.emoji ?? ''));
     case 'read':
-      return markAsRead(token, phoneId, str(p.message_id));
+      return markAsRead(token, phoneId, String(p.message_id ?? ''));
     case 'typing': {
-      const msgId = str(p.message_id);
+      const msgId = String(p.message_id ?? '');
       if (!msgId) {
         res.status(400).json({ ok: false, error: 'message_id is required for typing indicator' });
         return null;
@@ -130,7 +129,7 @@ async function handleTestType(
     case 'flow':
       return sendFlow(token, phoneId, dest, p as unknown as WaFlowOpts);
     case 'get_media_url': {
-      const mediaId = str(p.media_id);
+      const mediaId = String(p.media_id ?? '');
       if (!mediaId) {
         res.status(400).json({ ok: false, error: 'media_id is required' });
         return null;
@@ -138,7 +137,7 @@ async function handleTestType(
       return { url: await getMediaUrl(token, mediaId) };
     }
     default:
-      res.status(400).json({ ok: false, error: `Unknown type: ${str(type)}` });
+      res.status(400).json({ ok: false, error: `Unknown type: ${type}` });
       return null;
   }
 }

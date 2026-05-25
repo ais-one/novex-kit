@@ -9,8 +9,8 @@ import {
   listTemplates,
   updateTemplate,
   updateTemplateVersion,
-} from '@common/node/comms/email2/template';
-import type { SgTemplateVersionData } from '@common/node/comms/email2/types';
+} from '@common/node/comms/sendgrid/template';
+import type { SgTemplateVersionData } from '@common/node/comms/sendgrid/types';
 import type { Request, Response } from 'express';
 import express from 'express';
 
@@ -30,7 +30,7 @@ function handleError(res: Response, err: unknown, context: string) {
 export default express
   .Router()
 
-  // ── GET /api/sample-api/email/templates ───────────────────────────────────
+  // ── GET /api/sample-api/sendgrid/templates ──────────────────────────────────
   // List all dynamic templates. Query: ?pageSize=N&pageToken=xxx
   .get('/', async (req: Request, res: Response) => {
     const pageSize = req.query.pageSize ? Number(req.query.pageSize) : undefined;
@@ -43,7 +43,7 @@ export default express
     }
   })
 
-  // ── POST /api/sample-api/email/templates ──────────────────────────────────
+  // ── POST /api/sample-api/sendgrid/templates ─────────────────────────────────
   // Create a new (empty) dynamic template. Body: { name }
   .post('/', async (req: Request, res: Response) => {
     const { name } = req.body as { name?: string };
@@ -59,7 +59,7 @@ export default express
     }
   })
 
-  // ── GET /api/sample-api/email/templates/:id ───────────────────────────────
+  // ── GET /api/sample-api/sendgrid/templates/:id ──────────────────────────────
   // Get a single template with all its versions.
   .get('/:id', async (req: Request, res: Response) => {
     try {
@@ -70,7 +70,7 @@ export default express
     }
   })
 
-  // ── PATCH /api/sample-api/email/templates/:id ─────────────────────────────
+  // ── PATCH /api/sample-api/sendgrid/templates/:id ────────────────────────────
   // Rename a template. Body: { name }
   .patch('/:id', async (req: Request, res: Response) => {
     const { name } = req.body as { name?: string };
@@ -86,7 +86,7 @@ export default express
     }
   })
 
-  // ── POST /api/sample-api/email/templates/:id/duplicate ───────────────────
+  // ── POST /api/sample-api/sendgrid/templates/:id/duplicate ──────────────────
   // Duplicate a template. Body: { name? }
   .post('/:id/duplicate', async (req: Request, res: Response) => {
     const { name } = req.body as { name?: string };
@@ -98,7 +98,7 @@ export default express
     }
   })
 
-  // ── DELETE /api/sample-api/email/templates/:id ────────────────────────────
+  // ── DELETE /api/sample-api/sendgrid/templates/:id ───────────────────────────
   // Delete a template and all its versions.
   .delete('/:id', async (req: Request, res: Response) => {
     try {
@@ -109,7 +109,7 @@ export default express
     }
   })
 
-  // ── POST /api/sample-api/email/templates/:id/versions ────────────────────
+  // ── POST /api/sample-api/sendgrid/templates/:id/versions ───────────────────
   // Create a new version. Body: SgTemplateVersionData
   .post('/:id/versions', async (req: Request, res: Response) => {
     const data = req.body as SgTemplateVersionData;
@@ -125,7 +125,7 @@ export default express
     }
   })
 
-  // ── PATCH /api/sample-api/email/templates/:id/versions/:vid ──────────────
+  // ── PATCH /api/sample-api/sendgrid/templates/:id/versions/:vid ─────────────
   // Update a version's content, subject or name.
   .patch('/:id/versions/:vid', async (req: Request, res: Response) => {
     const data = req.body as Partial<SgTemplateVersionData>;
@@ -137,7 +137,7 @@ export default express
     }
   })
 
-  // ── POST /api/sample-api/email/templates/:id/versions/:vid/activate ──────
+  // ── POST /api/sample-api/sendgrid/templates/:id/versions/:vid/activate ─────
   // Activate a version (make it the live version for this template).
   .post('/:id/versions/:vid/activate', async (req: Request, res: Response) => {
     try {
@@ -148,7 +148,7 @@ export default express
     }
   })
 
-  // ── DELETE /api/sample-api/email/templates/:id/versions/:vid ─────────────
+  // ── DELETE /api/sample-api/sendgrid/templates/:id/versions/:vid ────────────
   // Permanently delete a template version.
   .delete('/:id/versions/:vid', async (req: Request, res: Response) => {
     try {

@@ -3,12 +3,12 @@ import express from 'express';
 import * as auth from './auth/routes.ts';
 import base from './base/routes.ts';
 import categoriesRoute from './categories/routes.ts';
-import email from './email/routes.ts';
-import emailTemplates from './email/template-routes.ts';
-import emailWebhooks from './email/webhook-routes.ts';
 import fido from './fido/routes.ts';
 import iamUsersRoute from './iam-users/routes.ts';
 import rolesRoute from './roles/routes.ts';
+import email from './sendgrid/routes.ts';
+import emailTemplates from './sendgrid/template-routes.ts';
+import emailWebhooks from './sendgrid/webhook-routes.ts';
 import sse from './sse/routes.ts';
 import tests from './tests/routes.ts';
 import webhooks from './webhooks/routes.ts';
@@ -34,9 +34,9 @@ export default ({ app }) => {
     router.use('/webhooks', webhooks),
     router.use('/whatsapp', whatsapp), // http://127.0.0.1:3000/api/sample-api/whatsapp/webhook
     router.use('/whatsapp/templates', whatsappTemplates), // http://127.0.0.1:3000/api/sample-api/whatsapp/templates
-    router.use('/email', email), // http://127.0.0.1:3000/api/sample-api/email/test
-    router.use('/email/templates', emailTemplates), // http://127.0.0.1:3000/api/sample-api/email/templates
-    router.use('/email', emailWebhooks), // http://127.0.0.1:3000/api/sample-api/email/inbound + /events
+    router.use('/sendgrid', email), // http://127.0.0.1:3000/api/sample-api/sendgrid/test
+    router.use('/sendgrid/templates', emailTemplates), // http://127.0.0.1:3000/api/sample-api/sendgrid/templates
+    router.use('/sendgrid', emailWebhooks), // http://127.0.0.1:3000/api/sample-api/sendgrid/inbound + /events
     router.use('/sse', sse),
     router.use('/tests', tests), // for tests
     router.use('/webpush', webpush),

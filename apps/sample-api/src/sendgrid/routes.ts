@@ -1,4 +1,3 @@
-import { str } from '@common/iso/str';
 import {
   cancelScheduledEmail,
   sendBulkDynamicEmail,
@@ -7,8 +6,8 @@ import {
   sendEmail,
   sendEmailWithAttachments,
   sendScheduledEmail,
-} from '@common/node/comms/email2/outbound';
-import type { SgAttachment, SgPersonalization, SgSendEmailOpts } from '@common/node/comms/email2/types';
+} from '@common/node/comms/sendgrid/outbound';
+import type { SgAttachment, SgPersonalization, SgSendEmailOpts } from '@common/node/comms/sendgrid/types';
 import type { Request, Response } from 'express';
 import express from 'express';
 
@@ -38,12 +37,12 @@ function buildOpts(p: Record<string, unknown>): SgSendEmailOpts {
 
 async function handleHtml(dest: string | string[], p: Record<string, unknown>) {
   const opts = buildOpts(p);
-  return sendEmail(dest, str(p.subject, 'Test Email'), str(p.html), opts);
+  return sendEmail(dest, String(p.subject ?? 'Test Email'), String(p.html ?? ''), opts);
 }
 
 async function handleDynamic(dest: string | string[], p: Record<string, unknown>) {
   const opts = buildOpts(p);
-  return sendDynamicEmail(dest, str(p.templateId), (p.data as Record<string, unknown>) ?? {}, opts);
+  return sendDynamicEmail(dest, String(p.templateId ?? ''), (p.data as Record<string, unknown>) ?? {}, opts);
 }
 
 async function handleAttachment(dest: string | string[], p: Record<string, unknown>) {
@@ -52,8 +51,8 @@ async function handleAttachment(dest: string | string[], p: Record<string, unkno
   delete opts.attachments;
   return sendEmailWithAttachments(
     dest,
-    str(p.subject, 'Test Email'),
-    str(p.html),
+    String(p.subject ?? 'Test Email'),
+    String(p.html ?? ''),
     (p.attachments as SgAttachment[]) ?? [],
     opts,
   );
@@ -63,15 +62,15 @@ async function handleBulk(p: Record<string, unknown>) {
   const opts = buildOpts(p);
   return sendBulkEmail(
     (p.personalizations as SgPersonalization[]) ?? [],
-    str(p.subject, 'Bulk Email'),
-    str(p.html),
+    String(p.subject ?? 'Bulk Email'),
+    String(p.html ?? ''),
     opts,
   );
 }
 
 async function handleBulkDynamic(p: Record<string, unknown>) {
   const opts = buildOpts(p);
-  return sendBulkDynamicEmail(str(p.templateId), (p.personalizations as SgPersonalization[]) ?? [], opts);
+  return sendBulkDynamicEmail(String(p.templateId ?? ''), (p.personalizations as SgPersonalization[]) ?? [], opts);
 }
 
 async function handleScheduled(dest: string | string[], p: Record<string, unknown>, res: Response) {
@@ -81,7 +80,7 @@ async function handleScheduled(dest: string | string[], p: Record<string, unknow
     return null;
   }
   const opts = buildOpts(p);
-  return sendScheduledEmail(dest, str(p.subject, 'Scheduled Email'), str(p.html), sendAt, opts);
+  return sendScheduledEmail(dest, String(p.subject ?? 'Scheduled Email'), String(p.html ?? ''), sendAt, opts);
 }
 
 async function handleCancel(p: Record<string, unknown>, res: Response) {
@@ -89,7 +88,7 @@ async function handleCancel(p: Record<string, unknown>, res: Response) {
     res.status(400).json({ ok: false, error: 'batchId is required for cancel type' });
     return null;
   }
-  return cancelScheduledEmail(str(p.batchId));
+  return cancelScheduledEmail(String(p.batchId ?? ''));
 }
 
 // ─── Route ────────────────────────────────────────────────────────────────────
@@ -97,7 +96,7 @@ async function handleCancel(p: Record<string, unknown>, res: Response) {
 export default express
   .Router()
 
-  // ── POST /api/sample-api/email/test ─────────────────────────────────────────
+  // ── POST /api/sample-api/sendgrid/test ────────────────────────────────────────
   // Multi-type test dispatcher — no auth.
   // Body: { type, to, ...type-specific fields }
   // See EmailTest.vue for sample payloads per type.

@@ -1,5 +1,5 @@
-import { parseEventWebhook, verifyEventWebhookSignature } from '@common/node/comms/email2/events';
-import { parseInboundEmail } from '@common/node/comms/email2/inbound';
+import { parseEventWebhook, verifyEventWebhookSignature } from '@common/node/comms/sendgrid/events';
+import { parseInboundEmail } from '@common/node/comms/sendgrid/inbound';
 import { memoryUpload } from '@common/node/express/upload';
 import type { Request, Response } from 'express';
 import express from 'express';
@@ -17,13 +17,13 @@ const upload = memoryUpload({ limits: { fileSize: 30 * 1024 * 1024, files: 20 } 
 export default express
   .Router()
 
-  // ── POST /api/sample-api/email/inbound ──────────────────────────────────────
+  // ── POST /api/sample-api/sendgrid/inbound ─────────────────────────────────────
   // SendGrid Inbound Parse webhook — receives emails sent to your parse domain.
   // Payload: multipart/form-data with text fields + file attachments.
   //
   // Setup: SendGrid Dashboard > Settings > Inbound Parse > Add Host & URL
   //   Hostname: parse.yourdomain.com (needs MX record pointing to mx.sendgrid.net)
-  //   URL: https://your-ngrok-url/api/sample-api/email/inbound
+  //   URL: https://your-ngrok-url/api/sample-api/sendgrid/inbound
   //
   // For dev/testing: POST a mock multipart/form-data payload directly (no MX record needed).
   .post('/inbound', upload.any(), async (req: Request, res: Response) => {
@@ -70,12 +70,12 @@ export default express
     }
   })
 
-  // ── POST /api/sample-api/email/events ───────────────────────────────────────
+  // ── POST /api/sample-api/sendgrid/events ──────────────────────────────────────
   // SendGrid Event Webhook — receives delivery/engagement events (delivered, bounce, open, click, etc.)
   // Payload: JSON array of event objects.
   //
   // Setup: SendGrid Dashboard > Settings > Mail Settings > Event Webhook
-  //   HTTP Post URL: https://your-ngrok-url/api/sample-api/email/events
+  //   HTTP Post URL: https://your-ngrok-url/api/sample-api/sendgrid/events
   //   Events: check all events you want to receive
   //   Signed Event Webhook: ON (recommended — provides ECDSA signature verification)
   .post('/events', express.json({ limit: '5mb' }), async (req: Request, res: Response) => {

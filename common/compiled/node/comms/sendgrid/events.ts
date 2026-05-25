@@ -1,4 +1,4 @@
-// SendGrid v3 Event Webhook — parser and signature verification (email2)
+// SendGrid v3 Event Webhook — parser and signature verification
 // Docs: https://docs.sendgrid.com/for-developers/tracking-events/event
 //
 // SendGrid POSTs a JSON array of events to your webhook URL whenever
@@ -11,14 +11,13 @@
 // Headers: X-Twilio-Email-Event-Webhook-Signature, X-Twilio-Email-Event-Webhook-Timestamp
 
 import crypto from 'node:crypto';
-import { str } from '@common/iso/str';
 import type { SgEvent, SgEventType } from './types.ts';
 
 export type { SgEvent, SgEventType };
 
 /** Extract categories from raw event — can be string, array, or absent */
 function parseCategories(raw: Record<string, unknown>): string[] {
-  if (Array.isArray(raw.category)) return raw.category.map(v => str(v));
+  if (Array.isArray(raw.category)) return raw.category.map(v => String(v ?? ''));
   if (raw.category && typeof raw.category === 'string') return [raw.category];
   return [];
 }
@@ -70,11 +69,11 @@ export function parseEventWebhook(body: unknown): SgEvent[] {
 
   return body.map((raw: Record<string, unknown>) => {
     const event: SgEvent = {
-      event: str(raw.event, 'unknown') as SgEventType,
-      email: str(raw.email),
+      event: String(raw.event ?? 'unknown') as SgEventType,
+      email: String(raw.email ?? ''),
       timestamp: Number(raw.timestamp ?? 0),
       date: new Date(Number(raw.timestamp ?? 0) * 1000).toISOString(),
-      sgMessageId: str(raw.sg_message_id),
+      sgMessageId: String(raw.sg_message_id ?? ''),
       categories: parseCategories(raw),
       customArgs: {},
     };
