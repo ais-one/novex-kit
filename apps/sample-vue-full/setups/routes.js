@@ -67,6 +67,12 @@ export const SECURE_ROUTES = [
     name: 'WA Templates',
     component: async () => import('../views/WhatsAppTemplates.vue'),
   },
+  { path: '/sendgrid/test', name: 'Email Test', component: async () => import('../views/SendgridTest.vue') },
+  {
+    path: '/sendgrid/templates',
+    name: 'Email Templates',
+    component: async () => import('../views/SendgridTemplates.vue'),
+  },
 
   { path: '/demo-view/fill', name: 'Fill No Param', component: async () => import('../views/Demo/Filler.vue') },
   {

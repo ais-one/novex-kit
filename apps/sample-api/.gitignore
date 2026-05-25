@@ -45,10 +45,14 @@ src/*/routes.ts
 !src/auth/routes.ts
 !src/base/routes.ts
 !src/fido/routes.ts
+!src/sendgrid/routes.ts
+!src/sendgrid/template-routes.ts
+!src/sendgrid/webhook-routes.ts
 !src/sse/routes.ts
 !src/tests/routes.ts
 !src/webhooks/routes.ts
 !src/webpush/routes.ts
+!src/whatsapp/routes.ts
 
 # webpush has a hand-written schema that would otherwise be gitignored
 !src/webpush/schema.js
