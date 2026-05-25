@@ -269,7 +269,7 @@ const otpLogin = async () => {
     http.setOptions({ refreshUrl: VITE_REFRESH_URL });
     _setUser(data, user);
   } catch (e) {
-    if (e.data.message === 'Token Expired Error') {
+    if (e?.data?.message === 'Token Expired Error') {
       errorMessage.value = 'OTP Expired';
       setToLogin();
     } else if (otpCount < 3) {

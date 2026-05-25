@@ -23,9 +23,11 @@ export default [
 
   http.post('http://127.0.0.1:8080/api/auth/otp', () => {
     return HttpResponse.json({
-      access_token: 'mock-access-token',
+      // header.payload.sig — parseJwt reads the payload segment
+      access_token:
+        'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJyb2xlcyI6WyJUZXN0R3JvdXAiXSwic3ViIjoiMSJ9.sig',
       refresh_token: 'mock-refresh-token',
-      user_meta: { email: 'test', roles: ['TestGroup'] },
+      user_meta: { email: 'test@example.com', roles: ['TestGroup'] },
     });
   }),
 

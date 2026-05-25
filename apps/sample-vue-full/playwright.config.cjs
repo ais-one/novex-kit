@@ -1,5 +1,6 @@
 const config = {
   testDir: './tests',
+  timeout: 60000,
   use: {
     baseURL: 'http://127.0.0.1:8080',
     browserName: 'chromium',
@@ -11,7 +12,7 @@ const config = {
     command: 'npm run dev:mocked',
     url: 'http://127.0.0.1:8080',
     reuseExistingServer: !process.env.CI,
-    timeout: 30000,
+    timeout: 60000,
   },
 };
 

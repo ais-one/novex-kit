@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+import { expect, test } from '@playwright/test';
 
 // Shared login helper — reused across test suites
 async function loginWithMsw(page) {

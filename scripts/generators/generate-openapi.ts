@@ -50,7 +50,7 @@ function parseArgs(argv: string[]): Record<string, string> {
 
 const args = parseArgs(process.argv.slice(2));
 
-if (!args['src'] || !args['out']) {
+if (!args.src || !args.out) {
   console.error(`
 Usage: node scripts/generators/generate-openapi.ts \\
   --src        <dir>     src/ directory containing per-table subfolders (relative to cwd)
@@ -64,13 +64,13 @@ Usage: node scripts/generators/generate-openapi.ts \\
   process.exit(1);
 }
 
-const srcDir = resolve(process.cwd(), args['src']);
-const extraSchemasDir = args['schemas'] ? resolve(process.cwd(), args['schemas']) : null;
-const outFile = resolve(process.cwd(), args['out']);
-const prefix = (args['prefix'] ?? '').replace(/\/$/, '');
-const title = args['title'] || 'API';
-const apiVersion = args['version'] || '1.0.0';
-const serverUrl = args['server'] || 'http://localhost:8080';
+const srcDir = resolve(process.cwd(), args.src);
+const extraSchemasDir = args.schemas ? resolve(process.cwd(), args.schemas) : null;
+const outFile = resolve(process.cwd(), args.out);
+const prefix = (args.prefix ?? '').replace(/\/$/, '');
+const title = args.title || 'API';
+const apiVersion = args.version || '1.0.0';
+const serverUrl = args.server || 'http://localhost:8080';
 
 // ─── Naming helpers ───────────────────────────────────────────────────────────
 
