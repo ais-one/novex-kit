@@ -38,8 +38,8 @@ const tablesFilter = args.tables ? args.tables.split(',').map(s => s.trim()) : n
 const routePrefix = args['route-prefix'] ?? '';
 
 if (!schemaFilePath || !schemaModule || !appDir || !dbName) {
-  console.error(`
-Usage: node scripts/generators/generate-crud.ts \\
+  console.error(String.raw`
+Usage: node scripts/generators/generate-crud.ts \
   --schema         <path>    Path to Drizzle schema .ts file (relative to cwd)
   --schema-module  <spec>    Module import specifier for generated code
   --app            <dir>     App root directory (relative to cwd)
@@ -561,7 +561,7 @@ const SIDECAR_HEADER = `\
  * @returns The full file content as a UTF-8 string ready to be written to disk.
  */
 function generateSidecarSchema(info: TableInfo): string {
-  const { varName, kebabName, pascalName } = info;
+  const { pascalName } = info;
   return `${SIDECAR_HEADER}// Re-export everything from generated — add custom schemas below.
 export * from './generated/schema.js';
 
@@ -615,7 +615,7 @@ export { default } from './generated/controller.ts';
  * @returns The full file content as a UTF-8 string ready to be written to disk.
  */
 function generateSidecarRoutes(info: TableInfo): string {
-  const { varName, kebabName, pascalName } = info;
+  const { varName, pascalName } = info;
   return `${SIDECAR_HEADER}import express from 'express';
 import generatedRoutes from './generated/routes.ts';
 
@@ -644,7 +644,7 @@ const schemaPath = resolve(process.cwd(), schemaFilePath);
 const configPath = resolve(appRoot, 'generate-crud.config.json');
 let config: CrudConfig = {};
 if (existsSync(configPath)) {
-  config = JSON.parse(readFileSync(configPath, 'utf8')) as CrudConfig;
+  config = JSON.parse(readFileSync(configPath, 'utf8'));
 }
 
 console.log(`\nGenerating CRUD from: ${schemaFilePath}`);

@@ -713,7 +713,7 @@ const oauthLogin = () => {
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--slate-400);
+  color: var(--slate-500);
 }
 
 /* Sign-up hint */
@@ -755,7 +755,7 @@ const oauthLogin = () => {
 .device-hint {
   text-align: center;
   font-size: 11px;
-  color: var(--slate-400);
+  color: var(--slate-500);
   margin-top: 24px;
 }
 

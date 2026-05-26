@@ -33,8 +33,8 @@ import { parseArgs } from './utils.ts';
 const args = parseArgs(process.argv.slice(2));
 
 if (!args.src || !args.out) {
-  console.error(`
-Usage: node scripts/generators/generate-openapi.ts \\
+  console.error(String.raw`
+Usage: node scripts/generators/generate-openapi.ts \
   --src        <dir>     src/ directory containing per-table subfolders (relative to cwd)
   --out        <file>    Output YAML file path (relative to cwd)
   [--schemas   <dir>]    Also scan this directory for standalone *.schema.js files
@@ -210,7 +210,7 @@ for (const { kebab, mod, isSidecar } of loaded) {
 
   // Extract PK column name from ParamsSchema shape (it has exactly one key)
   // biome-ignore lint/suspicious/noExplicitAny: zod schema shape access
-  const paramsShape = (paramsSchema as any).shape ?? {};
+  const paramsShape = paramsSchema.shape ?? {};
   const pkColName = Object.keys(paramsShape)[0] ?? 'id';
   const humanName = pascalToWords(pascalName);
 
