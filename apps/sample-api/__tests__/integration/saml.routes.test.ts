@@ -117,7 +117,7 @@ function decodeHtmlEntities(s: string): string {
 // Extract all submittable fields from an HTML form (inputs + selects)
 function extractAllFormFields(html: string): Record<string, string> {
   const fields: Record<string, string> = {};
-  for (const m of html.matchAll(/<input([^>]+?)(?:\s*\/)?>/gi)) {
+  for (const m of html.matchAll(/<input([^>]*)>/gi)) {
     const tag = m[1];
     const type = /\btype=["']([^"']+)["']/i.exec(tag)?.[1]?.toLowerCase();
     if (type === 'submit' || type === 'button' || type === 'reset' || type === 'image') continue;

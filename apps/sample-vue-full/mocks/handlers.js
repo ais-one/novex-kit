@@ -1,31 +1,41 @@
 import { HttpResponse, http } from 'msw';
+import t4tConfigs from './t4t-configs.js';
+import t4tData from './t4t-data.js';
+
+// header.payload.sig — a structurally valid JWT whose payload parseJwt can decode
+const mockJwt =
+  'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJyb2xlcyI6WyJUZXN0R3JvdXAiXSwic3ViIjoiMSJ9.sig';
 
 export default [
   http.get('http://127.0.0.1:8080/api/msw/test', () => {
-    return HttpResponse.json({
-      message: 'it works :)',
-    });
+    return HttpResponse.json({ message: 'it works :)' });
   }),
-  http.post('http://127.0.0.1:8080/api/auth/login', ({ request, params, cookies }) => {
-    console.log('cookies ? :', cookies);
+
+  http.get('http://127.0.0.1:8080/api/t4t/config/:table', ({ params }) => {
+    const config = t4tConfigs[params.table];
+    if (!config) return HttpResponse.json({ error: 'Table not found' }, { status: 404 });
+    return HttpResponse.json(config);
+  }),
+
+  http.get('http://127.0.0.1:8080/api/t4t/find/:table', ({ params, request }) => {
+    const table = new URL(request.url).pathname.split('/').pop();
+    const result = t4tData[table] ?? t4tData[params.table] ?? { results: [], total: 0 };
+    return HttpResponse.json(result);
+  }),
+
+  http.post('http://127.0.0.1:8080/api/auth/login', () => {
     return HttpResponse.json({ otp: 1 });
   }),
-  http.post('http://127.0.0.1:8080/api/auth/otp', ({ request, params, cookies }) => {
-    console.log(request.body); // {"id":1,"pin":"111111"}
+
+  http.post('http://127.0.0.1:8080/api/auth/otp', () => {
     return HttpResponse.json({
-      access_token:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZ3JvdXBzIjoiVGVzdEdyb3VwIiwiaWF0IjoxNjk0NDk2NDA5LCJleHAiOjE2OTQ0OTkxMDl9.vW3XwxNIJ0LVdenwqcZZzl04T-ufJuTed7FvyVYb2Io',
-      refresh_token:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjk0NDk2NDA5LCJleHAiOjE2OTQ1MDAwMDl9.p3xFoXix9_xBJOOLgH2hkvomQnz5D4ct_Zk21tcsojE',
-      user_meta: {
-        email: 'test',
-        roles: ['TestGroup'],
-      },
+      access_token: mockJwt, // NOSONAR — not a real secret, mock JWT for MSW testing
+      refresh_token: 'mock-refresh-token',
+      user_meta: { email: 'test@example.com', roles: ['TestGroup'] },
     });
   }),
+
   http.get('http://127.0.0.1:8080/api/auth/logout', () => {
-    return HttpResponse.json({
-      message: 'Logged Out',
-    });
+    return HttpResponse.json({ message: 'Logged Out' });
   }),
 ];

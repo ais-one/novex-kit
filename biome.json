@@ -39,6 +39,9 @@
     "clientKind": "git",
     "useIgnoreFile": true
   },
+  "files": {
+    "includes": ["**", "!**/public/mockServiceWorker.js"]
+  },
   "overrides": [
     {
       "includes": ["**/.env.json"],

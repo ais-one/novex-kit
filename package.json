@@ -33,7 +33,7 @@
     "git:branch": "git rev-parse --abbrev-ref HEAD",
     "check": "biome check --write .",
     "ci": "biome ci .",
-    "docs:generate": "node scripts/generate-openapi.ts",
+    "docs:generate": "node scripts/generators/generate-openapi.ts --schemas ./common/schemas --out ./docs/openapi/openapi.merged.yaml --title \"Shared Schemas\" --version 1.0.0",
     "docs:validate": "npx redocly lint docs/openapi/openapi.merged.yaml",
     "docs:make-html": "npx @redocly/cli build-docs docs/openapi/openapi.merged.yaml --output index.html",
     "prepare": "git config core.hooksPath .githooks && chmod +x .githooks/pre-commit .githooks/pre-push || echo 'Can not set git hooks'",

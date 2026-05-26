@@ -3,9 +3,9 @@
 </template>
 
 <script setup>
+import { http } from '@common/vue/plugins/fetch.js';
+import { provideI18n } from '@common/vue/plugins/i18n.js';
 import { shallowRef } from 'vue';
-import { http } from '../common/plugins/fetch.js';
-import { provideI18n } from '../common/plugins/i18n.js';
 // :key="$route.fullPath" // this is causing problems
 import LayoutPublic from './layouts/Public.vue'; // you can change this to your own layout
 import LayoutSecure from './layouts/Secure.vue'; // as above

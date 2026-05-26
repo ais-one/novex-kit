@@ -52,9 +52,10 @@ COPY common/compiled/node/package.json ./common/compiled/node/
 COPY common/vanilla/iso/package.json ./common/vanilla/iso/
 COPY common/schemas/ ./common/schemas/
 COPY apps/${APP_NAME}/package.json ./apps/${APP_NAME}/
+COPY apps/sample-common/package.json ./apps/sample-common/
 
 # npm workspaces: installs all deps hoisted to /app/node_modules
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --workspace=common/compiled/node --workspace=apps/sample-common --workspace=apps/${APP_NAME}
 
 # ─── Stage 2: build ───────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION}-alpine AS build
@@ -62,22 +63,11 @@ ARG APP_NAME
 
 WORKDIR /app
 
-# Reuse production node_modules from deps, then add devDependencies on top
-COPY --from=deps /app/node_modules ./node_modules/
-
-COPY package.json package-lock.json ./
-COPY common/compiled/node/package.json ./common/compiled/node/
-COPY common/vanilla/iso/package.json ./common/vanilla/iso/
-COPY common/schemas/ ./common/schemas/
-COPY apps/${APP_NAME}/package.json ./apps/${APP_NAME}/
-
-# Install devDependencies on top of the already-copied prod modules
-RUN npm ci
-
 COPY common/compiled/node/ ./common/compiled/node/
 COPY common/vanilla/iso/ ./common/vanilla/iso/
 COPY common/schemas/ ./common/schemas/
 COPY apps/${APP_NAME}/ ./apps/${APP_NAME}/
+COPY apps/sample-common/ ./apps/sample-common/
 
 # ─── Stage 3: production image ────────────────────────────────────────────────
 FROM node:${NODE_VERSION}-alpine AS production
@@ -96,12 +86,13 @@ COPY --from=build /app/common/compiled/node            ./common/compiled/node/
 COPY --from=build /app/common/vanilla/iso              ./common/vanilla/iso/
 COPY --from=build /app/common/schemas                  ./common/schemas/
 COPY --from=build /app/apps/${APP_NAME}                ./apps/${APP_NAME}/
+COPY --from=build /app/apps/sample-common              ./apps/sample-common/
 
 # Copy app-level node_modules if they exist (non-hoisted deps)
-# COPY --from=deps  /app/apps/${APP_NAME}/node_modules   ./apps/${APP_NAME}/node_modules/
-
-# ENV SERVICE_NAME=${APP_NAME} \
-# API_PORT=${API_PORT}
+# node_module[s] glob makes COPY a no-op when the directory is absent
+COPY --from=deps  /app/apps/${APP_NAME}/node_module[s]          ./apps/${APP_NAME}/node_modules/
+COPY --from=deps  /app/common/compiled/node/node_module[s]      ./common/compiled/node/node_modules/
+COPY --from=deps  /app/apps/sample-common/node_module[s]          ./apps/sample-common/node_modules/
 
 # Set final WORKDIR before dropping to non-root user
 WORKDIR /app/apps/${APP_NAME}

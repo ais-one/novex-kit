@@ -1,0 +1,60 @@
+# ─── Template repo: generated output ─────────────────────────────────────────
+# These files are produced by `npm run generate:crud` and `npm run docs:generate`.
+# They are excluded here because this repo is a template — users are expected to
+# run the generators themselves after cloning.
+#
+# The IAM tables (users, roles, permissions) are kept as a committed example so
+# readers can see exactly what the generators produce without running them.
+#
+# In a real application, remove these ignores and commit your generated files.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Per-table generated output — src/<table>/generated/ and src/<table>/schema.js + controller.ts + routes.ts
+# One glob covers all tables at once.
+src/*/generated/*
+src/*/schema.js
+src/*/controller.ts
+src/*/routes.ts
+
+# Keep IAM tables + categories as committed examples
+!src/categories/generated/schema.js
+!src/categories/generated/routes.ts
+!src/categories/generated/controller.ts
+!src/categories/schema.js
+!src/categories/controller.ts
+!src/categories/routes.ts
+!src/users/generated/schema.js
+!src/users/generated/routes.ts
+!src/users/generated/controller.ts
+!src/users/schema.js
+!src/users/controller.ts
+!src/users/routes.ts
+!src/roles/generated/schema.js
+!src/roles/generated/routes.ts
+!src/roles/generated/controller.ts
+!src/roles/schema.js
+!src/roles/controller.ts
+!src/roles/routes.ts
+!src/permissions/generated/schema.js
+!src/permissions/generated/routes.ts
+!src/permissions/generated/controller.ts
+!src/permissions/schema.js
+!src/permissions/controller.ts
+!src/permissions/routes.ts
+
+# Hand-written feature routes (not generated, always tracked)
+# src/*/routes.ts above does not affect already-tracked files,
+# but these are listed explicitly for clarity.
+!src/auth/routes.ts
+!src/base/routes.ts
+!src/fido/routes.ts
+!src/sse/routes.ts
+!src/tests/routes.ts
+!src/webhooks/routes.ts
+!src/webpush/routes.ts
+
+# webpush has a hand-written schema that would otherwise be gitignored
+!src/webpush/schema.js
+
+# OpenAPI spec — always an artifact, regenerate with: npm run docs:generate
+docs/openapi/

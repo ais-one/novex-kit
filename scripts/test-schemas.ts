@@ -24,7 +24,7 @@ function collectSchemaFiles(dirPath: string): string[] {
     }
   }
 
-  return files.sort();
+  return files.sort((a, b) => a.localeCompare(b));
 }
 
 function isSchemaLike(value: unknown): boolean {

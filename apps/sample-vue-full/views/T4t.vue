@@ -1,124 +1,165 @@
 <template>
-  <div class="main-container">
-    <div class="title-label">{{ table?.config?.displayName || props.tableName }}</div>
-    <div class="table-operations">
-      <a-button @click="filterApply" class="button-variation-1"
-        ><span class="button-variation-1-label">Reload</span></a-button
-      >
-      <a-button @click="filterOpen" class="button-variation-1"
-        ><span class="button-variation-1-label">Filter</span></a-button
-      >
-      <a-button v-if="table?.config?.create" @click="() => formOpen(null)" class="button-variation-2"
-        ><span class="button-variation-2-label">Create</span></a-button
-      >
-      <a-button v-if="table?.config?.delete" @click="deleteItems" class="button-variation-2"
-        ><span class="button-variation-2-label">Delete</span></a-button
-      >
-      <a-upload
-        style="margin-right: 8px;"
-        v-if="table?.config?.import"
-        name="csv-file"
-        :before-upload="importCsv"
-        :show-upload-list="false"
-        :max-count="1"
-        accept="text/csv"
-      >
-        <a-button class="button-variation-1"><span class="button-variation-1-label">Import</span></a-button>
-      </a-upload>
-      <a-button v-if="table?.config?.export" @click="exportCsv" class="button-variation-3"
-        ><span class="button-variation-3-label">Export</span></a-button
-      >
-      <a-button v-if="props?.filterKeys" @click="goBack" class="button-variation-1"
-        ><span class="button-variation-1-label">Back</span></a-button
-      >
-    </div>
-    <a-table
-      :columns="table.columns"
-      :data-source="table.data"
-      :pagination="table.pagination"
-      :scroll="{ x: table.scrollX, y: tableHeight }"
-      :loading="table.loading"
-      size="small"
-      @change="handleTableChange"
-      :row-key="'__key'"
-      :customRow="customRow"
-      :customHeaderRow="customHeaderRow"
-      :row-selection="rowSelection"
-      class="main-table"
-      @resizeColumn="handleResizeColumn"
-    >
-      <!-- <template #action="item">
-        <a-button @click="() => console.log(item)">{{ item.text }}</a-button>
-      </template> -->
-    </a-table>
+  <div class="t4t-view">
+    <a-card :bordered="false" class="t4t-card">
+      <template #title>
+        <div class="card-title-row">
+          <TableOutlined class="card-title-icon" />
+          <span>{{ table?.config?.displayName || props.tableName }}</span>
+          <a-badge
+            v-if="table.pagination.total"
+            :count="table.pagination.total"
+            :overflow-count="99999"
+            :number-style="{ background: '#4f46e5', fontSize: '11px' }"
+            style="margin-left: 8px"
+          />
+        </div>
+      </template>
+      <template #extra>
+        <a-space :size="6" wrap>
+          <a-button size="small" @click="filterApply">
+            <template #icon><ReloadOutlined /></template>
+            Reload
+          </a-button>
+          <a-button size="small" @click="filterOpen">
+            <template #icon><FilterOutlined /></template>
+            Filter
+            <a-badge
+              v-if="table.filters.length"
+              :count="table.filters.length"
+              :number-style="{ background: '#4f46e5', fontSize: '10px', marginLeft: '4px' }"
+            />
+          </a-button>
+          <a-button v-if="table?.config?.create" size="small" type="primary" @click="() => formOpen(null)">
+            <template #icon><PlusOutlined /></template>
+            Create
+          </a-button>
+          <a-button v-if="table?.config?.delete" size="small" danger @click="deleteItems">
+            <template #icon><DeleteOutlined /></template>
+            Delete
+          </a-button>
+          <a-upload
+            v-if="table?.config?.import"
+            name="csv-file"
+            :before-upload="importCsv"
+            :show-upload-list="false"
+            :max-count="1"
+            accept="text/csv"
+          >
+            <a-button size="small">
+              <template #icon><UploadOutlined /></template>
+              Import
+            </a-button>
+          </a-upload>
+          <a-button v-if="table?.config?.export" size="small" @click="exportCsv">
+            <template #icon><DownloadOutlined /></template>
+            Export
+          </a-button>
+          <a-button v-if="props?.filterKeys" size="small" @click="goBack">
+            <template #icon><ArrowLeftOutlined /></template>
+            Back
+          </a-button>
+        </a-space>
+      </template>
+
+      <a-table
+        :columns="table.columns"
+        :data-source="table.data"
+        :pagination="table.pagination"
+        :scroll="{ x: table.scrollX, y: tableHeight }"
+        :loading="table.loading"
+        size="small"
+        @change="handleTableChange"
+        :row-key="'__key'"
+        :customRow="customRow"
+        :customHeaderRow="customHeaderRow"
+        :row-selection="rowSelection"
+        class="t4t-table"
+        @resizeColumn="handleResizeColumn"
+      />
+    </a-card>
+
+    <!-- Filter Drawer -->
     <a-drawer
-      title="Filters (Max 10)"
-      :width="512"
+      title="Filters"
+      :width="520"
       :open="filterShow"
-      :body-style="{ paddingBottom: '80px' }"
-      @close="filterClose"
       placement="left"
+      @close="filterClose"
     >
+      <template #extra>
+        <a-tag v-if="table.filters.length" color="purple">{{ table.filters.length }} active</a-tag>
+      </template>
+      <template #footer>
+        <a-space>
+          <a-button @click="filterAdd" :disabled="table.filters.length > 9">
+            <template #icon><PlusOutlined /></template>
+            Add Filter
+          </a-button>
+          <a-button @click="filterClearAll" :disabled="table.filters.length === 0">Clear All</a-button>
+          <a-button type="primary" @click="filterApply">
+            <template #icon><CheckOutlined /></template>
+            Apply
+          </a-button>
+        </a-space>
+      </template>
+
       <a-form layout="vertical">
-        <a-form-item v-for="(filter, index) in table.filters" :key="index">
+        <a-empty
+          v-if="!table.filters.length"
+          description="No filters added yet"
+          :image="Empty.PRESENTED_IMAGE_SIMPLE"
+          style="margin: 40px 0"
+        />
+        <a-form-item v-for="(filter, index) in table.filters" :key="index" :label="`Filter ${index + 1}`">
           <a-input-group compact>
-            <a-select style="width: 125px" placeholder="Column" v-model:value="filter.col">
-              <a-select-option v-for="col in table.filterCols" :key="col.value" :value="col.value"
-                >{{ col.label }}</a-select-option
-              >
+            <a-select style="width: 130px" placeholder="Column" v-model:value="filter.col">
+              <a-select-option v-for="col in table.filterCols" :key="col.value" :value="col.value">
+                {{ col.label }}
+              </a-select-option>
             </a-select>
-            <a-select style="width: 75px" placeholder="Operation" v-model:value="filter.op">
+            <a-select style="width: 80px" placeholder="Op" v-model:value="filter.op">
               <a-select-option v-for="op in table.filterOps" :key="op" :value="op">{{ op }}</a-select-option>
             </a-select>
             <a-input
-              style="width: 125px"
+              style="width: 140px"
               placeholder="Value"
               v-model:value="filter.val"
               :type="table?.config?.cols[filter?.col]?.ui?.attrs?.type || 'text'"
             />
-            <a-select style="width: 75px" placeholder="And Or" v-model:value="filter.andOr">
-              <a-select-option v-for="andOr in table.filterAndOr" :key="andOr" :value="andOr"
-                >{{ andOr }}</a-select-option
-              >
+            <a-select style="width: 74px" placeholder="And/Or" v-model:value="filter.andOr">
+              <a-select-option v-for="andOr in table.filterAndOr" :key="andOr" :value="andOr">{{ andOr }}</a-select-option>
             </a-select>
-            <a-button type="primary" @click="() => filterDelete(index)">
+            <a-button danger @click="() => filterDelete(index)">
               <template #icon><CloseOutlined /></template>
             </a-button>
           </a-input-group>
         </a-form-item>
       </a-form>
-      <a-button
-        :disabled="table.filters.length > 9"
-        style="margin-bottom: 8px"
-        @click="filterAdd"
-        class="button-variation-1"
-        ><span class="button-variation-1-label">Add Filter</span></a-button
-      >
-      <a-button
-        :disabled="table.filters.length === 0"
-        style="margin-bottom: 8px; margin-left: 8px"
-        @click="filterClearAll"
-        class="button-variation-1"
-        ><span class="button-variation-1-label">Clear All</span></a-button
-      >
-      <div class="t4t-drawer">
-        <a-button type="primary" @click="filterApply" style="margin-left: 25px" class="button-variation-2"
-          ><span class="button-variation-2-label">Apply</span></a-button
-        >
-      </div>
     </a-drawer>
+
+    <!-- Add / Edit Drawer -->
     <a-drawer
-      :title="formMode"
-      :width="480"
+      :title="formMode === 'add' ? 'Create Record' : 'Edit Record'"
+      :width="500"
       :open="!!formMode"
-      :body-style="{ paddingBottom: '80px' }"
       @close="formClose"
     >
+      <template #extra>
+        <a-tag :color="formMode === 'add' ? 'green' : 'blue'">{{ formMode }}</a-tag>
+      </template>
+      <template #footer>
+        <a-space>
+          <a-button @click="formClose">Cancel</a-button>
+          <a-button v-if="table?.config?.update" type="primary" @click="formSubmit">
+            <template #icon><SaveOutlined /></template>
+            Save Changes
+          </a-button>
+        </a-space>
+      </template>
+
       <a-form layout="vertical" :model="table.formData" :rules="table.formRules">
         <template v-for="(colObj, col, index) in table.formCols" :key="col">
           <a-form-item :label="colObj.label" :rules="colRequired(col)" v-if="colShow(colObj)">
-            <!-- <a-input v-model:value="table.formData[col]" v-bind="table.formColAttrs[col]"/> -->
-            <!-- <div>{{ index }} {{ table.formData[col] }}</div><br/> -->
             <a-textarea
               v-if="colUiType(colObj, 'textarea')"
               v-model:value="table.formData[col]"
@@ -132,11 +173,14 @@
             <div v-else-if="colUiType(colObj, 'files')">
               <a-upload
                 :file-list="table.formFiles[col]"
-                :before-upload="(file) => beforeUpload(file,col)"
-                @remove="(file) => handleRemove(file,col)"
+                :before-upload="(file) => beforeUpload(file, col)"
+                @remove="(file) => handleRemove(file, col)"
                 v-bind="table.formColAttrs[col]"
               >
-                <a-button> Select File </a-button>
+                <a-button>
+                  <template #icon><UploadOutlined /></template>
+                  Select File
+                </a-button>
               </a-upload>
               <div>{{ table.formData[col] }}</div>
               <a-image v-if="table.formData[col]" :alt="table.formData[col]" :width="200" :src="openImg(col)" />
@@ -146,35 +190,38 @@
               v-model:value="table.formData[col]"
               v-bind="table.formColAttrs[col]"
               :options="table.formColAc[col].options"
-              style="width: 200px"
-              placeholder="input here"
-              @select="(value, option)=>onAcSelect(col, value, option)"
-              @search="(value)=>debouncedAcSearch(value, col, table.formData)"
+              style="width: 100%"
+              placeholder="Type to search..."
+              @select="(value, option) => onAcSelect(col, value, option)"
+              @search="(value) => debouncedAcSearch(value, col, table.formData)"
             />
             <a-input v-else v-model:value="table.formData[col]" v-bind="table.formColAttrs[col]" />
-            <!-- <div v-else>[{{ index }}] {{ table.formData[col] }}</div><br/> -->
           </a-form-item>
         </template>
-        <!-- TODOOOO single autocomplete, multi autocomplete, multi select -->
       </a-form>
-      <div class="t4t-drawer">
-        <a-button v-if="table?.config?.update" style="margin-left: 25px" @click="formSubmit" class="button-variation-2"
-          ><span class="button-variation-2-label">Save Changes</span></a-button
-        >
-        <a-button style="margin-left: 10px" @click="formClose" class="button-variation-1"
-          ><span class="button-variation-1-label">Cancel</span></a-button
-        >
-      </div>
     </a-drawer>
   </div>
 </template>
+
 <script>
-import { CloseOutlined } from '@ant-design/icons-vue';
+import {
+  ArrowLeftOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  FilterOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  SaveOutlined,
+  TableOutlined,
+  UploadOutlined,
+} from '@ant-design/icons-vue';
 import { getLocaleDateTimeTzISO, getTzOffsetISO, getYmdhmsUtc } from '@common/iso/datetime';
 import { http } from '@common/vue/plugins/fetch.js';
-import * as t4tFe from '@common/web/t4t-fe'; // Reference - https://github.com/es-labs/jslib/blob/main/libs/esm/t4t-fe.js
+import * as t4tFe from '@common/web/t4t-fe';
 import { debounce, downloadData } from '@common/web/util';
-import { notification } from 'ant-design-vue';
+import { Empty, notification } from 'ant-design-vue';
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMainStore } from '../store.js';
@@ -186,23 +233,30 @@ export default {
   name: 'T4t',
   props: ['tableName', 'filterKeys', 'filterVals'],
   components: {
+    ArrowLeftOutlined,
+    CheckOutlined,
     CloseOutlined,
+    DeleteOutlined,
+    DownloadOutlined,
+    FilterOutlined,
+    PlusOutlined,
+    ReloadOutlined,
+    SaveOutlined,
+    TableOutlined,
+    UploadOutlined,
   },
   setup(props, context) {
-    console.log('t4t - v0.0.2');
     const store = useMainStore();
     const router = useRouter();
-    // const loading = store.loading
 
-    // table information
     const table = reactive({
       scroll: { x: 1800, y: 240 },
-      pagination: { pageSize: DEFAULT_PAGE_SIZE, total: 0, current: 1 }, // start at page 1, 8 records per page
-      sorter: null, // single sort only
+      pagination: { pageSize: DEFAULT_PAGE_SIZE, total: 0, current: 1 },
+      sorter: null,
 
       filters: [],
       filterCols: [],
-      filterOps: ['like', '=', '!=', '>=', '>', '<', '<='], // isNull, isEmpty
+      filterOps: ['like', '=', '!=', '>=', '>', '<', '<='],
       filterAndOr: ['and', 'or'],
 
       keyCols: [],
@@ -214,16 +268,15 @@ export default {
       formKey: null,
       formData: {},
       formFiles: {},
-      formRules: {}, // To Remove
+      formRules: {},
       formCols: {},
-      formColAttrs: {}, // attributes for your inputs
-      formColAc: {}, // autocomplete properties
+      formColAttrs: {},
+      formColAc: {},
       scrollX: 1800,
     });
 
-    const filterShow = ref(false); // Filter drawer
+    const filterShow = ref(false);
 
-    // Deletion
     const deleteItems = async () => {
       if (!confirm('Delete Items?')) return;
       const numSelected = rowSelection.selectedRowKeys.length;
@@ -240,14 +293,12 @@ export default {
           await fetchData();
           notification.open({ message, duration, description: 'Success' });
         } catch (e) {
-          console.log('t4t delete error', e.toString());
           notification.open({ message, duration, description: 'Error' });
         }
         store.loading = false;
       }
     };
 
-    // File Handling
     const handleRemove = (file, col) => {
       const index = table.formFiles[col].indexOf(file);
       const newFileList = table.formFiles[col].slice();
@@ -255,18 +306,16 @@ export default {
       table.formFiles[col] = newFileList;
     };
     const beforeUpload = (file, col) => {
-      console.log('beforeUpload');
       const maxFiles = table.config.cols[col]?.ui?.attrs?.maxCount || 0;
       if (table.formFiles[col].length === maxFiles) {
-        alert(`Maximum ${maxFiles} Files Exceeded. Remove a file before adding`); // have a problem, can keep popping up...
+        alert(`Maximum ${maxFiles} Files Exceeded. Remove a file before adding`);
       } else {
         table.formFiles[col] = [...(table.formFiles[col] || []), file];
       }
       return false;
     };
 
-    // Add / Edit Form
-    const formMode = ref(false); // false, add or edit
+    const formMode = ref(false);
     const formOpen = async item => {
       table.formData = {};
       table.formFiles = {};
@@ -285,31 +334,19 @@ export default {
         for (const colName in table.config.cols) {
           const col = table.config.cols[colName];
           if (
-            !(
-              (
-                col[mode] && // mode is found
-                col.type !== 'link' && // column is not link type
-                !(col.auto && mode === 'add') && // column is not auto or column is auto but mode is not add
-                !(col.hide && col.hide !== 'blank')
-              ) // column is not hide or column is hide but blank
-            )
+            !(col[mode] && col.type !== 'link' && !(col.auto && mode === 'add') && !(col.hide && col.hide !== 'blank'))
           )
             continue;
 
           table.formCols[colName] = col;
-          table.formData[colName] = mode === 'add' ? table.config.cols[colName].default || '' : rv[colName]; // get the data // TODO May need formatting?
+          table.formData[colName] = mode === 'add' ? table.config.cols[colName].default || '' : rv[colName];
           table.formColAttrs[colName] = {
             ...col.ui?.attrs,
             disabled:
               (mode === 'add' && col.add === 'readonly') || (mode === 'edit' && (col.edit === 'readonly' || col.auto)),
             required: col.required,
           };
-          // if (col?.ui?.tag === 'select') {
-          //   console.log('yyyy', table.formColAttrs[colName], table.formData[colName])
-          // }
-          // Do For Form - table.formData[colName] = mapRecordCol(table.formData, colName)
-          if (col?.ui?.tag === 'files')
-            table.formFiles[colName] = []; // add file
+          if (col?.ui?.tag === 'files') table.formFiles[colName] = [];
           else if (col?.ui?.tag === 'autocomplete') {
             table.formColAc[colName] = { options: [] };
             table.formData[colName] = {
@@ -321,45 +358,37 @@ export default {
             table.formData[colName] = getLocaleDateTimeTzISO(table.formData[colName]).substring(0, 16);
           }
         }
-        // console.log('table.formData', table.formData)
-        // console.log('table.formCols', table.formCols)
-        console.log('table.formColAttrs', table.formColAttrs);
       } catch (e) {
-        console.log('formOpen', e.toString());
+        notification.open({ message: 'Open Form', duration: 3, description: e.toString() });
       }
       if (Object.keys(table.formCols).length !== 0) formMode.value = mode;
     };
+
     const formSubmit = async () => {
       const formData = new FormData();
       const jsonData = {};
-      // input processing...
       for (const col in table.formData) {
         jsonData[col] = table.formData[col];
-
         if (table.formFiles[col]) {
-          // handle files
           if (table.formFiles[col].length) {
             jsonData[col] = '';
             for (const file of table.formFiles[col]) {
               jsonData[col] = jsonData[col] ? `${jsonData[col]},${file.name}` : file.name;
               formData.append(col, file, file.name);
             }
-          } else {
-            // TODO clearing file
-            // jsonData[col] = ''
           }
         }
         if (table.config.cols[col]?.ui?.tag === 'autocomplete') {
           jsonData[col] = table.formData[col]?.key;
         } else if (table.config.cols[col]?.ui?.attrs?.type === 'datetime-local') {
-          jsonData[col] = new Date(table.formData[col]).toISOString(); // 2024-12-24 08:00 - 16 chars... convert to ISO
+          jsonData[col] = new Date(table.formData[col]).toISOString();
         }
       }
       formData.append('json', JSON.stringify(jsonData));
       if (store.loading === false) {
         store.loading = true;
         const message = formMode.value === 'add' ? 'Add' : 'Update';
-        const duration = 3; // seconds
+        const duration = 3;
         try {
           if (formMode.value === 'add') {
             await t4tFe.create(formData);
@@ -369,21 +398,20 @@ export default {
           await fetchData();
           notification.open({ message, duration, description: 'Success' });
         } catch (e) {
-          console.log('t4t submit error', e.toString());
           notification.open({ message, duration, description: 'Error' });
         }
         store.loading = false;
       }
       formMode.value = false;
     };
+
     const rowSelection = reactive({
       selectedRowKeys: [],
       onChange: selectedRowKeys => {
-        // Check here to configure the default column
-        console.log('selectedRowKeys changed: ', selectedRowKeys);
         rowSelection.selectedRowKeys = selectedRowKeys;
       },
     });
+
     const mapRecordCol = (record, _col) => {
       const colObj = table.config.cols[_col];
       if (colObj?.ui?.tag === 'autocomplete' && colObj.options) {
@@ -391,39 +419,36 @@ export default {
         if (display && record[_col][display]) {
           record[_col] = record[_col][display];
         } else if (typeof record[_col] !== 'string') {
-          // TODO handle display === both
           record[_col] = JSON.stringify(record[_col]);
         }
-      } else if (colObj?.ui?.tag === 'select') {
-        // TODO display label
       }
       return record[_col];
     };
+
     const mapRecord = record => {
       for (const _col in table.config.cols) {
         const tableCol = table.config.cols[_col];
         if (tableCol.type === 'link') {
-          // no mapping needed for now
+          // no mapping needed
         } else if (record[_col]) {
           record[_col] = mapRecordCol(record, _col);
         }
       }
       return record;
     };
-    // const hasSelected = computed(() => state.selectedRowKeys.length > 0);
+
     const fetchData = async () => {
       if (table.loading) return;
       table.loading = true;
       try {
-        const filters = JSON.parse(JSON.stringify(table.filters)); // [ ...table.filters ]
+        const filters = structuredClone(table.filters);
         for (const [index, filter] of filters.entries()) {
-          // convert filter data here...
           const attrsType = table.config.cols[filter?.col]?.ui?.attrs?.type;
           if (attrsType === 'datetime-local') {
-            filters[index].val += `:00${getTzOffsetISO()}`; // convert to UTC
+            filters[index].val += `:00${getTzOffsetISO()}`;
           }
         }
-        const { filterKeys, filterVals } = props; // child table filter...
+        const { filterKeys, filterVals } = props;
         if (filterKeys?.length && filterVals?.length) {
           const filterKeysA = filterKeys.split(',');
           const filterValsA = filterVals.split(',');
@@ -432,8 +457,7 @@ export default {
           }
         }
         const { results, total } = await t4tFe.find(filters, null, table.pagination.current, table.pagination.pageSize);
-        // console.log('columns', table.columns, 'results', results, total)
-        table.data = results.map(result => mapRecord(result)); // format the results...
+        table.data = results.map(result => mapRecord(result));
         table.pagination.total = total;
       } catch (e) {
         alert(`Error find${e.toString()}`);
@@ -441,24 +465,19 @@ export default {
       table.loading = false;
     };
 
-    // const getRowKey = (record) => table.keyCols.map(keyCol => record[keyCol]).join('|')
-
     onMounted(async () => {
       t4tFe.setFetch(http);
       t4tFe.setTableName(props.tableName);
-      // console.log(props, context)
 
       if (store.loading === false) {
         store.loading = true;
         try {
           table.config = await t4tFe.getConfig();
         } catch (e) {
-          console.log('table config error', e.toString());
           alert('Error Loading Table Configuration');
         }
         if (table.config) {
           try {
-            console.log('TABLE CONFIG', table.config);
             for (const key in table.config.cols) {
               const val = table.config.cols[key];
               if (val.multiKey || val.auto === 'pk') table.keyCols.push(key);
@@ -467,25 +486,20 @@ export default {
                 dataIndex: key,
                 filter: val.filter,
                 sorter: val.sort,
-                __type: val.type || 'text', // aka type
+                __type: val.type || 'text',
                 ui: val.ui,
                 customCell: (record, rowIndex, column) => {
                   const key = column.dataIndex;
                   const rv = {
                     onClick: event => {
-                      // console.log('onClick', rowIndex, record, column, event)
                       if (column?.__type === 'link') {
                         const col = table.config.cols[key];
-                        console.log(col);
                         let fvals = '';
                         const keys_a = col.link.keys.split(',');
                         for (const linkKey of keys_a) {
-                          console.log('linkKey', linkKey, record);
                           if (fvals) fvals += `,${record[linkKey]}`;
                           else fvals = record[linkKey];
                         }
-                        // console.log(col.link.ctable, col.link.ckeys, fvals)
-                        // TOCHECK replace with t4tfe parentFilter?
                         router.push({
                           path: '/t4t-link',
                           name: 'T4t-Link',
@@ -497,11 +511,9 @@ export default {
                       }
                     },
                   };
-                  // if (column?.__type === 'link') rv.innerHTML = record[key] + ' - ' + table.config.cols[key].link?.text // || 'Click To View'
-                  if (column?.__type === 'link') table.config.cols[key].link?.text; // || 'Click To View'
                   return rv;
                 },
-                resizable: true, // these 2 for resizing
+                resizable: true,
                 width: 100,
                 ellipsis: true,
                 customRender(e) {
@@ -521,7 +533,6 @@ export default {
               .map(col => ({ value: col.dataIndex, label: col.title }));
             await fetchData();
           } catch (e) {
-            console.log('table load error', e.toString());
             alert('Error Loading Table Data');
           }
         }
@@ -530,7 +541,6 @@ export default {
     });
 
     const handleTableChange = async (pagination, filters, sorter) => {
-      // console.log('handleTableChange', pagination, filters, sorter) // use own filters
       table.pagination = { ...pagination };
       table.sorter = { ...sorter };
       if (store.loading === false) {
@@ -540,15 +550,13 @@ export default {
       }
     };
 
-    // onClick, onDblclick, onMouseenter, onMouseleave, onContextmenu: (event) => {}
     const customRow = (record, index) => ({});
     const customHeaderRow = column => ({});
 
-    // CSV
     const importCsv = async file => {
+      const message = 'Import CSV';
+      const duration = 3;
       try {
-        const message = 'Import CSV';
-        const duration = 3;
         const { data } = await t4tFe.upload(file);
         if (data.errorCount > 0) {
           notification.open({ message, duration, description: 'Errors - downloading...' });
@@ -558,14 +566,13 @@ export default {
         }
       } catch (e) {
         notification.open({ message, duration, description: 'Failed' });
-        console.log(e);
       }
       return false;
     };
+
     const exportCsv = async () => {
-      // FIX REPEATING CODE START
       const filters = [...table.filters];
-      const { filterKeys, filterVals } = props; // child table filter...
+      const { filterKeys, filterVals } = props;
       if (filterKeys?.length && filterVals?.length) {
         const filterKeysA = filterKeys.split(',');
         const filterValsA = filterVals.split(',');
@@ -573,29 +580,22 @@ export default {
           filters.push({ andOr: 'and', col: filterKeysA[index], op: '=', val: filterValsA[index] });
         }
       }
-      // FIX REPEATING CODE END
-
       const sorter = null;
       const message = 'Export CSV';
       const duration = 3;
       try {
         const data = await t4tFe.download(filters, sorter);
-        downloadData(data.csv, `${(new Date()).toISOString()}-${props.tableName}.csv`);
+        downloadData(data.csv, `${new Date().toISOString()}-${props.tableName}.csv`);
         notification.open({ message, duration, description: 'Success' });
       } catch (e) {
         notification.open({ message, duration, description: 'Failed' });
-        console.log(e);
       }
     };
 
-    // t4tFe.autocomplete
-
-    //responsive table height
     const tableHeight = ref(0);
-    const OFFSET_HEIGHT = 306; // IMPORTANT! - Adjust based on your layout (headers, footers, etc.)
+    const OFFSET_HEIGHT = 306;
     const handleResize = () => {
-      const windowHeight = window.innerHeight;
-      tableHeight.value = windowHeight - OFFSET_HEIGHT;
+      tableHeight.value = window.innerHeight - OFFSET_HEIGHT;
     };
     onMounted(() => {
       handleResize();
@@ -606,6 +606,7 @@ export default {
     });
 
     return {
+      Empty,
       props,
       goBack: () => router.go(-1),
       colShow: val => (formMode.value === 'add' && val.add) || (formMode.value === 'edit' && val.edit),
@@ -614,10 +615,8 @@ export default {
         { required: !!table.formColAttrs[val]?.required, message: `${table.formCols[val]?.label} is required` },
       ],
       openImg: col => {
-        // TODO handle multiple files
         const file = table.formData[col];
         const path = table.config.cols[col]?.ui?.url;
-        // console.log(path, file)
         return `${path + file}`;
       },
       table,
@@ -625,10 +624,8 @@ export default {
       customRow,
       customHeaderRow,
 
-      // filters
       filterShow,
       filterApply: async () => {
-        // also used for reload
         if (store.loading === false) {
           store.loading = true;
           await fetchData();
@@ -641,42 +638,32 @@ export default {
       filterClearAll: () => (table.filters = []),
       filterDelete: index => table.filters.splice(index, 1),
 
-      // csv
       importCsv,
       exportCsv,
 
-      // forms
       formMode,
       formOpen,
       formSubmit,
       formClose: () => (formMode.value = false),
 
-      // others
       rowSelection,
       deleteItems,
 
-      //responsive table height
       tableHeight,
       handleResizeColumn: (w, col) => (col.width = w),
 
-      // files
       handleRemove,
       beforeUpload,
 
-      // autocomplete - search
       debouncedAcSearch: debounce(async (text, col, record) => {
-        // console.log('debounced2', text, col, record) // do the search here...
         const res = await t4tFe.autocomplete(text, col, record);
         table.formColAc[col].options = res.map(item => ({
           key: item.key,
           label: item.text,
           value: item.text,
         }));
-      }, 500), // when tab key pressed or focus lost,
-      // autocomplete - select
+      }, 500),
       onAcSelect: (col, text, option) => {
-        // value, label
-        console.log('select', col, text, option); // actually the value..., displayed is also the value...
         table.formData[col] = option;
       },
     };
@@ -685,5 +672,55 @@ export default {
 </script>
 
 <style scoped>
-@import 'T4t.css';
+.t4t-view {
+  font-family: 'DM Sans', sans-serif;
+}
+
+.t4t-card {
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+:deep(.t4t-card .ant-card-head) {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 0 20px;
+  min-height: 52px;
+}
+
+:deep(.t4t-card .ant-card-body) {
+  padding: 16px 20px;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.card-title-icon {
+  color: #4f46e5;
+  font-size: 16px;
+}
+
+:deep(.t4t-table .ant-table-thead > tr > th) {
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  padding: 8px 12px;
+}
+
+:deep(.t4t-table .ant-table-tbody > tr > td) {
+  font-size: 13px;
+  color: #1e293b;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+:deep(.t4t-table .ant-table-tbody > tr:hover > td) {
+  background: #f1f5f9;
+}
 </style>

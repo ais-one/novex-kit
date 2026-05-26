@@ -29,6 +29,8 @@
     "test:integration": "node --test-reporter=spec --test --test-only --test-isolation=process --test-concurrency=1 ./__tests__/integration/*.test.ts",
     "test:integration:oidc": "node --test-reporter=spec --test --test-only ./__tests__/integration/oidc.routes.test.ts",
     "test:integration:saml": "node --test-reporter=spec --test --test-only ./__tests__/integration/saml.routes.test.ts",
+    "generate:crud": "node ../../scripts/generators/generate-crud.ts --schema ../../common/compiled/node/services/db/schema.ts --schema-module @common/node/services/db/schema --app . --db drizzle1 --route-prefix /api/sample-api",
+    "docs:generate": "node ../../scripts/generators/generate-openapi.ts --src ./src --out ./docs/openapi/openapi.yaml --prefix /api/sample-api --title \"Sample API\" --version 1.0.0",
     "test:schema": "node ../../scripts/test-schemas.ts ./schemas",
     "test": "npm run test:unit && npm run test:integration && npm run test:schema",
     "test:e2e": "start-server-and-test start http://localhost:8080 test",

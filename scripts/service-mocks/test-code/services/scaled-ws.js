@@ -24,12 +24,12 @@ const wss = new WebSocket.Server({ noServer: true, path: WEB_SOCKET_PATH }); // 
 
 // Register event for client connection
 wss.on('connection', (ws, req) => {
-  console.log('onconnnect', req.url);
+  console.log('Client connected');
 
   ws.id = Date.now(); // we could generate ID from JWT decoded in upgrade
 
   ws.on('message', (data, isBinary) => {
-    console.log(`incoming message from ${ws.id}: `, data.toString('utf-8'));
+    console.log(`Incoming message from ${ws.id}`);
     redisPub.publish('app:notifications', data.toString('utf-8'));
   });
 
@@ -45,7 +45,7 @@ wss.on('connection', (ws, req) => {
         // client.send(message, { binary: isBinary })
       }
     });
-    console.log(`Received ${message} from ${channel}`);
+    console.log(`Received message from channel: ${channel}`);
   });
 });
 
@@ -61,7 +61,7 @@ server.on('upgrade', function upgrade(request, socket, head) {
       socket.destroy();
       return;
     }
-    console.log('upgrade', request.url);
+    console.log('Upgrade request received');
     wss.handleUpgrade(request, socket, head, function done(ws) {
       wss.emit('connection', ws, request, client);
     });
