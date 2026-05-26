@@ -10,6 +10,7 @@ import email from './sendgrid/routes.ts';
 import emailTemplates from './sendgrid/template-routes.ts';
 import emailWebhooks from './sendgrid/webhook-routes.ts';
 import sse from './sse/routes.ts';
+import telegram from './telegram/routes.ts';
 import tenantComms from './tenant-comms/routes.ts';
 import tests from './tests/routes.ts';
 import webhooks from './webhooks/routes.ts';
@@ -38,6 +39,7 @@ export default ({ app }) => {
     router.use('/sendgrid', email), // http://127.0.0.1:3000/api/sample-api/sendgrid/test
     router.use('/sendgrid/templates', emailTemplates), // http://127.0.0.1:3000/api/sample-api/sendgrid/templates
     router.use('/sendgrid', emailWebhooks), // http://127.0.0.1:3000/api/sample-api/sendgrid/inbound + /events
+    router.use('/telegram', telegram), // http://127.0.0.1:3000/api/sample-api/telegram/test + /send + /webhook
     router.use('/tenant-comms', tenantComms), // http://127.0.0.1:3000/api/sample-api/tenant-comms
     router.use('/sse', sse),
     router.use('/tests', tests), // for tests
