@@ -226,7 +226,7 @@ export default express
   // Simple text send. Body: { to, message }
   // Requires authenticated user with tenant_id for credential resolution.
   .post('/send', async (req: Request, res: Response) => {
-    const { to, message } = req.body as { to?: string; message?: string };
+    const { to, message, configLabel } = req.body as { to?: string; message?: string; configLabel?: string };
     if (!to || !message) {
       res.status(400).json({ ok: false, error: 'to and message are required' });
       return;
@@ -237,7 +237,7 @@ export default express
         res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
         return;
       }
-      const config = await resolveCommsCredentials(tenantId, 'whatsapp');
+      const config = await resolveCommsCredentials(tenantId, 'whatsapp', configLabel);
       const token = config.credentials.token;
       const phoneId = config.senderIdentity.phone_number_id;
       await sendText(token, phoneId, to, message);
@@ -259,10 +259,12 @@ export default express
       return;
     }
 
+    const { type, to, configLabel, ...p } = req.body as Record<string, unknown>;
+
     let token: string;
     let phoneId: string;
     try {
-      const config = await resolveCommsCredentials(tenantId, 'whatsapp');
+      const config = await resolveCommsCredentials(tenantId, 'whatsapp', configLabel as string | undefined);
       token = config.credentials.token;
       phoneId = config.senderIdentity.phone_number_id;
     } catch (err: unknown) {
@@ -271,8 +273,6 @@ export default express
         .json({ ok: false, error: err instanceof Error ? err.message : 'Failed to resolve WhatsApp credentials' });
       return;
     }
-
-    const { type, to, ...p } = req.body as Record<string, unknown>;
 
     if (!type || typeof type !== 'string') {
       res.status(400).json({ ok: false, error: 'type is required' });

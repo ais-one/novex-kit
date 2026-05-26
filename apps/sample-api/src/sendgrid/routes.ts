@@ -114,9 +114,11 @@ export default express
       return;
     }
 
+    const { configLabel } = req.body as { configLabel?: string };
+
     let auth: SendGridAuth;
     try {
-      const config = await resolveCommsCredentials(tenantId, 'email');
+      const config = await resolveCommsCredentials(tenantId, 'email', configLabel);
       auth = {
         apiKey: config.credentials.api_key,
         senderName: config.senderIdentity.sender_name,

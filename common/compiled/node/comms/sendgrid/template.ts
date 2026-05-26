@@ -1,8 +1,8 @@
 // SendGrid v3 Dynamic Templates API — template management helpers
 // Docs: https://docs.sendgrid.com/api-reference/transactional-templates/
 //
-// Uses the same SENDGRID_KEY as outbound.ts — no additional env vars needed.
-// All template IDs start with d- (dynamic generation).
+// All functions accept an apiKey as the first parameter.
+// The caller is responsible for providing credentials (e.g. from tenant config resolver).
 
 import type { SgTemplate, SgTemplateVersion, SgTemplateVersionData } from './types.ts';
 
@@ -24,22 +24,16 @@ export class SgTemplateError extends Error {
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-function getApiKey(): string {
-  const key = process.env.SENDGRID_KEY;
-  if (!key) throw new Error('SENDGRID_KEY is not defined');
-  return key;
-}
-
 async function tmplRequest<T>(
+  apiKey: string,
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   path: string,
   body?: Record<string, unknown>,
 ): Promise<T> {
-  const key = getApiKey();
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${key}`,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -63,81 +57,88 @@ async function tmplRequest<T>(
 
 /**
  * List all dynamic templates (paginated).
- * Docs: https://docs.sendgrid.com/api-reference/transactional-templates/retrieve-paged-transactional-templates
  */
-export async function listTemplates(opts: { pageSize?: number; pageToken?: string } = {}): Promise<{
+export async function listTemplates(
+  apiKey: string,
+  opts: { pageSize?: number; pageToken?: string } = {},
+): Promise<{
   templates: SgTemplate[];
   _metadata?: { self: string; next?: string; prev?: string; count: number };
 }> {
   const params = new URLSearchParams({ generations: 'dynamic' });
   if (opts.pageSize) params.set('page_size', String(opts.pageSize));
   if (opts.pageToken) params.set('page_token', opts.pageToken);
-  return tmplRequest('GET', `/templates?${params}`);
+  return tmplRequest(apiKey, 'GET', `/templates?${params}`);
 }
 
 /**
  * Get a single template with all its versions.
- * Docs: https://docs.sendgrid.com/api-reference/transactional-templates/retrieve-a-single-transactional-template
  */
-export async function getTemplate(templateId: string): Promise<SgTemplate> {
-  return tmplRequest('GET', `/templates/${templateId}`);
+export async function getTemplate(apiKey: string, templateId: string): Promise<SgTemplate> {
+  return tmplRequest(apiKey, 'GET', `/templates/${templateId}`);
 }
 
 /**
  * Create a new empty dynamic template.
- * Docs: https://docs.sendgrid.com/api-reference/transactional-templates/create-a-transactional-template
  */
-export async function createTemplate(name: string, generation: 'dynamic' | 'legacy' = 'dynamic'): Promise<SgTemplate> {
-  return tmplRequest('POST', '/templates', { name, generation });
+export async function createTemplate(
+  apiKey: string,
+  name: string,
+  generation: 'dynamic' | 'legacy' = 'dynamic',
+): Promise<SgTemplate> {
+  return tmplRequest(apiKey, 'POST', '/templates', { name, generation });
 }
 
 /**
  * Rename an existing template.
- * Docs: https://docs.sendgrid.com/api-reference/transactional-templates/edit-a-transactional-template
  */
-export async function updateTemplate(templateId: string, name: string): Promise<SgTemplate> {
-  return tmplRequest('PATCH', `/templates/${templateId}`, { name });
+export async function updateTemplate(apiKey: string, templateId: string, name: string): Promise<SgTemplate> {
+  return tmplRequest(apiKey, 'PATCH', `/templates/${templateId}`, { name });
 }
 
 /**
  * Duplicate a template (clones the template shell and its active version).
- * Docs: https://docs.sendgrid.com/api-reference/transactional-templates/duplicate-a-transactional-template
  */
-export async function duplicateTemplate(templateId: string, name?: string): Promise<SgTemplate> {
-  return tmplRequest('POST', `/templates/${templateId}`, name ? { name } : {});
+export async function duplicateTemplate(apiKey: string, templateId: string, name?: string): Promise<SgTemplate> {
+  return tmplRequest(apiKey, 'POST', `/templates/${templateId}`, name ? { name } : {});
 }
 
 /**
  * Permanently delete a template and all its versions.
- * Docs: https://docs.sendgrid.com/api-reference/transactional-templates/delete-a-template
  */
-export async function deleteTemplate(templateId: string): Promise<void> {
-  await tmplRequest('DELETE', `/templates/${templateId}`);
+export async function deleteTemplate(apiKey: string, templateId: string): Promise<void> {
+  await tmplRequest(apiKey, 'DELETE', `/templates/${templateId}`);
 }
 
 // ─── Version CRUD ─────────────────────────────────────────────────────────────
 
 /**
  * Create a new version for a template.
- * Docs: https://docs.sendgrid.com/api-reference/transactional-templates-versions-unsubscribe-actions/create-a-new-transactional-template-version
  */
 export async function createTemplateVersion(
+  apiKey: string,
   templateId: string,
   versionData: SgTemplateVersionData,
 ): Promise<SgTemplateVersion> {
-  return tmplRequest('POST', `/templates/${templateId}/versions`, versionData as unknown as Record<string, unknown>);
+  return tmplRequest(
+    apiKey,
+    'POST',
+    `/templates/${templateId}/versions`,
+    versionData as unknown as Record<string, unknown>,
+  );
 }
 
 /**
  * Update a version's name, subject, HTML or plain content.
- * Docs: https://docs.sendgrid.com/api-reference/transactional-templates-versions-unsubscribe-actions/edit-a-transactional-template-version
  */
 export async function updateTemplateVersion(
+  apiKey: string,
   templateId: string,
   versionId: string,
   versionData: Partial<SgTemplateVersionData>,
 ): Promise<SgTemplateVersion> {
   return tmplRequest(
+    apiKey,
     'PATCH',
     `/templates/${templateId}/versions/${versionId}`,
     versionData as unknown as Record<string, unknown>,
@@ -146,16 +147,18 @@ export async function updateTemplateVersion(
 
 /**
  * Activate a version — makes it the live version referenced when sending with this templateId.
- * Docs: https://docs.sendgrid.com/api-reference/transactional-templates-versions-unsubscribe-actions/activate-a-transactional-template-version
  */
-export async function activateTemplateVersion(templateId: string, versionId: string): Promise<SgTemplateVersion> {
-  return tmplRequest('POST', `/templates/${templateId}/versions/${versionId}/activate`);
+export async function activateTemplateVersion(
+  apiKey: string,
+  templateId: string,
+  versionId: string,
+): Promise<SgTemplateVersion> {
+  return tmplRequest(apiKey, 'POST', `/templates/${templateId}/versions/${versionId}/activate`);
 }
 
 /**
  * Permanently delete a template version.
- * Docs: https://docs.sendgrid.com/api-reference/transactional-templates-versions-unsubscribe-actions/delete-a-transactional-template-version
  */
-export async function deleteTemplateVersion(templateId: string, versionId: string): Promise<void> {
-  await tmplRequest('DELETE', `/templates/${templateId}/versions/${versionId}`);
+export async function deleteTemplateVersion(apiKey: string, templateId: string, versionId: string): Promise<void> {
+  await tmplRequest(apiKey, 'DELETE', `/templates/${templateId}/versions/${versionId}`);
 }

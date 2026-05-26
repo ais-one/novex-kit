@@ -52,6 +52,11 @@
       width="600px"
     >
       <a-form layout="vertical" style="margin-top: 16px">
+        <a-form-item label="Label" required>
+          <a-input v-model:value="form.label" placeholder="e.g. support-wa, marketing-email, billing-bot" :disabled="!!editingId" />
+          <div style="color: #888; font-size: 11px; margin-top: 2px">Slug format: lowercase, numbers, hyphens only. No spaces.</div>
+        </a-form-item>
+
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="Channel" :required="!editingId">
@@ -183,6 +188,7 @@ const submitting = ref(false);
 const editingId = ref(null);
 
 const defaultForm = () => ({
+  label: '',
   channel: 'email',
   provider: 'sendgrid',
   credentials: {},
@@ -193,6 +199,7 @@ const form = ref(defaultForm());
 // ─── Table columns ────────────────────────────────────────────────────────────
 
 const columns = [
+  { title: 'Label', dataIndex: 'label', key: 'label', width: 150 },
   { title: 'Channel', dataIndex: 'channel', key: 'channel', width: 100 },
   { title: 'Provider', dataIndex: 'provider', key: 'provider', width: 100 },
   { title: 'Sender Identity', key: 'senderIdentity', width: 200 },
@@ -236,6 +243,7 @@ async function createConfig() {
   error.value = '';
   try {
     const body = {
+      label: form.value.label,
       channel: form.value.channel,
       provider: form.value.provider,
       credentials: form.value.credentials,
@@ -344,6 +352,7 @@ function showAddModal() {
 function showEditModal(record) {
   editingId.value = record.id;
   form.value = {
+    label: record.label,
     channel: record.channel,
     provider: record.provider,
     credentials: {}, // empty — user must re-enter to update (security)

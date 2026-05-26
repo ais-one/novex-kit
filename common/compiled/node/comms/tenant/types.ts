@@ -10,6 +10,7 @@ export type CommsProvider = 'telegram' | 'sendgrid' | 'meta' | 'nexmo';
 export interface TenantCommsConfig {
   id: number;
   tenantId: number;
+  label: string;
   channel: CommsChannel;
   provider: CommsProvider;
   credentials: Record<string, string>;

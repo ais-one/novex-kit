@@ -351,6 +351,7 @@ export const tenantCommsConfig = iamSchema.table(
     tenant_id: integer('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
+    label: varchar('label', { length: 100 }).notNull(),
     channel: varchar('channel', { length: 50 }).notNull(),
     provider: varchar('provider', { length: 50 }).notNull(),
     credentials: text('credentials').notNull(),
@@ -359,5 +360,5 @@ export const tenantCommsConfig = iamSchema.table(
     created_at: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
   },
-  t => [unique().on(t.tenant_id, t.channel, t.provider)],
+  t => [unique().on(t.tenant_id, t.channel, t.label)],
 );

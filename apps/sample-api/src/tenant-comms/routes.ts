@@ -81,6 +81,7 @@ export default express
 
       const result = configs.map(c => ({
         id: c.id,
+        label: c.label,
         channel: c.channel,
         provider: c.provider,
         credentials: maskCredentials(c.credentials),
@@ -128,6 +129,7 @@ export default express
         ok: true,
         data: {
           id: config.id,
+          label: config.label,
           channel: config.channel,
           provider: config.provider,
           credentials: maskCredentials(config.credentials),
@@ -152,7 +154,8 @@ export default express
       return;
     }
 
-    const { channel, provider, credentials, senderIdentity } = req.body as {
+    const { label, channel, provider, credentials, senderIdentity } = req.body as {
+      label?: string;
       channel?: string;
       provider?: string;
       credentials?: Record<string, string>;
@@ -160,6 +163,19 @@ export default express
     };
 
     // Validation
+    if (!label || typeof label !== 'string' || label.trim().length === 0) {
+      res.status(400).json({ ok: false, error: 'label is required (e.g. "support-wa", "marketing-email")' });
+      return;
+    }
+    const labelSlug = label.trim().toLowerCase().replace(/\s+/g, '-');
+    if ((!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(labelSlug) && labelSlug.length > 1) || labelSlug.length === 0) {
+      res.status(400).json({
+        ok: false,
+        error:
+          'label must be slug format: lowercase letters, numbers, and hyphens only (e.g. "support-wa", "marketing-email"). No spaces or special characters.',
+      });
+      return;
+    }
     if (!channel || !validateChannel(channel)) {
       res
         .status(400)
@@ -182,7 +198,7 @@ export default express
     }
 
     try {
-      // Check for existing config (unique constraint: tenant_id + channel + provider)
+      // Check for existing config with same tenant_id + channel + label
       const [existing] = await db()
         .select({ id: tenantCommsConfig.id })
         .from(tenantCommsConfig)
@@ -190,7 +206,7 @@ export default express
           and(
             eq(tenantCommsConfig.tenant_id, tenantId),
             eq(tenantCommsConfig.channel, channel),
-            eq(tenantCommsConfig.provider, provider),
+            eq(tenantCommsConfig.label, labelSlug),
           ),
         )
         .limit(1);
@@ -198,7 +214,7 @@ export default express
       if (existing) {
         res.status(409).json({
           ok: false,
-          error: `A ${channel} configuration with provider ${provider} already exists for this tenant. Use PUT to update.`,
+          error: `A ${channel} configuration with label "${labelSlug}" already exists for this tenant. Use a different label or PUT to update.`,
         });
         return;
       }
@@ -210,6 +226,7 @@ export default express
         .insert(tenantCommsConfig)
         .values({
           tenant_id: tenantId,
+          label: labelSlug,
           channel,
           provider,
           credentials: encrypted,
