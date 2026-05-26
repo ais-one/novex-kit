@@ -26,27 +26,9 @@ import { pathToFileURL } from 'node:url';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 import { createDocument } from 'zod-openapi';
+import { parseArgs } from './utils.ts';
 
 // ─── CLI args ─────────────────────────────────────────────────────────────────
-
-/**
- * Parses `--key value` pairs from the given argv array into a plain object.
- * Each `--key` consumes the next element as its value.
- *
- * @param argv - Argument array (typically `process.argv.slice(2)`).
- * @returns A record mapping each flag name (without `--`) to its string value.
- */
-function parseArgs(argv: string[]): Record<string, string> {
-  const result: Record<string, string> = {};
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg.startsWith('--')) {
-      result[arg.slice(2)] = argv[i + 1] ?? '';
-      i++;
-    }
-  }
-  return result;
-}
 
 const args = parseArgs(process.argv.slice(2));
 
