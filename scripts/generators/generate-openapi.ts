@@ -209,7 +209,6 @@ for (const { kebab, mod, isSidecar } of loaded) {
   crudTables.push(kebab);
 
   // Extract PK column name from ParamsSchema shape (it has exactly one key)
-  // biome-ignore lint/suspicious/noExplicitAny: zod schema shape access
   const paramsShape = paramsSchema.shape ?? {};
   const pkColName = Object.keys(paramsShape)[0] ?? 'id';
   const humanName = pascalToWords(pascalName);
