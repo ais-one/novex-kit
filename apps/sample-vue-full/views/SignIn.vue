@@ -45,9 +45,10 @@
             </header>
 
             <div class="fields">
-              <label class="field">
+              <label class="field" for="email-input">
                 <span class="field-label">Email address</span>
                 <a-input
+                  id="email-input"
                   data-cy="username"
                   type="text"
                   placeholder="you@company.com"
@@ -56,9 +57,10 @@
                 />
               </label>
 
-              <label class="field">
+              <label class="field" for="password-input">
                 <span class="field-label">Password</span>
                 <a-input
+                  id="password-input"
                   data-cy="password"
                   type="password"
                   placeholder="Enter your password"
@@ -122,9 +124,10 @@
             </header>
 
             <div class="fields">
-              <label class="field">
+              <label class="field" for="pin-input">
                 <span class="field-label">Verification code</span>
                 <a-input
+                  id="pin-input"
                   data-cy="pin"
                   type="text"
                   placeholder="000000"

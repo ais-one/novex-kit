@@ -20,7 +20,7 @@ import webpush from './webpush/routes.ts';
 const router = express.Router();
 
 // export your routes here - make sure no clashes
-export default ({ app }) => {
+export default function registerRoutes({ app }) {
   app.use(
     '/api/sample-api',
     router.use('/', base), // http://127.0.0.1:3000/api/sample-api/
@@ -47,4 +47,4 @@ export default ({ app }) => {
     router.use('/oauth', auth.oauthRoute),
     router.use('/saml', auth.samlRoute),
   );
-};
+}

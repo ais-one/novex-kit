@@ -193,7 +193,7 @@ function toPascalCase(str: string): string {
  * @returns The kebab-case equivalent.
  */
 function toKebabCase(str: string): string {
-  return str.replace(/([A-Z])/g, m => `-${m.toLowerCase()}`).replace(/^-/, '');
+  return str.replaceAll(/([A-Z])/g, m => `-${m.toLowerCase()}`).replace(/^-/, '');
 }
 
 // ─── File helpers ─────────────────────────────────────────────────────────────

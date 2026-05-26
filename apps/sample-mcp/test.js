@@ -22,20 +22,8 @@ try {
         },
       },
     ],
-    // input: "What is my BMI if I weigh 65 kg and am 1.62 m tall?",
     input: 'today is 2025-08-25. my due date is 2025-08-31. How many days from today until then?',
     store: true,
     stream: STREAM_FLAG,
   });
-
-  // if (STREAM_FLAG) {
-  //   for await (const event of resp) console.log(event);
-  // } else {
-  //   console.log(resp);
-  //   console.log(resp.output_text);
-  //   console.log(resp.output[1].error);
-  //   console.log(resp.output[2].content);
-  // }
-} catch (e) {
-  // console.log('Error response: ', e);
-}
+} catch {}

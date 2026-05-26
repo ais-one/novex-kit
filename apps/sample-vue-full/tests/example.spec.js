@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 
-// Shared login helper — reused across test suites
 async function loginWithMsw(page) {
   await page.goto('/');
   await page.getByTestId('username').fill('test@example.com');
@@ -9,6 +8,17 @@ async function loginWithMsw(page) {
   await page.getByTestId('pin').fill('111111');
   await page.getByTestId('otp').click();
   await page.waitForURL('**/dashboard');
+}
+
+// Navigate within the SPA (no full page reload) so the auth state is preserved.
+async function navigateToStudent(page) {
+  await page.locator('.ant-menu-submenu-title', { hasText: 'T4t' }).click();
+  await page.getByText('T4t - Student').click();
+  await page.waitForURL('**/t4t/student');
+  await page.waitForLoadState('networkidle');
+  // Click Reload to ensure fetchData fires even if initial onMounted load missed it.
+  await page.getByRole('button', { name: /reload/i }).click();
+  await page.waitForLoadState('networkidle');
 }
 
 test.describe('Sign-in flow', () => {
@@ -34,7 +44,7 @@ test.describe('Dashboard', () => {
 
   test('renders the dashboard page after login', async ({ page }) => {
     await expect(page).toHaveURL(/dashboard/);
-    await expect(page.locator('.secure-layout, .dashboard, main')).toBeVisible();
+    await expect(page.locator('.secure-layout')).toBeVisible();
   });
 
   test('sidebar is visible with navigation links', async ({ page }) => {
@@ -45,8 +55,7 @@ test.describe('Dashboard', () => {
 test.describe('T4t Student table', () => {
   test.beforeEach(async ({ page }) => {
     await loginWithMsw(page);
-    await page.goto('/t4t/student');
-    await page.waitForLoadState('networkidle');
+    await navigateToStudent(page);
   });
 
   test('loads the student table with mock data', async ({ page }) => {

@@ -8,9 +8,9 @@
 import express from 'express';
 import { Fido2Lib } from 'fido2-lib';
 
-const b64_b64url = inStr => inStr.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+const b64_b64url = inStr => inStr.replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 const b64url_b64 = inStr =>
-  inStr.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat(inStr.length % 4 ? 4 - (inStr.length % 4) : 0);
+  inStr.replaceAll('-', '+').replaceAll('_', '/') + '='.repeat(inStr.length % 4 ? 4 - (inStr.length % 4) : 0);
 const b64_b = inStr => Buffer.from(inStr, 'base64');
 const b_b64 = buf => Buffer.from(buf).toString('base64');
 const b64url_b = inStr => b64_b(b64url_b64(inStr));

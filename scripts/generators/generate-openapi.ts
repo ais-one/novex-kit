@@ -84,7 +84,7 @@ function kebabToPascal(kebab: string): string {
 
 /** Converts a PascalCase string to space-separated words. e.g. `'AuditLog'` → `'Audit Log'`. */
 function pascalToWords(pascal: string): string {
-  return pascal.replace(/([A-Z])/g, ' $1').trim();
+  return pascal.replaceAll(/([A-Z])/g, ' $1').trim();
 }
 
 // ─── Schema file discovery ────────────────────────────────────────────────────

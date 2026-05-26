@@ -6,8 +6,6 @@ import { storageUpload } from '@common/node/express/upload';
 import * as services from '@common/node/services';
 import express from 'express';
 
-// import PdfKit from 'pdfkit';
-
 const { UPLOAD_STATIC = null } = globalThis.__config;
 
 export default express
@@ -59,7 +57,7 @@ export default express
     let count = 1;
     while (count <= chunks) {
       // logger.info('streaming', count)
-      await sleep(1000); // eslint-disable-line
+      await sleep(1000); // eslint-disable-line no-await-in-loop
       res.write(`${JSON.stringify({ type: 'stream', chunk: count++ })}\n`);
     }
     res.end();

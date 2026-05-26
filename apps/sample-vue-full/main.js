@@ -27,21 +27,10 @@ console.log(`V${version}`);
 
 // Wait for MSW to register its Service Worker before mounting so that all
 // API requests made by the app on first load are intercepted correctly.
-prepareMsw()
-  .then(() => {
-    const app = createApp(App);
-    createSentry(app, router); // add or remove your post createApp code here...
-    app.use(createPinia()); // state management
-
-    // NOSONAR
-    // https://zhuanlan.zhihu.com/p/135280049
-    // app.config.isCustomElement = (tag) => tag.startsWith('bwc-') || tag.startsWith('vcxwc-')
-
-    // avoid using provide & inject - reduce tech footprint
-    // app.use(createPinia()) // state management
-    app.use(router); // routing
-    app.use(Antd);
-
-    app.mount('#app');
-  })
-  .catch(console.error);
+await prepareMsw();
+const app = createApp(App);
+createSentry(app, router); // add or remove your post createApp code here...
+app.use(createPinia()); // state management
+app.use(router); // routing
+app.use(Antd);
+app.mount('#app');
