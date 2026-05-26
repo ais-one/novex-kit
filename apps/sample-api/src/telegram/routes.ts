@@ -26,7 +26,7 @@ import {
   unpinMessage,
 } from '@common/node/comms/telegram2/outbound';
 import type { ContactData, MediaGroupItem, TelegramMessageOpts, VenueData } from '@common/node/comms/telegram2/types';
-import { resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
+import { resolveCommsConfigByLabel, resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
 import type { Request, Response } from 'express';
 import express from 'express';
 
@@ -172,13 +172,57 @@ async function handleTestType(
 export default express
   .Router()
 
+  // ── POST /api/sample-api/telegram/webhook/:label ──────────────────────────
+  // Multi-config webhook endpoint. Each bot config gets its own URL.
+  // Telegram sends updates here after setWebhook is called with this URL.
+  // Verifies the X-Telegram-Bot-Api-Secret-Token header against the config's webhook_secret.
+  .post('/webhook/:label', async (req: Request, res: Response) => {
+    const { label } = req.params;
+
+    // 1. Resolve config by label
+    const config = await resolveCommsConfigByLabel('telegram', label);
+    if (!config) {
+      res.sendStatus(404);
+      return;
+    }
+
+    // 2. Verify secret_token header
+    const headerSecret = req.headers['x-telegram-bot-api-secret-token'] as string | undefined;
+    if (!headerSecret || headerSecret !== config.credentials.webhook_secret) {
+      res.sendStatus(401);
+      return;
+    }
+
+    // 3. Respond 200 immediately (Telegram expects fast response)
+    res.sendStatus(200);
+
+    // 4. Parse and process with tenant context
+    const parsed = handleUpdate(req.body);
+    if (!parsed || parsed.updateType !== 'message') return;
+
+    // biome-ignore lint/suspicious/noExplicitAny: parsed data shape varies by updateType
+    const data = parsed.data as any;
+    if (!data?.content || data.content.type !== 'text') return;
+
+    const chatId = String(data.chat?.id ?? '');
+    const userText = String(data.content.text ?? '')
+      .trim()
+      .toLowerCase();
+
+    // Simple echo handler — extend or replace with AI/service layer
+    let reply: string;
+    if (userText === 'hello' || userText === 'hi') {
+      reply = 'Hi! What can I help you with?';
+    } else {
+      reply = `You said: "${data.content.text}". (This bot is a work in progress.)`;
+    }
+
+    await sendMessage(config.credentials.bot_token, chatId, reply);
+  })
+
   // ── POST /api/sample-api/telegram/webhook ──────────────────────────────────
-  // Telegram sends every update here as a POST.
-  // Respond 200 immediately — Telegram will retry if you don't.
+  // Legacy single-bot webhook endpoint (backward compatibility).
   // Uses TELEGRAM_API_KEY env var for bot replies (not tenant-scoped).
-  // To register this webhook URL with Telegram, call:
-  //   POST https://api.telegram.org/bot<TOKEN>/setWebhook
-  //   Body: { url: "https://yourdomain.com/api/sample-api/telegram/webhook" }
   .post('/webhook', async (req, res) => {
     res.sendStatus(200); // always ack first
 

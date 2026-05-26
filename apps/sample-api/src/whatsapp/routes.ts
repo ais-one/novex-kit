@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
+import { resolveCommsConfigByIdentity, resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
 import { parseWebhook } from '@common/node/comms/whatsapp2/inbound';
 import {
   getMediaUrl,
@@ -37,13 +37,23 @@ import express from 'express';
 // WhatsApp Cloud API webhook handler
 // Docs: https://developers.facebook.com/documentation/business-messaging/whatsapp/messages/send-messages
 //
-// Required env vars (set in .env.local):
-//   WHATSAPP_APP_SECRET      — from Meta App Dashboard → App Settings → Basic → App Secret
-//   WHATSAPP_VERIFY_TOKEN    — your own secret string (used once during webhook registration)
-//   WHATSAPP_TOKEN           — permanent system user access token
-//   WHATSAPP_PHONE_NUMBER_ID — phone number ID from Meta App Dashboard
+// Multi-config architecture:
+//   - Each tenant can have multiple WhatsApp configs (different phone numbers / Meta Apps)
+//   - Inbound webhooks are routed by phone_number_id from the payload
+//   - Signature verification uses per-config app_secret (from credentials)
+//   - Webhook verification (GET) checks verify_token against all stored configs
+//   - Falls back to env vars (WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN) for backward compat
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Verify HMAC-SHA256 signature from Meta webhook */
+function verifySignature(appSecret: string, rawBody: Buffer, signatureHeader: string): boolean {
+  const expected = `sha256=${createHmac('sha256', appSecret).update(rawBody).digest('hex')}`;
+  const sigBuf = Buffer.from(signatureHeader);
+  const expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length) return false;
+  return timingSafeEqual(sigBuf, expBuf);
+}
 
 function mediaFrom(p: Record<string, unknown>): WaMediaInput {
   if (typeof p.id === 'string') return { id: p.id };
@@ -149,77 +159,122 @@ export default express
   // ── GET /api/sample-api/whatsapp/webhook ────────────────────────────────────
   // Meta calls this once when you click "Verify and save" in the App Dashboard.
   // Your server must echo back hub.challenge or the webhook will not be registered.
-  .get('/webhook', (req, res) => {
+  // Supports multi-config: checks verify_token against all stored WhatsApp configs.
+  .get('/webhook', async (req, res) => {
     const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
+    const token = req.query['hub.verify_token'] as string | undefined;
     const challenge = req.query['hub.challenge'];
 
-    if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-      // Echo challenge as plain text — sanitize to prevent reflected XSS
-      res
-        .set('Content-Type', 'text/plain')
-        .status(200)
-        .send(String(challenge ?? ''));
-    } else {
-      res.sendStatus(403);
+    if (mode === 'subscribe' && token) {
+      // Try to find a config with this verify_token
+      const config = await resolveCommsConfigByIdentity('whatsapp', 'verify_token', token);
+
+      if (config) {
+        res
+          .set('Content-Type', 'text/plain')
+          .status(200)
+          .send(String(challenge ?? ''));
+        return;
+      }
+
+      // Fallback: check legacy env var for backward compatibility
+      if (token === process.env.WHATSAPP_VERIFY_TOKEN) {
+        res
+          .set('Content-Type', 'text/plain')
+          .status(200)
+          .send(String(challenge ?? ''));
+        return;
+      }
     }
+
+    res.sendStatus(403);
   })
 
   // ── POST /api/sample-api/whatsapp/webhook ───────────────────────────────────
   // Meta sends every inbound message here.
-  // Respond 200 immediately — Meta will retry if you don't.
+  // Multi-config: resolves config by phone_number_id, verifies signature per-config.
   .post('/webhook', async (req, res) => {
-    // ── Signature verification ────────────────────────────────────────────────
-    // Meta signs every POST with HMAC-SHA256 of the raw body using the App Secret.
-    // Skip check if WHATSAPP_APP_SECRET is not configured (dev convenience).
-    const appSecret = process.env.WHATSAPP_APP_SECRET;
-    if (appSecret) {
-      const sig = String(req.headers['x-hub-signature-256'] ?? '');
-      const rawBody = (req as unknown as { rawBody?: Buffer }).rawBody;
-      if (!rawBody) {
-        res.sendStatus(403);
-        return;
-      }
-      const expected = `sha256=${createHmac('sha256', appSecret).update(rawBody).digest('hex')}`;
-      const sigBuf = Buffer.from(sig);
-      const expBuf = Buffer.from(expected);
-      if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
-        res.sendStatus(403);
-        return;
-      }
-    }
-
-    res.sendStatus(200); // always ack first
+    // Always respond 200 immediately — Meta will retry if you don't (< 5s requirement)
+    res.sendStatus(200);
 
     const body = req.body;
 
     // Safety check — only handle whatsapp_business_account events
     if (body?.object !== 'whatsapp_business_account') return;
 
-    const { WHATSAPP_TOKEN: token = '', WHATSAPP_PHONE_NUMBER_ID: phoneId = '' } = process.env;
-    const { messages } = parseWebhook(body);
+    const rawBody = (req as unknown as { rawBody?: Buffer }).rawBody;
+    const signatureHeader = String(req.headers['x-hub-signature-256'] ?? '');
 
+    // Parse webhook to extract phone_number_id for config resolution
+    const { phoneNumberId, messages } = parseWebhook(body);
+
+    if (!phoneNumberId) {
+      console.warn('WA webhook: no phone_number_id in payload');
+      return;
+    }
+
+    // Resolve config by phone_number_id
+    const config = await resolveCommsConfigByIdentity('whatsapp', 'phone_number_id', phoneNumberId);
+
+    if (config) {
+      // Verify signature using config's app_secret
+      const appSecret = config.credentials.app_secret;
+      if (appSecret && rawBody) {
+        if (!verifySignature(appSecret, rawBody, signatureHeader)) {
+          console.error('WA webhook: signature verification failed for config', config.label);
+          return;
+        }
+      }
+
+      // Process messages in tenant context
+      if (messages.length === 0) return;
+
+      const token = config.credentials.token;
+      const phoneId = config.senderIdentity.phone_number_id;
+      const msg = messages[0];
+
+      // Only handle inbound text messages for now
+      if (msg.content.type !== 'text') return;
+
+      const userText = msg.content.body.trim().toLowerCase();
+
+      // Simple echo / greeting handler — extend or replace with AI/service layer
+      let reply: string;
+      if (userText === 'hello' || userText === 'hi') {
+        reply = 'Hi! What can I help you with?';
+      } else {
+        reply = `You said: "${msg.content.body}". (This bot is a work in progress.)`;
+      }
+
+      await sendText(token, phoneId, msg.from, reply);
+      return;
+    }
+
+    // Fallback: legacy env-var based handling (backward compatibility)
+    const legacyAppSecret = process.env.WHATSAPP_APP_SECRET;
+    if (legacyAppSecret && rawBody) {
+      if (!verifySignature(legacyAppSecret, rawBody, signatureHeader)) {
+        console.error('WA webhook: legacy signature verification failed');
+        return;
+      }
+    }
+
+    const { WHATSAPP_TOKEN: legacyToken = '', WHATSAPP_PHONE_NUMBER_ID: legacyPhoneId = '' } = process.env;
     if (messages.length === 0) return;
-    if (!token || !phoneId) return; // silently skip if env not configured
+    if (!legacyToken || !legacyPhoneId) return;
 
     const msg = messages[0];
-
-    // Only handle inbound text messages for now
     if (msg.content.type !== 'text') return;
 
     const userText = msg.content.body.trim().toLowerCase();
-
-    // ── Simple echo / greeting handler ─────────────────────────────────────
-    // Extend this block to add more commands or wire in an AI agent later.
     let reply: string;
-
     if (userText === 'hello' || userText === 'hi') {
       reply = 'Hi! What can I help you with?';
     } else {
       reply = `You said: "${msg.content.body}". (This bot is a work in progress.)`;
     }
 
-    await sendText(token, phoneId, msg.from, reply);
+    await sendText(legacyToken, legacyPhoneId, msg.from, reply);
   })
 
   // ── POST /api/sample-api/whatsapp/send ──────────────────────────────────────

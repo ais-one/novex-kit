@@ -181,6 +181,21 @@ export interface ContactData {
   vcard?: string;
 }
 
+// ─── Webhook management types ─────────────────────────────────────────────────
+
+export interface SetWebhookOpts {
+  /** Maximum allowed number of simultaneous HTTPS connections to the webhook (1-100, default 40) */
+  maxConnections?: number;
+  /** List of update types to receive. Omit to receive all. */
+  allowedUpdates?: string[];
+  /** Upload your public key certificate for self-signed webhooks */
+  certificate?: string;
+  /** A fixed IP address to send webhook requests to instead of resolving via DNS */
+  ipAddress?: string;
+  /** Pass True to drop all pending updates */
+  dropPendingUpdates?: boolean;
+}
+
 // // TODO: Need to be defined
 // data shape (updateType === message):
 // {

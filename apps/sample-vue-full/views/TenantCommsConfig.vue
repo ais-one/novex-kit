@@ -27,12 +27,35 @@
               {{ key }}: {{ val }}
             </span>
           </template>
+          <template v-if="column.key === 'webhook'">
+            <template v-if="record.channel === 'telegram'">
+              <div style="font-size: 11px; word-break: break-all; color: #555">
+                {{ getTelegramWebhookUrl(record.label) }}
+              </div>
+            </template>
+            <template v-else-if="record.channel === 'whatsapp'">
+              <div style="font-size: 11px; word-break: break-all; color: #555">
+                {{ getWhatsAppWebhookUrl() }}
+              </div>
+            </template>
+            <template v-else>
+              <span style="color: #999; font-size: 11px">—</span>
+            </template>
+          </template>
           <template v-if="column.key === 'isActive'">
             <a-switch :checked="record.isActive" @change="toggleActive(record)" size="small" />
           </template>
           <template v-if="column.key === 'actions'">
             <a-space>
               <a-button size="small" @click="showEditModal(record)">Edit</a-button>
+              <a-button
+                v-if="record.channel === 'telegram'"
+                size="small"
+                type="primary"
+                ghost
+                :loading="registeringWebhook === record.id"
+                @click="registerWebhook(record)"
+              >Register Webhook</a-button>
               <a-popconfirm title="Delete this config?" @confirm="deleteConfig(record.id)">
                 <a-button size="small" danger>Delete</a-button>
               </a-popconfirm>
@@ -88,6 +111,9 @@
           <a-form-item label="Access Token" required>
             <a-input-password v-model:value="form.credentials.token" placeholder="EAAxxxxx" />
           </a-form-item>
+          <a-form-item label="App Secret" required>
+            <a-input-password v-model:value="form.credentials.app_secret" placeholder="Meta App Secret (for webhook signature verification)" />
+          </a-form-item>
         </template>
 
         <template v-else-if="form.channel === 'telegram'">
@@ -122,6 +148,10 @@
           </a-form-item>
           <a-form-item label="Business Account ID (WABA ID)" required>
             <a-input v-model:value="form.senderIdentity.business_account_id" placeholder="1528784982254938" />
+          </a-form-item>
+          <a-form-item label="Verify Token">
+            <a-input v-model:value="form.senderIdentity.verify_token" placeholder="Your custom verify token (set same value in Meta Dashboard)" />
+            <div style="color: #888; font-size: 11px; margin-top: 2px">Used during Meta webhook subscription verification (GET handshake). Must match what you enter in Meta App Dashboard.</div>
           </a-form-item>
         </template>
 
@@ -186,6 +216,7 @@ const error = ref('');
 const modalVisible = ref(false);
 const submitting = ref(false);
 const editingId = ref(null);
+const registeringWebhook = ref(null);
 
 const defaultForm = () => ({
   label: '',
@@ -199,23 +230,24 @@ const form = ref(defaultForm());
 // ─── Table columns ────────────────────────────────────────────────────────────
 
 const columns = [
-  { title: 'Label', dataIndex: 'label', key: 'label', width: 150 },
-  { title: 'Channel', dataIndex: 'channel', key: 'channel', width: 100 },
-  { title: 'Provider', dataIndex: 'provider', key: 'provider', width: 100 },
-  { title: 'Sender Identity', key: 'senderIdentity', width: 200 },
+  { title: 'Label', dataIndex: 'label', key: 'label', width: 130 },
+  { title: 'Channel', dataIndex: 'channel', key: 'channel', width: 90 },
+  { title: 'Provider', dataIndex: 'provider', key: 'provider', width: 90 },
+  { title: 'Sender Identity', key: 'senderIdentity', width: 180 },
+  { title: 'Webhook URL', key: 'webhook', width: 200 },
   {
     title: 'Credentials',
     dataIndex: 'credentials',
     key: 'credentials',
-    width: 200,
+    width: 180,
     customRender: ({ record }) => {
       return Object.entries(record.credentials || {})
         .map(([k, v]) => `${k}: ${v}`)
         .join(', ');
     },
   },
-  { title: 'Active', key: 'isActive', width: 80 },
-  { title: 'Actions', key: 'actions', width: 150 },
+  { title: 'Active', key: 'isActive', width: 70 },
+  { title: 'Actions', key: 'actions', width: 220 },
 ];
 
 // ─── API calls ────────────────────────────────────────────────────────────────
@@ -372,6 +404,41 @@ function handleSubmit() {
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 onMounted(fetchConfigs);
+
+// ─── Webhook helpers ──────────────────────────────────────────────────────────
+
+/** Build the Telegram webhook URL for display */
+function getTelegramWebhookUrl(label) {
+  return `${API_URL}/api/sample-api/telegram/webhook/${label}`;
+}
+
+/** Build the WhatsApp webhook URL for display */
+function getWhatsAppWebhookUrl() {
+  return `${API_URL}/api/sample-api/whatsapp/webhook`;
+}
+
+/** Manually (re-)register Telegram webhook for a config */
+async function registerWebhook(record) {
+  registeringWebhook.value = record.id;
+  error.value = '';
+  try {
+    const res = await fetch(`${BASE}/${record.id}/register-webhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alert(`Webhook registered successfully!\n\nURL: ${data.data.webhookUrl}`);
+    } else {
+      error.value = data.error || 'Failed to register webhook';
+    }
+  } catch (err) {
+    error.value = err.message;
+  } finally {
+    registeringWebhook.value = null;
+  }
+}
 </script>
 
 <style scoped>

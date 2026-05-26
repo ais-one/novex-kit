@@ -7,7 +7,10 @@
 //   POST   /tenant-comms           — create a new channel config
 //   PUT    /tenant-comms/:id       — update an existing channel config
 //   DELETE /tenant-comms/:id       — delete a channel config
+//   POST   /tenant-comms/:id/register-webhook — manually (re-)register Telegram webhook
 
+import { randomBytes } from 'node:crypto';
+import { deleteWebhook, setWebhook } from '@common/node/comms/telegram2/outbound';
 import { decryptCredentials, encryptCredentials } from '@common/node/comms/tenant/crypto';
 import type { CommsChannel, CommsProvider } from '@common/node/comms/tenant/types';
 import * as realServices from '@common/node/services';
@@ -46,6 +49,39 @@ function maskCredentials(encrypted: string): Record<string, string> {
 function getTenantId(req: Request): number | null {
   const user = (req as any).user;
   return user?.tenant_id ?? user?.tenantId ?? (process.env.NODE_ENV === 'development' ? 1 : null);
+}
+
+/** Generate a URL-safe random secret token (64 chars, A-Za-z0-9_-) for Telegram webhook verification */
+function generateWebhookSecret(): string {
+  return randomBytes(48).toString('base64url').slice(0, 64);
+}
+
+/** Build the full webhook URL for a Telegram config */
+function buildTelegramWebhookUrl(label: string): string {
+  const domain = process.env.APP_DOMAIN || process.env.BASE_URL || '';
+  if (!domain) throw new Error('APP_DOMAIN or BASE_URL env var must be set for Telegram webhook registration');
+  const base = domain.replace(/\/$/, '');
+  return `${base}/api/sample-api/telegram/webhook/${label}`;
+}
+
+/**
+ * Register a Telegram webhook for a config.
+ * Generates webhook_secret if not present, calls Telegram setWebhook API.
+ * Returns the updated credentials with webhook_secret included.
+ */
+async function registerTelegramWebhook(
+  credentials: Record<string, string>,
+  label: string,
+): Promise<{ credentials: Record<string, string>; webhookUrl: string }> {
+  const webhookSecret = credentials.webhook_secret || generateWebhookSecret();
+  const webhookUrl = buildTelegramWebhookUrl(label);
+
+  await setWebhook(credentials.bot_token, webhookUrl, webhookSecret);
+
+  return {
+    credentials: { ...credentials, webhook_secret: webhookSecret },
+    webhookUrl,
+  };
 }
 
 // ─── Validation ───────────────────────────────────────────────────────────────
@@ -235,7 +271,28 @@ export default express
         })
         .returning({ id: tenantCommsConfig.id });
 
-      res.status(201).json({ ok: true, data: { id: created.id } });
+      // Auto-register Telegram webhook after config creation
+      let webhookUrl: string | undefined;
+      if (channel === 'telegram' && credentials.bot_token) {
+        try {
+          const result = await registerTelegramWebhook(credentials, labelSlug);
+          webhookUrl = result.webhookUrl;
+          // Update credentials with the generated webhook_secret
+          await db()
+            .update(tenantCommsConfig)
+            .set({ credentials: encryptCredentials(result.credentials) })
+            .where(eq(tenantCommsConfig.id, created.id));
+        } catch (webhookErr: unknown) {
+          // Webhook registration failed — config is saved but webhook is not active.
+          // User can retry via the register-webhook endpoint.
+          console.warn(
+            'Telegram webhook registration failed:',
+            webhookErr instanceof Error ? webhookErr.message : webhookErr,
+          );
+        }
+      }
+
+      res.status(201).json({ ok: true, data: { id: created.id, webhookUrl } });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
     }
@@ -321,11 +378,7 @@ export default express
 
     try {
       // Verify ownership
-      const [existing] = await db()
-        .select({ id: tenantCommsConfig.id, tenant_id: tenantCommsConfig.tenant_id })
-        .from(tenantCommsConfig)
-        .where(eq(tenantCommsConfig.id, id))
-        .limit(1);
+      const [existing] = await db().select().from(tenantCommsConfig).where(eq(tenantCommsConfig.id, id)).limit(1);
 
       if (!existing) {
         res.status(404).json({ ok: false, error: 'Configuration not found' });
@@ -336,9 +389,80 @@ export default express
         return;
       }
 
+      // Unregister Telegram webhook before deleting config
+      if (existing.channel === 'telegram') {
+        try {
+          const creds = decryptCredentials(existing.credentials);
+          if (creds.bot_token) {
+            await deleteWebhook(creds.bot_token);
+          }
+        } catch (webhookErr: unknown) {
+          console.warn(
+            'Telegram webhook deletion failed (proceeding with config delete):',
+            webhookErr instanceof Error ? webhookErr.message : webhookErr,
+          );
+        }
+      }
+
       await db().delete(tenantCommsConfig).where(eq(tenantCommsConfig.id, id));
 
       res.json({ ok: true });
+    } catch (err: unknown) {
+      res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
+    }
+  })
+
+  // ── POST /tenant-comms/:id/register-webhook ───────────────────────────────
+  // Manually (re-)register the Telegram webhook for a config.
+  // Useful if auto-registration failed or if APP_DOMAIN changed.
+  .post('/:id/register-webhook', async (req: Request, res: Response) => {
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
+      return;
+    }
+
+    const id = Number(req.params.id);
+    if (!id || Number.isNaN(id)) {
+      res.status(400).json({ ok: false, error: 'Valid numeric id is required' });
+      return;
+    }
+
+    try {
+      // Verify ownership and get config
+      const [existing] = await db().select().from(tenantCommsConfig).where(eq(tenantCommsConfig.id, id)).limit(1);
+
+      if (!existing) {
+        res.status(404).json({ ok: false, error: 'Configuration not found' });
+        return;
+      }
+      if (existing.tenant_id !== tenantId) {
+        res.status(403).json({ ok: false, error: 'You do not have permission to modify this configuration' });
+        return;
+      }
+      if (existing.channel !== 'telegram') {
+        res.status(400).json({ ok: false, error: 'Webhook registration is only supported for Telegram configs' });
+        return;
+      }
+
+      const credentials = decryptCredentials(existing.credentials);
+      if (!credentials.bot_token) {
+        res.status(400).json({ ok: false, error: 'bot_token is missing from credentials' });
+        return;
+      }
+
+      const result = await registerTelegramWebhook(credentials, existing.label);
+
+      // Update credentials with (possibly new) webhook_secret
+      await db()
+        .update(tenantCommsConfig)
+        .set({
+          credentials: encryptCredentials(result.credentials),
+          updated_at: new Date(),
+        })
+        .where(eq(tenantCommsConfig.id, id));
+
+      res.json({ ok: true, data: { webhookUrl: result.webhookUrl } });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
     }
