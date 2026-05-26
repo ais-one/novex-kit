@@ -25,6 +25,8 @@ export interface TelegramCredentials {
 }
 export interface SendGridCredentials {
   api_key: string;
+  /** ECDSA public key for verifying Event Webhook signatures (X-Twilio-Email-Event-Webhook-Signature). */
+  event_webhook_public_key?: string;
 }
 export interface WhatsAppCredentials {
   token: string;

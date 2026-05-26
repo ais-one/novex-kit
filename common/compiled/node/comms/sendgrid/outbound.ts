@@ -66,6 +66,15 @@ function applyOpts(body: Record<string, unknown>, opts: SendEmailOpts) {
   if (opts.sendAt) body.send_at = opts.sendAt;
   if (opts.batchId) body.batch_id = opts.batchId;
   if (opts.asmGroupId) body.asm = { group_id: opts.asmGroupId };
+
+  // Auto-inject tenant context into custom_args for event webhook correlation.
+  // These are returned in event webhook payloads so we can route events back to the correct config.
+  if (opts._tenantId || opts._configLabel) {
+    const existing = (body.custom_args as Record<string, string>) ?? {};
+    if (opts._tenantId) existing._novex_tenant_id = String(opts._tenantId);
+    if (opts._configLabel) existing._novex_config_label = opts._configLabel;
+    body.custom_args = existing;
+  }
 }
 
 function toAddresses(to: string | string[]) {

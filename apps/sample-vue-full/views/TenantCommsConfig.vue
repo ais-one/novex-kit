@@ -38,6 +38,12 @@
                 {{ getWhatsAppWebhookUrl() }}
               </div>
             </template>
+            <template v-else-if="record.channel === 'email'">
+              <div style="font-size: 11px; word-break: break-all; color: #555">
+                <div>Inbound: {{ getSendGridInboundUrl() }}</div>
+                <div style="margin-top: 2px">Events: {{ getSendGridEventsUrl(record.label) }}</div>
+              </div>
+            </template>
             <template v-else>
               <span style="color: #999; font-size: 11px">—</span>
             </template>
@@ -104,6 +110,10 @@
         <template v-if="form.channel === 'email'">
           <a-form-item label="SendGrid API Key" required>
             <a-input-password v-model:value="form.credentials.api_key" placeholder="SG.xxxxx" />
+          </a-form-item>
+          <a-form-item label="Event Webhook Public Key">
+            <a-input-password v-model:value="form.credentials.event_webhook_public_key" placeholder="MFkwEwYHKoZIzj0C... (ECDSA P-256 public key)" />
+            <div style="color: #888; font-size: 11px; margin-top: 2px">From SendGrid Dashboard > Settings > Mail Settings > Event Webhook > Verification Key. Used for ECDSA signature verification on event webhooks.</div>
           </a-form-item>
         </template>
 
@@ -415,6 +425,16 @@ function getTelegramWebhookUrl(label) {
 /** Build the WhatsApp webhook URL for display */
 function getWhatsAppWebhookUrl() {
   return `${API_URL}/api/sample-api/whatsapp/webhook`;
+}
+
+/** Build the SendGrid Inbound Parse webhook URL for display */
+function getSendGridInboundUrl() {
+  return `${API_URL}/api/sample-api/sendgrid/inbound`;
+}
+
+/** Build the SendGrid Event webhook URL for display (per-config) */
+function getSendGridEventsUrl(label) {
+  return `${API_URL}/api/sample-api/sendgrid/events/${label}`;
 }
 
 /** Manually (re-)register Telegram webhook for a config */

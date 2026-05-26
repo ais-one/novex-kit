@@ -21,7 +21,10 @@ import express from 'express';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Extract common send options from the request payload */
-function buildOpts(p: Record<string, unknown>): SgSendEmailOpts {
+function buildOpts(
+  p: Record<string, unknown>,
+  tenantContext?: { _tenantId: number; _configLabel: string },
+): SgSendEmailOpts {
   const opts: SgSendEmailOpts = {};
   if (p.cc) opts.cc = p.cc as SgSendEmailOpts['cc'];
   if (p.bcc) opts.bcc = p.bcc as SgSendEmailOpts['bcc'];
@@ -29,23 +32,43 @@ function buildOpts(p: Record<string, unknown>): SgSendEmailOpts {
   if (p.attachments) opts.attachments = p.attachments as SgAttachment[];
   if (p.sendAt) opts.sendAt = Number(p.sendAt);
   if (p.categories) opts.categories = p.categories as string[];
+  // Inject tenant context for event webhook correlation
+  if (tenantContext) {
+    opts._tenantId = tenantContext._tenantId;
+    opts._configLabel = tenantContext._configLabel;
+  }
   return opts;
 }
 
 // ─── Type handlers ────────────────────────────────────────────────────────────
 
-async function handleHtml(auth: SendGridAuth, dest: string | string[], p: Record<string, unknown>) {
-  const opts = buildOpts(p);
+async function handleHtml(
+  auth: SendGridAuth,
+  dest: string | string[],
+  p: Record<string, unknown>,
+  tenantContext?: { _tenantId: number; _configLabel: string },
+) {
+  const opts = buildOpts(p, tenantContext);
   return sendEmail(auth, dest, String(p.subject ?? 'Test Email'), String(p.html ?? ''), opts);
 }
 
-async function handleDynamic(auth: SendGridAuth, dest: string | string[], p: Record<string, unknown>) {
-  const opts = buildOpts(p);
+async function handleDynamic(
+  auth: SendGridAuth,
+  dest: string | string[],
+  p: Record<string, unknown>,
+  tenantContext?: { _tenantId: number; _configLabel: string },
+) {
+  const opts = buildOpts(p, tenantContext);
   return sendDynamicEmail(auth, dest, String(p.templateId ?? ''), (p.data as Record<string, unknown>) ?? {}, opts);
 }
 
-async function handleAttachment(auth: SendGridAuth, dest: string | string[], p: Record<string, unknown>) {
-  const opts = buildOpts(p);
+async function handleAttachment(
+  auth: SendGridAuth,
+  dest: string | string[],
+  p: Record<string, unknown>,
+  tenantContext?: { _tenantId: number; _configLabel: string },
+) {
+  const opts = buildOpts(p, tenantContext);
   // attachments are passed as both the required param and in opts (sendEmailWithAttachments merges them)
   delete opts.attachments;
   return sendEmailWithAttachments(
@@ -58,8 +81,12 @@ async function handleAttachment(auth: SendGridAuth, dest: string | string[], p: 
   );
 }
 
-async function handleBulk(auth: SendGridAuth, p: Record<string, unknown>) {
-  const opts = buildOpts(p);
+async function handleBulk(
+  auth: SendGridAuth,
+  p: Record<string, unknown>,
+  tenantContext?: { _tenantId: number; _configLabel: string },
+) {
+  const opts = buildOpts(p, tenantContext);
   return sendBulkEmail(
     auth,
     (p.personalizations as SgPersonalization[]) ?? [],
@@ -69,8 +96,12 @@ async function handleBulk(auth: SendGridAuth, p: Record<string, unknown>) {
   );
 }
 
-async function handleBulkDynamic(auth: SendGridAuth, p: Record<string, unknown>) {
-  const opts = buildOpts(p);
+async function handleBulkDynamic(
+  auth: SendGridAuth,
+  p: Record<string, unknown>,
+  tenantContext?: { _tenantId: number; _configLabel: string },
+) {
+  const opts = buildOpts(p, tenantContext);
   return sendBulkDynamicEmail(
     auth,
     String(p.templateId ?? ''),
@@ -79,13 +110,19 @@ async function handleBulkDynamic(auth: SendGridAuth, p: Record<string, unknown>)
   );
 }
 
-async function handleScheduled(auth: SendGridAuth, dest: string | string[], p: Record<string, unknown>, res: Response) {
+async function handleScheduled(
+  auth: SendGridAuth,
+  dest: string | string[],
+  p: Record<string, unknown>,
+  res: Response,
+  tenantContext?: { _tenantId: number; _configLabel: string },
+) {
   const sendAt = Number(p.sendAt);
   if (!sendAt || Number.isNaN(sendAt)) {
     res.status(400).json({ ok: false, error: 'sendAt (unix timestamp) is required for scheduled type' });
     return null;
   }
-  const opts = buildOpts(p);
+  const opts = buildOpts(p, tenantContext);
   return sendScheduledEmail(auth, dest, String(p.subject ?? 'Scheduled Email'), String(p.html ?? ''), sendAt, opts);
 }
 
@@ -117,6 +154,7 @@ export default express
     const { configLabel } = req.body as { configLabel?: string };
 
     let auth: SendGridAuth;
+    let tenantContext: { _tenantId: number; _configLabel: string } | undefined;
     try {
       const config = await resolveCommsCredentials(tenantId, 'email', configLabel);
       auth = {
@@ -124,6 +162,8 @@ export default express
         senderName: config.senderIdentity.sender_name,
         senderEmail: config.senderIdentity.sender_email,
       };
+      // Capture tenant context for custom_args injection (event webhook correlation)
+      tenantContext = { _tenantId: tenantId, _configLabel: config.label };
     } catch (err: unknown) {
       res
         .status(500)
@@ -149,22 +189,22 @@ export default express
 
       switch (type) {
         case 'html':
-          result = await handleHtml(auth, dest, p);
+          result = await handleHtml(auth, dest, p, tenantContext);
           break;
         case 'dynamic':
-          result = await handleDynamic(auth, dest, p);
+          result = await handleDynamic(auth, dest, p, tenantContext);
           break;
         case 'attachment':
-          result = await handleAttachment(auth, dest, p);
+          result = await handleAttachment(auth, dest, p, tenantContext);
           break;
         case 'bulk':
-          result = await handleBulk(auth, p);
+          result = await handleBulk(auth, p, tenantContext);
           break;
         case 'bulk-dynamic':
-          result = await handleBulkDynamic(auth, p);
+          result = await handleBulkDynamic(auth, p, tenantContext);
           break;
         case 'scheduled':
-          result = await handleScheduled(auth, dest, p, res);
+          result = await handleScheduled(auth, dest, p, res, tenantContext);
           if (result === null) return;
           break;
         case 'cancel':
