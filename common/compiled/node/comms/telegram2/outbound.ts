@@ -110,7 +110,16 @@ export function forceReply(input_field_placeholder = '', selective = false) {
   return JSON.stringify({ force_reply: true, input_field_placeholder, selective });
 }
 
-import type { ContactData, MediaGroupItem, SetWebhookOpts, TelegramMessageOpts, VenueData } from './types.ts';
+import type {
+  ContactData,
+  MediaGroupItem,
+  SetWebhookOpts,
+  TelegramMessageOpts,
+  TgBroadcastOpts,
+  TgBroadcastResult,
+  TgBroadcastResultItem,
+  VenueData,
+} from './types.ts';
 
 // ─── Shared Message Options ───────────────────────────────────────────────────
 
@@ -711,4 +720,115 @@ export async function deleteWebhook(botToken: string, dropPendingUpdates = false
  */
 export async function getWebhookInfo(botToken: string): Promise<Record<string, unknown>> {
   return apiRequest(botToken, 'getWebhookInfo') as Promise<Record<string, unknown>>;
+}
+
+// ─── Broadcast ────────────────────────────────────────────────────────────────
+
+const TG_DEFAULT_DELAY_MS = 35; // ~28 msgs/sec — within Telegram's ~30/sec limit to different chats
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Send a message to multiple chat IDs sequentially with rate limiting.
+ *
+ * Uses a callback pattern — pass any existing send function as the sender.
+ * The broadcast function handles looping, rate limiting, and result aggregation.
+ *
+ * @param chatIds - Array of Telegram chat IDs (user, group, or channel)
+ * @param sendFn - A function that sends to a single chat. Receives `chatId` and should return the API response.
+ * @param opts - Broadcast options (delay between sends, concurrency)
+ * @returns Aggregated results with per-recipient success/failure details
+ *
+ * @example
+ * // Text broadcast
+ * await broadcast(
+ *   [123456789, 987654321, -100123456789],
+ *   (chatId) => sendMessage(token, chatId, 'Hello everyone!'),
+ * )
+ *
+ * @example
+ * // Photo broadcast with caption
+ * await broadcast(
+ *   chatIds,
+ *   (chatId) => sendPhoto(token, chatId, 'https://example.com/promo.jpg', { caption: 'Check this out!' }),
+ *   { delayMs: 50 },
+ * )
+ *
+ * @example
+ * // Document broadcast
+ * await broadcast(
+ *   chatIds,
+ *   (chatId) => sendDocument(token, chatId, 'https://example.com/report.pdf', { caption: 'Monthly report' }),
+ * )
+ */
+export async function broadcast(
+  chatIds: (string | number)[],
+  sendFn: (chatId: string | number) => Promise<unknown>,
+  opts?: TgBroadcastOpts,
+): Promise<TgBroadcastResult> {
+  const delayMs = opts?.delayMs ?? TG_DEFAULT_DELAY_MS;
+  const concurrency = opts?.concurrency ?? 1;
+  const results: TgBroadcastResultItem[] = [];
+
+  if (concurrency <= 1) {
+    // Sequential mode (default — safest for rate limits)
+    for (let i = 0; i < chatIds.length; i++) {
+      const chatId = chatIds[i];
+      try {
+        const data = await sendFn(chatId);
+        results.push({ chatId, success: true, data });
+      } catch (err: unknown) {
+        const error =
+          err instanceof TelegramError
+            ? { message: err.message, code: err.code, method: err.method }
+            : { message: err instanceof Error ? err.message : String(err) };
+        results.push({ chatId, success: false, error });
+      }
+      // Delay between sends (skip after last)
+      if (i < chatIds.length - 1 && delayMs > 0) {
+        await delay(delayMs);
+      }
+    }
+  } else {
+    // Concurrent mode — process in batches
+    for (let i = 0; i < chatIds.length; i += concurrency) {
+      const batch = chatIds.slice(i, i + concurrency);
+      const batchResults = await Promise.allSettled(
+        batch.map(async chatId => {
+          const data = await sendFn(chatId);
+          return { chatId, data };
+        }),
+      );
+
+      for (let j = 0; j < batchResults.length; j++) {
+        const result = batchResults[j];
+        const chatId = batch[j];
+        if (result.status === 'fulfilled') {
+          results.push({ chatId, success: true, data: result.value.data });
+        } else {
+          const err = result.reason;
+          const error =
+            err instanceof TelegramError
+              ? { message: err.message, code: err.code, method: err.method }
+              : { message: err instanceof Error ? err.message : String(err) };
+          results.push({ chatId, success: false, error });
+        }
+      }
+
+      // Delay between batches (skip after last)
+      if (i + concurrency < chatIds.length && delayMs > 0) {
+        await delay(delayMs);
+      }
+    }
+  }
+
+  const sent = results.filter(r => r.success).length;
+  return {
+    total: chatIds.length,
+    sent,
+    failed: chatIds.length - sent,
+    results,
+  };
 }
