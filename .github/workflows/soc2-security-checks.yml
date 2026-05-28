@@ -1,0 +1,69 @@
+# Runs on every PR — all jobs must pass before merge is allowed
+name: Security checks
+on:
+  pull_request:
+    branches: [ main, staging ]
+
+permissions:
+  contents: read
+  security-events: write   # required for CodeQL to upload SARIF
+  pull-requests: read
+
+jobs:
+
+  # ── 1. Secret scanning ────────────────────────────────────────────
+  secret-scan:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0       # full history needed for diff scan
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # ── 2. SAST — CodeQL ──────────────────────────────────────────────
+  codeql:
+    name: CodeQL SAST
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        language: [ javascript-typescript, python ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended   # broader than default
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
+
+  # ── 3. SCA — dependency audit ─────────────────────────────────────
+  dependency-audit:
+    name: Dependency vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit npm packages
+        run: npm audit --audit-level=high
+        # Fails if any high or critical CVE found in npm deps
+      - name: Audit Python packages
+        run: pip install pip-audit && pip-audit --severity high
+      - uses: actions/dependency-review-action@v4
+        # Compares base vs head — blocks PRs that introduce new vulns
+
+  # ── 4. SAST — Semgrep (custom rules) ─────────────────────────────
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - run: semgrep ci --config auto --severity ERROR
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}

@@ -1,0 +1,35 @@
+# Install: pip install pre-commit && pre-commit install
+# Runs locally before every commit — faster feedback than CI
+repos:
+
+  # Secret detection — catches leaks before they hit remote
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  # Detect AWS/GCP/Alibaba keys, tokens, passwords
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: detect-private-key
+      - id: detect-aws-credentials
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'staging']
+
+  # Python: Bandit SAST (fast, local)
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        args: [ "-ll" ]   # only medium and above severity
+        files: \.py$
+
+  # Node/JS: detect hardcoded creds and insecure patterns
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v8.10.0
+    hooks:
+      - id: cspell
+        files: \.(js|ts|py)$

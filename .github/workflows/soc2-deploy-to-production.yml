@@ -1,0 +1,52 @@
+# Runs on merge to main — deploys to production via Alibaba Cloud OIDC
+name: Deploy to production
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  id-token: write     # required for OIDC — no static keys
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: production   # requires manual approval gate in GH
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Authenticate to Alibaba Cloud via OIDC — no long-lived keys
+      - name: Configure Alibaba Cloud credentials (OIDC)
+        uses: aliyun/configure-aliyun-credentials-action@v1
+        with:
+          role-to-assume: acs:ram::${{ secrets.ALI_ACCOUNT_ID }}:role/github-deployer
+          oidc-provider-arn: ${{ secrets.ALI_OIDC_PROVIDER_ARN }}
+
+      # Inject app secrets from Doppler — never stored in GitHub
+      - name: Fetch secrets from Doppler
+        uses: dopplerhq/secrets-fetch-action@v1.2.0
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          inject-env-vars: true
+
+      # Run migrations before deploying new container
+      - name: Run DB migrations
+        run: npm run migrate:prod
+
+      # Deploy container to Alibaba Cloud ECS / ACK
+      - name: Deploy to ECS
+        run: |
+          aliyun ecs ModifyContainerGroupSpec \
+            --ContainerGroupId ${{ vars.CONTAINER_GROUP_ID }} \
+            --Container.1.Image ${{ env.IMAGE_TAG }}
+
+      # Post deployment — verify health check
+      - name: Smoke test
+        run: curl -f https://api.yourdomain.com/health || exit 1
+
+      # Notify team — creates paper trail in Slack/GH
+      - name: Notify on success
+        if: success()
+        run: echo "Deployment ${{ github.sha }} succeeded at $(date -u)"

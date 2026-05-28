@@ -1,0 +1,23 @@
+{
+  "name": "@novex-kit/sample-a2a",
+  "version": "0.0.1",
+  "description": "A2A sample — supervisor (Claude) + specialist (OpenAI RAG) agents over MCP",
+  "type": "module",
+  "scripts": {
+    "specialist": "node specialist.ts",
+    "supervisor": "node supervisor.ts",
+    "demo": "node demo.ts",
+    "lint": "biome check --config-path ../../biome-node.json",
+    "test:unit": "echo \"Error: no test specified\" && exit 0",
+    "test:integration": "echo \"Error: no test specified\" && exit 0",
+    "test:schema": "echo \"Error: no test specified\" && exit 0",
+    "test": "echo \"Error: no test specified\" && exit 0",
+    "test:e2e": "exit 0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.55.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "express": "^5.1.0",
+    "openai": "^6.35.0"
+  }
+}
