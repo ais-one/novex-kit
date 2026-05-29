@@ -1,36 +1,15 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { broadcast } from '@common/node/comms/service/broadcast';
+import { send } from '@common/node/comms/service/send';
 import { resolveCommsConfigByIdentity, resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
 import { parseWebhook } from '@common/node/comms/whatsapp2/inbound';
 import {
   getMediaUrl,
   markAsRead,
-  sendAddressRequest,
-  sendAudio,
-  sendButtons,
-  sendContacts,
-  sendCtaUrlButton,
-  sendDocument,
-  sendFlow,
-  sendImage,
-  sendList,
-  sendLocation,
   sendReaction,
-  sendSticker,
-  sendTemplate,
   sendText,
   sendTypingIndicator,
-  sendVideo,
 } from '@common/node/comms/whatsapp2/outbound';
-import type {
-  WaAddressRequestOpts,
-  WaButtonsOpts,
-  WaContact,
-  WaCtaUrlOpts,
-  WaFlowOpts,
-  WaListOpts,
-  WaMediaInput,
-  WaTemplateOpts,
-} from '@common/node/comms/whatsapp2/types';
 import type { Request, Response } from 'express';
 import express from 'express';
 
@@ -55,41 +34,26 @@ function verifySignature(appSecret: string, rawBody: Buffer, signatureHeader: st
   return timingSafeEqual(sigBuf, expBuf);
 }
 
-function mediaFrom(p: Record<string, unknown>): WaMediaInput {
-  if (typeof p.id === 'string') return { id: p.id };
-  if (typeof p.link === 'string') return { link: p.link };
-  throw new Error('Either id or link is required for media');
-}
+// ─── Types supported by the unified send() ────────────────────────────────────
+const UNIFIED_TYPES = new Set([
+  'text',
+  'image',
+  'audio',
+  'video',
+  'document',
+  'sticker',
+  'location',
+  'contacts',
+  'template',
+  'buttons',
+  'list',
+  'cta_url',
+  'address_request',
+  'flow',
+]);
 
-// ─── Type handlers for /test ──────────────────────────────────────────────────
-
-async function handleText(token: string, phoneId: string, dest: string, p: Record<string, unknown>) {
-  return sendText(token, phoneId, dest, String(p.body ?? ''), { preview_url: Boolean(p.preview_url) });
-}
-
-async function handleMedia(type: string, token: string, phoneId: string, dest: string, p: Record<string, unknown>) {
-  const media = mediaFrom(p);
-  const caption = typeof p.caption === 'string' ? p.caption : undefined;
-  switch (type) {
-    case 'image':
-      return sendImage(token, phoneId, dest, media, { caption });
-    case 'audio':
-      return sendAudio(token, phoneId, dest, media);
-    case 'video':
-      return sendVideo(token, phoneId, dest, media, { caption });
-    case 'sticker':
-      return sendSticker(token, phoneId, dest, media);
-    case 'document':
-      return sendDocument(token, phoneId, dest, media, {
-        caption,
-        filename: typeof p.filename === 'string' ? p.filename : undefined,
-      });
-    default:
-      return undefined;
-  }
-}
-
-async function handleTestType(
+// ─── Handle types NOT in the unified service (need messageId, or are utility) ─
+async function handleNonUnifiedType(
   type: string,
   token: string,
   phoneId: string,
@@ -98,29 +62,6 @@ async function handleTestType(
   res: Response,
 ): Promise<unknown> {
   switch (type) {
-    case 'text':
-      return handleText(token, phoneId, dest, p);
-    case 'image':
-    case 'audio':
-    case 'video':
-    case 'sticker':
-    case 'document':
-      return handleMedia(type, token, phoneId, dest, p);
-    case 'location':
-      return sendLocation(token, phoneId, dest, {
-        latitude: Number(p.latitude),
-        longitude: Number(p.longitude),
-        name: typeof p.name === 'string' ? p.name : undefined,
-        address: typeof p.address === 'string' ? p.address : undefined,
-      });
-    case 'contacts':
-      return sendContacts(token, phoneId, dest, p.contacts as WaContact[]);
-    case 'buttons':
-      return sendButtons(token, phoneId, dest, p as unknown as WaButtonsOpts);
-    case 'list':
-      return sendList(token, phoneId, dest, p as unknown as WaListOpts);
-    case 'template':
-      return sendTemplate(token, phoneId, dest, p as unknown as WaTemplateOpts);
     case 'reaction':
       return sendReaction(token, phoneId, dest, String(p.message_id ?? ''), String(p.emoji ?? ''));
     case 'read':
@@ -133,12 +74,6 @@ async function handleTestType(
       }
       return sendTypingIndicator(token, phoneId, msgId);
     }
-    case 'cta_url':
-      return sendCtaUrlButton(token, phoneId, dest, p as unknown as WaCtaUrlOpts);
-    case 'address_request':
-      return sendAddressRequest(token, phoneId, dest, p as unknown as WaAddressRequestOpts);
-    case 'flow':
-      return sendFlow(token, phoneId, dest, p as unknown as WaFlowOpts);
     case 'get_media_url': {
       const mediaId = String(p.media_id ?? '');
       if (!mediaId) {
@@ -278,8 +213,8 @@ export default express
   })
 
   // ── POST /api/sample-api/whatsapp/send ──────────────────────────────────────
-  // Simple text send. Body: { to, message }
-  // Requires authenticated user with tenant_id for credential resolution.
+  // Simple text send via unified comms service.
+  // Body: { to, message, configLabel? }
   .post('/send', async (req: Request, res: Response) => {
     const { to, message, configLabel } = req.body as { to?: string; message?: string; configLabel?: string };
     if (!to || !message) {
@@ -292,11 +227,15 @@ export default express
         res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
         return;
       }
-      const config = await resolveCommsCredentials(tenantId, 'whatsapp', configLabel);
-      const token = config.credentials.token;
-      const phoneId = config.senderIdentity.phone_number_id;
-      await sendText(token, phoneId, to, message);
-      res.json({ ok: true });
+      const result = await send({
+        tenantId,
+        configLabel,
+        channel: 'whatsapp',
+        to,
+        type: 'text',
+        payload: { text: message },
+      });
+      res.json({ ok: result.success, result });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
     }
@@ -304,9 +243,8 @@ export default express
 
   // ── POST /api/sample-api/whatsapp/test ──────────────────────────────────────
   // Multi-type test dispatcher.
-  // Body: { type, to, ...type-specific fields }
-  // Requires authenticated user with tenant_id for credential resolution.
-  // See WhatsAppTest.vue for sample payloads per type.
+  // Body: { type, to, configLabel?, ...type-specific fields }
+  // Types in the unified service go through send(). Others use direct library calls.
   .post('/test', async (req: Request, res: Response) => {
     const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
     if (!tenantId) {
@@ -315,19 +253,6 @@ export default express
     }
 
     const { type, to, configLabel, ...p } = req.body as Record<string, unknown>;
-
-    let token: string;
-    let phoneId: string;
-    try {
-      const config = await resolveCommsCredentials(tenantId, 'whatsapp', configLabel as string | undefined);
-      token = config.credentials.token;
-      phoneId = config.senderIdentity.phone_number_id;
-    } catch (err: unknown) {
-      res
-        .status(500)
-        .json({ ok: false, error: err instanceof Error ? err.message : 'Failed to resolve WhatsApp credentials' });
-      return;
-    }
 
     if (!type || typeof type !== 'string') {
       res.status(400).json({ ok: false, error: 'type is required' });
@@ -339,13 +264,75 @@ export default express
       return;
     }
 
+    const dest = String(to ?? '');
+
     try {
-      const dest = to as string;
-      const result = await handleTestType(type, token, phoneId, dest, p, res);
-      if (result === null) return; // response already sent by handler
-      res.json({ ok: true, result });
+      if (UNIFIED_TYPES.has(type)) {
+        // Use unified send() — handles credential resolution internally
+        const result = await send({
+          tenantId,
+          configLabel: configLabel as string | undefined,
+          channel: 'whatsapp',
+          to: dest,
+          type,
+          payload: p,
+        });
+        if (!result.success) {
+          res.status(500).json({ ok: false, error: result.error });
+          return;
+        }
+        res.json({ ok: true, result });
+      } else {
+        // Non-unified types — resolve credentials manually, call library directly
+        const config = await resolveCommsCredentials(tenantId, 'whatsapp', configLabel as string | undefined);
+        const token = config.credentials.token;
+        const phoneId = config.senderIdentity.phone_number_id;
+
+        const result = await handleNonUnifiedType(type, token, phoneId, dest, p, res);
+        if (result === null) return; // response already sent by handler
+        res.json({ ok: true, result });
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An unexpected error occurred';
       res.status(500).json({ ok: false, error: message });
+    }
+  })
+
+  // ── POST /api/sample-api/whatsapp/broadcast ─────────────────────────────────
+  // Send the same message to multiple recipients.
+  // Body: { recipients: string[], type, configLabel?, ...payload }
+  // Example: { recipients: ["+60111", "+60222"], type: "text", text: "Hello everyone!" }
+  .post('/broadcast', async (req: Request, res: Response) => {
+    const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
+    if (!tenantId) {
+      res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
+      return;
+    }
+
+    const { recipients, type, configLabel, ...payload } = req.body as Record<string, unknown>;
+
+    if (!Array.isArray(recipients) || recipients.length === 0) {
+      res.status(400).json({ ok: false, error: 'recipients (array of phone numbers) is required' });
+      return;
+    }
+
+    if (!type || typeof type !== 'string') {
+      res.status(400).json({ ok: false, error: 'type is required' });
+      return;
+    }
+
+    try {
+      const result = await broadcast({
+        tenantId,
+        configLabel: configLabel as string | undefined,
+        channel: 'whatsapp',
+        recipients: recipients as string[],
+        type,
+        payload,
+        options: { mode: 'sequential', delayMs: 1000 },
+      });
+      res.json({ ok: result.success, result });
+    } catch (err: unknown) {
+      res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
     }
   });

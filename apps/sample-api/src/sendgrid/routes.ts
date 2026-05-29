@@ -1,13 +1,7 @@
-import {
-  cancelScheduledEmail,
-  sendBulkDynamicEmail,
-  sendBulkEmail,
-  sendDynamicEmail,
-  sendEmail,
-  sendEmailWithAttachments,
-  sendScheduledEmail,
-} from '@common/node/comms/sendgrid/outbound';
+import { cancelScheduledEmail, sendBulkDynamicEmail, sendBulkEmail } from '@common/node/comms/sendgrid/outbound';
 import type { SendGridAuth, SgAttachment, SgPersonalization, SgSendEmailOpts } from '@common/node/comms/sendgrid/types';
+import { broadcast } from '@common/node/comms/service/broadcast';
+import { send } from '@common/node/comms/service/send';
 import { resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
 import type { Request, Response } from 'express';
 import express from 'express';
@@ -15,8 +9,11 @@ import express from 'express';
 // SendGrid email test dispatcher
 // Docs: https://docs.sendgrid.com/api-reference/mail-send/mail-send
 //
-// Credentials are resolved per-tenant from the database via resolveCommsCredentials().
+// Credentials are resolved per-tenant from the database via the unified comms service.
 // Each tenant must configure their own SendGrid API key and sender identity.
+
+// ─── Types supported by the unified send() ────────────────────────────────────
+const UNIFIED_TYPES = new Set(['html', 'dynamic', 'attachment', 'scheduled', 'scheduled_dynamic']);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -40,46 +37,7 @@ function buildOpts(
   return opts;
 }
 
-// ─── Type handlers ────────────────────────────────────────────────────────────
-
-async function handleHtml(
-  auth: SendGridAuth,
-  dest: string | string[],
-  p: Record<string, unknown>,
-  tenantContext?: { _tenantId: number; _configLabel: string },
-) {
-  const opts = buildOpts(p, tenantContext);
-  return sendEmail(auth, dest, String(p.subject ?? 'Test Email'), String(p.html ?? ''), opts);
-}
-
-async function handleDynamic(
-  auth: SendGridAuth,
-  dest: string | string[],
-  p: Record<string, unknown>,
-  tenantContext?: { _tenantId: number; _configLabel: string },
-) {
-  const opts = buildOpts(p, tenantContext);
-  return sendDynamicEmail(auth, dest, String(p.templateId ?? ''), (p.data as Record<string, unknown>) ?? {}, opts);
-}
-
-async function handleAttachment(
-  auth: SendGridAuth,
-  dest: string | string[],
-  p: Record<string, unknown>,
-  tenantContext?: { _tenantId: number; _configLabel: string },
-) {
-  const opts = buildOpts(p, tenantContext);
-  // attachments are passed as both the required param and in opts (sendEmailWithAttachments merges them)
-  delete opts.attachments;
-  return sendEmailWithAttachments(
-    auth,
-    dest,
-    String(p.subject ?? 'Test Email'),
-    String(p.html ?? ''),
-    (p.attachments as SgAttachment[]) ?? [],
-    opts,
-  );
-}
+// ─── Non-unified type handlers (bulk, cancel — different input shapes) ────────
 
 async function handleBulk(
   auth: SendGridAuth,
@@ -110,22 +68,6 @@ async function handleBulkDynamic(
   );
 }
 
-async function handleScheduled(
-  auth: SendGridAuth,
-  dest: string | string[],
-  p: Record<string, unknown>,
-  res: Response,
-  tenantContext?: { _tenantId: number; _configLabel: string },
-) {
-  const sendAt = Number(p.sendAt);
-  if (!sendAt || Number.isNaN(sendAt)) {
-    res.status(400).json({ ok: false, error: 'sendAt (unix timestamp) is required for scheduled type' });
-    return null;
-  }
-  const opts = buildOpts(p, tenantContext);
-  return sendScheduledEmail(auth, dest, String(p.subject ?? 'Scheduled Email'), String(p.html ?? ''), sendAt, opts);
-}
-
 async function handleCancel(auth: SendGridAuth, p: Record<string, unknown>, res: Response) {
   if (!p.batchId) {
     res.status(400).json({ ok: false, error: 'batchId is required for cancel type' });
@@ -141,9 +83,8 @@ export default express
 
   // ── POST /api/sample-api/sendgrid/test ────────────────────────────────────────
   // Multi-type test dispatcher.
-  // Body: { type, to, ...type-specific fields }
-  // Requires authenticated user with tenant_id for credential resolution.
-  // See EmailTest.vue for sample payloads per type.
+  // Body: { type, to, configLabel?, ...type-specific fields }
+  // Types in the unified service go through send(). Others use direct library calls.
   .post('/test', async (req: Request, res: Response) => {
     const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
     if (!tenantId) {
@@ -151,74 +92,113 @@ export default express
       return;
     }
 
-    const { configLabel } = req.body as { configLabel?: string };
-
-    let auth: SendGridAuth;
-    let tenantContext: { _tenantId: number; _configLabel: string } | undefined;
-    try {
-      const config = await resolveCommsCredentials(tenantId, 'email', configLabel);
-      auth = {
-        apiKey: config.credentials.api_key,
-        senderName: config.senderIdentity.sender_name,
-        senderEmail: config.senderIdentity.sender_email,
-      };
-      // Capture tenant context for custom_args injection (event webhook correlation)
-      tenantContext = { _tenantId: tenantId, _configLabel: config.label };
-    } catch (err: unknown) {
-      res
-        .status(500)
-        .json({ ok: false, error: err instanceof Error ? err.message : 'Failed to resolve email credentials' });
-      return;
-    }
-
-    const { type, to, ...p } = req.body as Record<string, unknown>;
+    const { type, to, configLabel, ...p } = req.body as Record<string, unknown>;
 
     if (!type || typeof type !== 'string') {
       res.status(400).json({ ok: false, error: 'type is required' });
       return;
     }
 
-    if (type !== 'cancel' && !to) {
+    if (type !== 'cancel' && type !== 'bulk' && type !== 'bulk-dynamic' && !to) {
       res.status(400).json({ ok: false, error: 'to is required' });
       return;
     }
 
     try {
-      let result: unknown;
-      const dest = to as string | string[];
+      // Map test page type names to unified service type names
+      const unifiedType =
+        type === 'attachment' ? 'html_attachments' : type === 'scheduled_dynamic' ? 'scheduled_dynamic' : type;
 
-      switch (type) {
-        case 'html':
-          result = await handleHtml(auth, dest, p, tenantContext);
-          break;
-        case 'dynamic':
-          result = await handleDynamic(auth, dest, p, tenantContext);
-          break;
-        case 'attachment':
-          result = await handleAttachment(auth, dest, p, tenantContext);
-          break;
-        case 'bulk':
-          result = await handleBulk(auth, p, tenantContext);
-          break;
-        case 'bulk-dynamic':
-          result = await handleBulkDynamic(auth, p, tenantContext);
-          break;
-        case 'scheduled':
-          result = await handleScheduled(auth, dest, p, res, tenantContext);
-          if (result === null) return;
-          break;
-        case 'cancel':
-          result = await handleCancel(auth, p, res);
-          if (result === null) return;
-          break;
-        default:
-          res.status(400).json({ ok: false, error: `unknown type: ${type}` });
+      if (UNIFIED_TYPES.has(type)) {
+        // Build opts with tenant context for custom_args injection
+        const opts = buildOpts(
+          p,
+          configLabel ? { _tenantId: tenantId, _configLabel: configLabel as string } : undefined,
+        );
+
+        const result = await send({
+          tenantId,
+          configLabel: configLabel as string | undefined,
+          channel: 'email',
+          to: to as string,
+          type: unifiedType,
+          payload: { ...p, opts },
+        });
+        if (!result.success) {
+          res.status(500).json({ ok: false, error: result.error });
           return;
-      }
+        }
+        res.json({ ok: true, result });
+      } else {
+        // Non-unified types — resolve credentials manually
+        const config = await resolveCommsCredentials(tenantId, 'email', configLabel as string | undefined);
+        const auth: SendGridAuth = {
+          apiKey: config.credentials.api_key,
+          senderName: config.senderIdentity.sender_name,
+          senderEmail: config.senderIdentity.sender_email,
+        };
+        const tenantContext = { _tenantId: tenantId, _configLabel: config.label };
 
-      res.json({ ok: true, result });
+        let result: unknown;
+        switch (type) {
+          case 'bulk':
+            result = await handleBulk(auth, p, tenantContext);
+            break;
+          case 'bulk-dynamic':
+            result = await handleBulkDynamic(auth, p, tenantContext);
+            break;
+          case 'cancel':
+            result = await handleCancel(auth, p, res);
+            if (result === null) return;
+            break;
+          default:
+            res.status(400).json({ ok: false, error: `Unknown type: ${type}` });
+            return;
+        }
+
+        res.json({ ok: true, result });
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An unexpected error occurred';
       res.status(500).json({ ok: false, error: message });
+    }
+  })
+
+  // ── POST /api/sample-api/sendgrid/broadcast ─────────────────────────────────
+  // Send the same email to multiple recipients.
+  // Body: { recipients: string[], type, configLabel?, subject, html/templateId/dynamicData }
+  // Example: { recipients: ["a@b.com", "c@d.com"], type: "html", subject: "Hello", html: "<p>Hi!</p>" }
+  .post('/broadcast', async (req: Request, res: Response) => {
+    const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
+    if (!tenantId) {
+      res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
+      return;
+    }
+
+    const { recipients, type, configLabel, ...payload } = req.body as Record<string, unknown>;
+
+    if (!Array.isArray(recipients) || recipients.length === 0) {
+      res.status(400).json({ ok: false, error: 'recipients (array of email addresses) is required' });
+      return;
+    }
+
+    if (!type || typeof type !== 'string') {
+      res.status(400).json({ ok: false, error: 'type is required' });
+      return;
+    }
+
+    try {
+      const result = await broadcast({
+        tenantId,
+        configLabel: configLabel as string | undefined,
+        channel: 'email',
+        recipients: recipients as string[],
+        type: type === 'attachment' ? 'html_attachments' : type,
+        payload,
+        options: { mode: 'sequential', delayMs: 100 },
+      });
+      res.json({ ok: result.success, result });
+    } catch (err: unknown) {
+      res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
     }
   });

@@ -1,3 +1,5 @@
+import { broadcast } from '@common/node/comms/service/broadcast';
+import { send } from '@common/node/comms/service/send';
 import { handleUpdate } from '@common/node/comms/telegram2/inbound';
 import {
   copyMessage,
@@ -7,41 +9,45 @@ import {
   editMessageText,
   forwardMessage,
   pinMessage,
-  sendAnimation,
-  sendAudio,
   sendChatAction,
-  sendContact,
-  sendDice,
-  sendDocument,
-  sendLocation,
   sendMediaGroup,
   sendMessage,
-  sendPhoto,
-  sendPoll,
-  sendSticker,
-  sendVenue,
-  sendVideo,
-  sendVideoNote,
-  sendVoice,
   unpinMessage,
 } from '@common/node/comms/telegram2/outbound';
-import type { ContactData, MediaGroupItem, TelegramMessageOpts, VenueData } from '@common/node/comms/telegram2/types';
-import { resolveCommsConfigByLabel, resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
+import type { MediaGroupItem, TelegramMessageOpts } from '@common/node/comms/telegram2/types';
+import { resolveCommsConfigByLabel } from '@common/node/comms/tenant/resolver';
 import type { Request, Response } from 'express';
 import express from 'express';
 
 // Telegram Bot API test dispatcher
 // Docs: https://core.telegram.org/bots/api/
 //
-// Credentials are resolved per-tenant from the database via resolveCommsCredentials().
+// Credentials are resolved per-tenant from the database via the unified comms service.
 // Each tenant must configure their own Telegram Bot Token in the Comms Config page.
 //
-// Required env var (for the inbound webhook handler only):
+// Required env var (for the legacy inbound webhook handler only):
 //   TELEGRAM_API_KEY — Bot token (used to echo replies to inbound messages)
 
-// ─── Type handlers for /test ──────────────────────────────────────────────────
+// ─── Types supported by the unified send() ────────────────────────────────────
+const UNIFIED_TYPES = new Set([
+  'message',
+  'photo',
+  'video',
+  'audio',
+  'document',
+  'voice',
+  'video_note',
+  'sticker',
+  'animation',
+  'location',
+  'venue',
+  'contact',
+  'poll',
+  'dice',
+]);
 
-async function handleTestType(
+// ─── Handle types NOT in the unified service (need messageId, fromChatId, etc.) ─
+async function handleNonUnifiedType(
   type: string,
   token: string,
   chatId: string,
@@ -51,50 +57,8 @@ async function handleTestType(
   const opts = p as unknown as TelegramMessageOpts;
 
   switch (type) {
-    case 'message':
-      return sendMessage(token, chatId, String(p.text ?? ''), opts);
-
-    case 'photo':
-      return sendPhoto(token, chatId, String(p.photo ?? ''), opts);
-
-    case 'video':
-      return sendVideo(token, chatId, String(p.video ?? ''), opts);
-
-    case 'audio':
-      return sendAudio(token, chatId, String(p.audio ?? ''), opts);
-
-    case 'document':
-      return sendDocument(token, chatId, String(p.document ?? ''), opts);
-
-    case 'voice':
-      return sendVoice(token, chatId, String(p.voice ?? ''), opts);
-
-    case 'video_note':
-      return sendVideoNote(token, chatId, String(p.video_note ?? ''), opts);
-
-    case 'sticker':
-      return sendSticker(token, chatId, String(p.sticker ?? ''), opts);
-
-    case 'animation':
-      return sendAnimation(token, chatId, String(p.animation ?? ''), opts);
-
     case 'media_group':
       return sendMediaGroup(token, chatId, (p.media as MediaGroupItem[]) ?? [], opts);
-
-    case 'location':
-      return sendLocation(token, chatId, Number(p.latitude), Number(p.longitude), opts);
-
-    case 'venue':
-      return sendVenue(token, chatId, p.venue as VenueData, opts);
-
-    case 'contact':
-      return sendContact(token, chatId, p.contact as ContactData, opts);
-
-    case 'poll':
-      return sendPoll(token, chatId, String(p.question ?? ''), (p.options as string[]) ?? [], opts);
-
-    case 'dice':
-      return sendDice(token, chatId, typeof p.emoji === 'string' ? p.emoji : '🎲', opts);
 
     case 'chat_action':
       return sendChatAction(token, chatId, String(p.action ?? 'typing'), opts);
@@ -252,8 +216,8 @@ export default express
   })
 
   // ── POST /api/sample-api/telegram/send ────────────────────────────────────
-  // Simple text send. Body: { to, message, configLabel? }
-  // Requires authenticated user with tenant_id for credential resolution.
+  // Simple text send via unified comms service.
+  // Body: { to, message, configLabel? }
   .post('/send', async (req: Request, res: Response) => {
     const { to, message, configLabel } = req.body as { to?: string; message?: string; configLabel?: string };
     if (!to || !message) {
@@ -266,10 +230,15 @@ export default express
         res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
         return;
       }
-      const config = await resolveCommsCredentials(tenantId, 'telegram', configLabel);
-      const token = config.credentials.bot_token;
-      await sendMessage(token, to, message);
-      res.json({ ok: true });
+      const result = await send({
+        tenantId,
+        configLabel,
+        channel: 'telegram',
+        to,
+        type: 'text',
+        payload: { text: message },
+      });
+      res.json({ ok: result.success, result });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
     }
@@ -278,8 +247,7 @@ export default express
   // ── POST /api/sample-api/telegram/test ────────────────────────────────────
   // Multi-type test dispatcher.
   // Body: { type, to, configLabel?, ...type-specific fields }
-  // Requires authenticated user with tenant_id for credential resolution.
-  // See TelegramTest.vue for sample payloads per type.
+  // Types in the unified service go through send(). Others use direct library calls.
   .post('/test', async (req: Request, res: Response) => {
     const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
     if (!tenantId) {
@@ -288,17 +256,6 @@ export default express
     }
 
     const { type, to, configLabel, ...p } = req.body as Record<string, unknown>;
-
-    let token: string;
-    try {
-      const config = await resolveCommsCredentials(tenantId, 'telegram', configLabel as string | undefined);
-      token = config.credentials.bot_token;
-    } catch (err: unknown) {
-      res
-        .status(500)
-        .json({ ok: false, error: err instanceof Error ? err.message : 'Failed to resolve Telegram credentials' });
-      return;
-    }
 
     if (!type || typeof type !== 'string') {
       res.status(400).json({ ok: false, error: 'type is required' });
@@ -310,13 +267,78 @@ export default express
       return;
     }
 
+    const chatId = String(to);
+
     try {
-      const chatId = String(to);
-      const result = await handleTestType(type, token, chatId, p, res);
-      if (result === null) return;
-      res.json({ ok: true, result });
+      // Map test page type names to unified service type names
+      const unifiedType = type === 'message' ? 'text' : type;
+
+      if (UNIFIED_TYPES.has(type)) {
+        // Use unified send() — handles credential resolution internally
+        const result = await send({
+          tenantId,
+          configLabel: configLabel as string | undefined,
+          channel: 'telegram',
+          to: chatId,
+          type: unifiedType,
+          payload: p,
+        });
+        if (!result.success) {
+          res.status(500).json({ ok: false, error: result.error });
+          return;
+        }
+        res.json({ ok: true, result });
+      } else {
+        // Non-unified types — resolve credentials manually, call library directly
+        const { resolveCommsCredentials } = await import('@common/node/comms/tenant/resolver');
+        const config = await resolveCommsCredentials(tenantId, 'telegram', configLabel as string | undefined);
+        const token = config.credentials.bot_token;
+
+        const result = await handleNonUnifiedType(type, token, chatId, p, res);
+        if (result === null) return; // response already sent by handler
+        res.json({ ok: true, result });
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An unexpected error occurred';
       res.status(500).json({ ok: false, error: message });
+    }
+  })
+
+  // ── POST /api/sample-api/telegram/broadcast ───────────────────────────────
+  // Send the same message to multiple recipients.
+  // Body: { recipients: string[], type, configLabel?, payload }
+  // Example: { recipients: ["123", "456"], type: "text", payload: { text: "Hello everyone!" } }
+  .post('/broadcast', async (req: Request, res: Response) => {
+    const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
+    if (!tenantId) {
+      res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
+      return;
+    }
+
+    const { recipients, type, configLabel, ...payload } = req.body as Record<string, unknown>;
+
+    if (!Array.isArray(recipients) || recipients.length === 0) {
+      res.status(400).json({ ok: false, error: 'recipients (array of chatIds) is required' });
+      return;
+    }
+
+    if (!type || typeof type !== 'string') {
+      res.status(400).json({ ok: false, error: 'type is required' });
+      return;
+    }
+
+    try {
+      const result = await broadcast({
+        tenantId,
+        configLabel: configLabel as string | undefined,
+        channel: 'telegram',
+        recipients: recipients as string[],
+        type: type === 'message' ? 'text' : type,
+        payload,
+        options: { mode: 'sequential', delayMs: 100 },
+      });
+      res.json({ ok: result.success, result });
+    } catch (err: unknown) {
+      res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
     }
   });
