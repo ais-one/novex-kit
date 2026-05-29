@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { broadcast } from '@common/node/comms/service/broadcast';
 import { send } from '@common/node/comms/service/send';
+import type { SendRequest } from '@common/node/comms/service/types';
 import { resolveCommsConfigByIdentity, resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
 import { parseWebhook } from '@common/node/comms/whatsapp2/inbound';
 import {
@@ -10,6 +11,7 @@ import {
   sendText,
   sendTypingIndicator,
 } from '@common/node/comms/whatsapp2/outbound';
+import type { WaInboundText } from '@common/node/comms/whatsapp2/types';
 import type { Request, Response } from 'express';
 import express from 'express';
 
@@ -171,14 +173,15 @@ export default express
       // Only handle inbound text messages for now
       if (msg.content.type !== 'text') return;
 
-      const userText = msg.content.body.trim().toLowerCase();
+      const textContent = msg.content as WaInboundText;
+      const userText = textContent.body.trim().toLowerCase();
 
       // Simple echo / greeting handler — extend or replace with AI/service layer
       let reply: string;
       if (userText === 'hello' || userText === 'hi') {
         reply = 'Hi! What can I help you with?';
       } else {
-        reply = `You said: "${msg.content.body}". (This bot is a work in progress.)`;
+        reply = `You said: "${textContent.body}". (This bot is a work in progress.)`;
       }
 
       await sendText(token, phoneId, msg.from, reply);
@@ -201,12 +204,13 @@ export default express
     const msg = messages[0];
     if (msg.content.type !== 'text') return;
 
-    const userText = msg.content.body.trim().toLowerCase();
+    const textContent = msg.content as WaInboundText;
+    const userText = textContent.body.trim().toLowerCase();
     let reply: string;
     if (userText === 'hello' || userText === 'hi') {
       reply = 'Hi! What can I help you with?';
     } else {
-      reply = `You said: "${msg.content.body}". (This bot is a work in progress.)`;
+      reply = `You said: "${textContent.body}". (This bot is a work in progress.)`;
     }
 
     await sendText(legacyToken, legacyPhoneId, msg.from, reply);
@@ -276,7 +280,7 @@ export default express
           to: dest,
           type,
           payload: p,
-        });
+        } as unknown as SendRequest);
         if (!result.success) {
           res.status(500).json({ ok: false, error: result.error });
           return;
@@ -330,7 +334,7 @@ export default express
         type,
         payload,
         options: { mode: 'sequential', delayMs: 1000 },
-      });
+      } as unknown as Parameters<typeof broadcast>[0]);
       res.json({ ok: result.success, result });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });

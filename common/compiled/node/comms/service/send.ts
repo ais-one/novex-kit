@@ -26,6 +26,7 @@ import {
   sendVoice,
 } from '../telegram2/outbound.ts';
 import { configure, isConfigured, resolveCommsCredentials, setup } from '../tenant/resolver.ts';
+import type { CommsChannel } from '../tenant/types.ts';
 import {
   sendAddressRequest,
   sendButtons,
@@ -42,7 +43,7 @@ import {
   sendSticker as waSendSticker,
   sendVideo as waSendVideo,
 } from '../whatsapp2/outbound.ts';
-import type { SendRequest, SendResult } from './types.ts';
+import type { EmailSendRequest, SendRequest, SendResult, TelegramSendRequest, WhatsAppSendRequest } from './types.ts';
 
 // ─── Initialization ───────────────────────────────────────────────────────────
 
@@ -68,12 +69,31 @@ export function init(opts: { table: unknown; serviceName?: string; lookup: (name
  * Unified send function — resolves credentials and dispatches to the correct channel.
  * Covers sending NEW messages to a single recipient. For multi-recipient, use broadcast().
  *
- * @example
- * import { send } from '@common/node/comms/service/send'
+ * The `payload` type is narrowed automatically based on `channel` + `type`.
  *
- * await send({ tenantId: 1, channel: 'telegram', to: '12345', type: 'text', payload: { text: 'Hi' } })
- * await send({ tenantId: 1, channel: 'whatsapp', to: '+60123', type: 'text', payload: { text: 'Hi' } })
- * await send({ tenantId: 1, channel: 'email', to: 'a@b.com', type: 'html', payload: { subject: 'Hi', html: '<p>Hi</p>' } })
+ * @example Telegram text
+ * await send({ tenantId: 1, channel: 'telegram', to: '12345678', type: 'text', payload: { text: 'Hello!' } })
+ *
+ * @example Telegram photo
+ * await send({ tenantId: 1, channel: 'telegram', to: '12345678', type: 'photo', payload: { photo: 'https://example.com/img.jpg', opts: { caption: 'A photo' } } })
+ *
+ * @example WhatsApp text
+ * await send({ tenantId: 1, channel: 'whatsapp', to: '+60123456789', type: 'text', payload: { text: 'Hello!' } })
+ *
+ * @example WhatsApp image
+ * await send({ tenantId: 1, channel: 'whatsapp', to: '+60123456789', type: 'image', payload: { media: { link: 'https://example.com/img.jpg' }, caption: 'Check this out' } })
+ *
+ * @example WhatsApp buttons
+ * await send({ tenantId: 1, channel: 'whatsapp', to: '+60123456789', type: 'buttons', payload: { body: 'Choose:', buttons: [{ id: 'yes', title: 'Yes' }, { id: 'no', title: 'No' }] } })
+ *
+ * @example WhatsApp template
+ * await send({ tenantId: 1, channel: 'whatsapp', to: '+60123456789', type: 'template', payload: { name: 'hello_world', language: 'en_US' } })
+ *
+ * @example Email HTML
+ * await send({ tenantId: 1, channel: 'email', to: 'user@example.com', type: 'html', payload: { subject: 'Hello', html: '<p>Hi there</p>' } })
+ *
+ * @example Email dynamic template
+ * await send({ tenantId: 1, channel: 'email', to: 'user@example.com', type: 'dynamic', payload: { templateId: 'd-abc123', dynamicData: { name: 'Alice' } } })
  */
 export async function send(req: SendRequest): Promise<SendResult> {
   if (!isConfigured()) {
@@ -95,15 +115,20 @@ export async function send(req: SendRequest): Promise<SendResult> {
       return sendWhatsApp(config.credentials, config.senderIdentity, req);
     case 'email':
       return sendSendGrid(config.credentials, config.senderIdentity, req);
-    default:
-      return { success: false, channel: req.channel, error: `Unsupported channel: ${req.channel}` };
+    default: {
+      // biome-ignore lint/suspicious/noExplicitAny: exhaustive guard — req is never in strict channel union
+      const ch = (req as any).channel as string;
+      return { success: false, channel: ch as CommsChannel, error: `Unsupported channel: ${ch}` };
+    }
   }
 }
 
 // ─── Telegram Dispatcher ──────────────────────────────────────────────────────
 
-async function sendTelegram(token: string, req: SendRequest): Promise<SendResult> {
-  const { to, type, payload } = req;
+async function sendTelegram(token: string, req: TelegramSendRequest): Promise<SendResult> {
+  const { to, type } = req;
+  // biome-ignore lint/suspicious/noExplicitAny: internal dispatcher requires runtime flexibility for test routes
+  const payload = req.payload as Record<string, any>;
   let result: any;
   // The payload itself serves as opts (parse_mode, caption, reply_markup, etc. are top-level fields)
   const opts = payload.opts ?? payload;
@@ -167,9 +192,11 @@ async function sendTelegram(token: string, req: SendRequest): Promise<SendResult
 async function sendWhatsApp(
   credentials: Record<string, string>,
   identity: Record<string, string>,
-  req: SendRequest,
+  req: WhatsAppSendRequest,
 ): Promise<SendResult> {
-  const { to, type, payload } = req;
+  const { to, type } = req;
+  // biome-ignore lint/suspicious/noExplicitAny: internal dispatcher requires runtime flexibility for test routes
+  const payload = req.payload as Record<string, any>;
   const token = credentials.token;
   const phoneNumberId = identity.phone_number_id;
   let result: any;
@@ -261,9 +288,11 @@ async function sendWhatsApp(
 async function sendSendGrid(
   credentials: Record<string, string>,
   identity: Record<string, string>,
-  req: SendRequest,
+  req: EmailSendRequest,
 ): Promise<SendResult> {
-  const { to, type, payload } = req;
+  const { to, type } = req;
+  // biome-ignore lint/suspicious/noExplicitAny: internal dispatcher requires runtime flexibility for test routes
+  const payload = req.payload as Record<string, any>;
   const auth: SendGridAuth = {
     apiKey: credentials.api_key,
     senderName: identity.sender_name,

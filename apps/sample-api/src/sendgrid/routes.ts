@@ -2,6 +2,7 @@ import { cancelScheduledEmail, sendBulkDynamicEmail, sendBulkEmail } from '@comm
 import type { SendGridAuth, SgAttachment, SgPersonalization, SgSendEmailOpts } from '@common/node/comms/sendgrid/types';
 import { broadcast } from '@common/node/comms/service/broadcast';
 import { send } from '@common/node/comms/service/send';
+import type { SendRequest } from '@common/node/comms/service/types';
 import { resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
 import type { Request, Response } from 'express';
 import express from 'express';
@@ -123,7 +124,7 @@ export default express
           to: to as string,
           type: unifiedType,
           payload: { ...p, opts },
-        });
+        } as unknown as SendRequest);
         if (!result.success) {
           res.status(500).json({ ok: false, error: result.error });
           return;
@@ -196,7 +197,7 @@ export default express
         type: type === 'attachment' ? 'html_attachments' : type,
         payload,
         options: { mode: 'sequential', delayMs: 100 },
-      });
+      } as unknown as Parameters<typeof broadcast>[0]);
       res.json({ ok: result.success, result });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });

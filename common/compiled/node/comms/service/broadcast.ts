@@ -1,7 +1,7 @@
 // Unified comms service — broadcast (multi-recipient send)
 
 import { send } from './send.ts';
-import type { BroadcastRecipientResult, BroadcastRequest, BroadcastResult } from './types.ts';
+import type { BroadcastRecipientResult, BroadcastRequest, BroadcastResult, SendRequest } from './types.ts';
 
 /**
  * Send the same message to multiple recipients.
@@ -31,7 +31,7 @@ export async function broadcast(req: BroadcastRequest): Promise<BroadcastResult>
 
   if (mode === 'sequential') {
     for (const to of recipients) {
-      const result = await send({ ...sendParams, to });
+      const result = await send({ ...sendParams, to } as SendRequest);
       results.push({ to, success: result.success, messageId: result.messageId, error: result.error });
 
       if (delayMs > 0) {
@@ -42,7 +42,7 @@ export async function broadcast(req: BroadcastRequest): Promise<BroadcastResult>
     // Concurrent mode — process in batches of `concurrency`
     for (let i = 0; i < recipients.length; i += concurrency) {
       const batch = recipients.slice(i, i + concurrency);
-      const batchResults = await Promise.allSettled(batch.map(to => send({ ...sendParams, to })));
+      const batchResults = await Promise.allSettled(batch.map(to => send({ ...sendParams, to } as SendRequest)));
 
       for (let j = 0; j < batch.length; j++) {
         const settled = batchResults[j];

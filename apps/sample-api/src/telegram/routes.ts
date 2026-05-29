@@ -1,5 +1,6 @@
 import { broadcast } from '@common/node/comms/service/broadcast';
 import { send } from '@common/node/comms/service/send';
+import type { SendRequest } from '@common/node/comms/service/types';
 import { handleUpdate } from '@common/node/comms/telegram2/inbound';
 import {
   copyMessage,
@@ -141,7 +142,7 @@ export default express
   // Telegram sends updates here after setWebhook is called with this URL.
   // Verifies the X-Telegram-Bot-Api-Secret-Token header against the config's webhook_secret.
   .post('/webhook/:label', async (req: Request, res: Response) => {
-    const { label } = req.params;
+    const label = String(req.params.label);
 
     // 1. Resolve config by label
     const config = await resolveCommsConfigByLabel('telegram', label);
@@ -282,7 +283,7 @@ export default express
           to: chatId,
           type: unifiedType,
           payload: p,
-        });
+        } as unknown as SendRequest);
         if (!result.success) {
           res.status(500).json({ ok: false, error: result.error });
           return;
@@ -336,7 +337,7 @@ export default express
         type: type === 'message' ? 'text' : type,
         payload,
         options: { mode: 'sequential', delayMs: 100 },
-      });
+      } as unknown as Parameters<typeof broadcast>[0]);
       res.json({ ok: result.success, result });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
