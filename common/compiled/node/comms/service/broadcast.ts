@@ -1,5 +1,6 @@
 // Unified comms service — broadcast (multi-recipient send)
 
+import { sleep } from '@common/iso/sleep';
 import { send } from './send.ts';
 import type { BroadcastRecipientResult, BroadcastRequest, BroadcastResult, SendRequest } from './types.ts';
 
@@ -35,7 +36,7 @@ export async function broadcast(req: BroadcastRequest): Promise<BroadcastResult>
       results.push({ to, success: result.success, messageId: result.messageId, error: result.error });
 
       if (delayMs > 0) {
-        await delay(delayMs);
+        await sleep(delayMs);
       }
     }
   } else {
@@ -75,10 +76,4 @@ export async function broadcast(req: BroadcastRequest): Promise<BroadcastResult>
     failed,
     results,
   };
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }

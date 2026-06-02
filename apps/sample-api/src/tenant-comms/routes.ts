@@ -10,7 +10,7 @@
 //   POST   /tenant-comms/:id/register-webhook — manually (re-)register Telegram webhook
 
 import { randomBytes } from 'node:crypto';
-import { deleteWebhook, setWebhook } from '@common/node/comms/telegram2/outbound';
+import { deleteWebhook, setWebhook } from '@common/node/comms/telegram2/inbound';
 import { decryptCredentials, encryptCredentials } from '@common/node/comms/tenant/crypto';
 import type { CommsChannel, CommsProvider } from '@common/node/comms/tenant/types';
 import * as realServices from '@common/node/services';

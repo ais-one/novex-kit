@@ -1,8 +1,6 @@
 // Multi-tenant communications — credential encryption/decryption
 
-import { decryptText, encryptText, genIv, genKey } from '../../utils/aes.ts';
-
-const ALG = 'aes-256-cbc';
+import { decryptWithPassword, encryptWithPassword } from '../../utils/aes.ts';
 
 function getPassword(): string {
   const password = process.env.COMMS_ENCRYPTION_KEY;
@@ -15,13 +13,7 @@ function getPassword(): string {
  * Returns a string in format: base64(iv):base64(ciphertext)
  */
 export function encryptCredentials(credentials: Record<string, string>): string {
-  const password = getPassword();
-  const key = genKey(ALG, password);
-  const iv = genIv();
-  const plaintext = JSON.stringify(credentials);
-  const ciphertext = encryptText(ALG, key, iv, plaintext);
-  const ivBase64 = iv.toString('base64');
-  return `${ivBase64}:${ciphertext}`;
+  return encryptWithPassword(JSON.stringify(credentials), getPassword());
 }
 
 /**
@@ -29,12 +21,5 @@ export function encryptCredentials(credentials: Record<string, string>): string 
  * Expects format: base64(iv):base64(ciphertext)
  */
 export function decryptCredentials(encrypted: string): Record<string, string> {
-  const password = getPassword();
-  const key = genKey(ALG, password);
-  const [ivBase64, ciphertext] = encrypted.split(':');
-  if (!ivBase64 || !ciphertext)
-    throw new Error('Invalid encrypted credentials format. Expected base64(iv):base64(ciphertext)');
-  const iv = Buffer.from(ivBase64, 'base64');
-  const plaintext = decryptText(ALG, key, iv, ciphertext);
-  return JSON.parse(plaintext);
+  return JSON.parse(decryptWithPassword(encrypted, getPassword()));
 }

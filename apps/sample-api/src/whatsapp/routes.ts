@@ -1,9 +1,8 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import { broadcast } from '@common/node/comms/service/broadcast';
 import { send } from '@common/node/comms/service/send';
 import type { SendRequest } from '@common/node/comms/service/types';
 import { resolveCommsConfigByIdentity, resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
-import { parseWebhook } from '@common/node/comms/whatsapp2/inbound';
+import { parseWebhook, verifyWebhookSignature } from '@common/node/comms/whatsapp2/inbound';
 import {
   getMediaUrl,
   markAsRead,
@@ -24,17 +23,6 @@ import express from 'express';
 //   - Signature verification uses per-config app_secret (from credentials)
 //   - Webhook verification (GET) checks verify_token against all stored configs
 //   - Falls back to env vars (WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN) for backward compat
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Verify HMAC-SHA256 signature from Meta webhook */
-function verifySignature(appSecret: string, rawBody: Buffer, signatureHeader: string): boolean {
-  const expected = `sha256=${createHmac('sha256', appSecret).update(rawBody).digest('hex')}`;
-  const sigBuf = Buffer.from(signatureHeader);
-  const expBuf = Buffer.from(expected);
-  if (sigBuf.length !== expBuf.length) return false;
-  return timingSafeEqual(sigBuf, expBuf);
-}
 
 // ─── Types supported by the unified send() ────────────────────────────────────
 const UNIFIED_TYPES = new Set([
@@ -157,7 +145,7 @@ export default express
       // Verify signature using config's app_secret
       const appSecret = config.credentials.app_secret;
       if (appSecret && rawBody) {
-        if (!verifySignature(appSecret, rawBody, signatureHeader)) {
+        if (!verifyWebhookSignature(appSecret, rawBody, signatureHeader)) {
           console.error('WA webhook: signature verification failed for config', config.label);
           return;
         }
@@ -191,7 +179,7 @@ export default express
     // Fallback: legacy env-var based handling (backward compatibility)
     const legacyAppSecret = process.env.WHATSAPP_APP_SECRET;
     if (legacyAppSecret && rawBody) {
-      if (!verifySignature(legacyAppSecret, rawBody, signatureHeader)) {
+      if (!verifyWebhookSignature(legacyAppSecret, rawBody, signatureHeader)) {
         console.error('WA webhook: legacy signature verification failed');
         return;
       }

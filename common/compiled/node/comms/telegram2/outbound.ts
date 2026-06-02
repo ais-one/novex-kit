@@ -2,6 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { sleep } from '@common/iso/sleep';
 import FormData from 'form-data';
 import fetch from 'node-fetch';
 
@@ -9,7 +10,7 @@ const BASE_URL = (token: string) => `https://api.telegram.org/bot${token}`;
 
 // ─── Core Request Helper ──────────────────────────────────────────────────────
 
-async function apiRequest(
+export async function apiRequest(
   token: string,
   method: string,
   params: Record<string, unknown> = {},
@@ -113,7 +114,6 @@ export function forceReply(input_field_placeholder = '', selective = false) {
 import type {
   ContactData,
   MediaGroupItem,
-  SetWebhookOpts,
   TelegramMessageOpts,
   TgBroadcastOpts,
   TgBroadcastResult,
@@ -671,64 +671,9 @@ export async function unpinMessage(token: string, chatId: number | string, messa
   return apiRequest(token, 'unpinChatMessage', { chat_id: chatId, message_id: messageId });
 }
 
-// ─── Webhook Management ───────────────────────────────────────────────────────
-
-/**
- * Register a webhook URL for a Telegram bot.
- * Telegram will send updates to this URL as POST requests.
- *
- * @param botToken - The bot's API token
- * @param url - HTTPS URL to send updates to (must be valid, publicly accessible)
- * @param secretToken - Secret token for X-Telegram-Bot-Api-Secret-Token header verification (1-256 chars, A-Za-z0-9_-)
- * @param opts - Additional webhook configuration options
- * @returns true if webhook was set successfully
- */
-export async function setWebhook(
-  botToken: string,
-  url: string,
-  secretToken: string,
-  opts: SetWebhookOpts = {},
-): Promise<boolean> {
-  const params: Record<string, unknown> = {
-    url,
-    secret_token: secretToken,
-    max_connections: opts.maxConnections ?? 40,
-  };
-  if (opts.allowedUpdates) params.allowed_updates = opts.allowedUpdates;
-  if (opts.ipAddress) params.ip_address = opts.ipAddress;
-  if (opts.dropPendingUpdates) params.drop_pending_updates = true;
-
-  await apiRequest(botToken, 'setWebhook', params);
-  return true;
-}
-
-/**
- * Remove the current webhook integration for a bot.
- *
- * @param botToken - The bot's API token
- * @param dropPendingUpdates - Pass true to drop all pending updates
- * @returns true if webhook was deleted successfully
- */
-export async function deleteWebhook(botToken: string, dropPendingUpdates = false): Promise<boolean> {
-  await apiRequest(botToken, 'deleteWebhook', { drop_pending_updates: dropPendingUpdates });
-  return true;
-}
-
-/**
- * Get current webhook status for a bot.
- * Useful for debugging and displaying webhook info in the UI.
- */
-export async function getWebhookInfo(botToken: string): Promise<Record<string, unknown>> {
-  return apiRequest(botToken, 'getWebhookInfo') as Promise<Record<string, unknown>>;
-}
-
 // ─── Broadcast ────────────────────────────────────────────────────────────────
 
 const TG_DEFAULT_DELAY_MS = 35; // ~28 msgs/sec — within Telegram's ~30/sec limit to different chats
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 /**
  * Send a message to multiple chat IDs sequentially with rate limiting.
@@ -788,7 +733,7 @@ export async function broadcast(
       }
       // Delay between sends (skip after last)
       if (i < chatIds.length - 1 && delayMs > 0) {
-        await delay(delayMs);
+        await sleep(delayMs);
       }
     }
   } else {
@@ -819,7 +764,7 @@ export async function broadcast(
 
       // Delay between batches (skip after last)
       if (i + concurrency < chatIds.length && delayMs > 0) {
-        await delay(delayMs);
+        await sleep(delayMs);
       }
     }
   }

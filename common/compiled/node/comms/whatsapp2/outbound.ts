@@ -8,6 +8,7 @@
 //   process.env.WHATSAPP_TOKEN
 //   process.env.WHATSAPP_PHONE_NUMBER_ID
 
+import { sleep } from '@common/iso/sleep';
 import type {
   WaAddressRequestOpts,
   WaBroadcastOpts,
@@ -743,10 +744,6 @@ export async function getMediaUrl(token: string, mediaId: string): Promise<strin
 
 const WA_DEFAULT_DELAY_MS = 80; // ~12 msgs/sec — safe for most tiers
 
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 /**
  * Send a message to multiple recipients sequentially with rate limiting.
  *
@@ -805,7 +802,7 @@ export async function broadcast(
       }
       // Delay between sends (skip after last)
       if (i < recipients.length - 1 && delayMs > 0) {
-        await delay(delayMs);
+        await sleep(delayMs);
       }
     }
   } else {
@@ -836,7 +833,7 @@ export async function broadcast(
 
       // Delay between batches (skip after last)
       if (i + concurrency < recipients.length && delayMs > 0) {
-        await delay(delayMs);
+        await sleep(delayMs);
       }
     }
   }
