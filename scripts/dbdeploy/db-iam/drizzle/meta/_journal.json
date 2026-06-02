@@ -8,6 +8,20 @@
       "when": 1779165338553,
       "tag": "0000_cultured_iron_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779693827288,
+      "tag": "0001_modern_shiver_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779760901003,
+      "tag": "0002_strong_thanos",
+      "breakpoints": true
     }
   ]
 }

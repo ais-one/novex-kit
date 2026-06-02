@@ -8,8 +8,12 @@
 //   process.env.WHATSAPP_TOKEN
 //   process.env.WHATSAPP_PHONE_NUMBER_ID
 
+import { sleep } from '@common/iso/sleep';
 import type {
   WaAddressRequestOpts,
+  WaBroadcastOpts,
+  WaBroadcastResult,
+  WaBroadcastResultItem,
   WaButtonsOpts,
   WaContact,
   WaCtaUrlOpts,
@@ -735,3 +739,110 @@ export async function getMediaUrl(token: string, mediaId: string): Promise<strin
 //
 // NOT available: editLiveLocation
 //   — WhatsApp Cloud API has no live location update endpoint.
+
+// ─── Broadcast ────────────────────────────────────────────────────────────────
+
+const WA_DEFAULT_DELAY_MS = 80; // ~12 msgs/sec — safe for most tiers
+
+/**
+ * Send a message to multiple recipients sequentially with rate limiting.
+ *
+ * Uses a callback pattern — pass any existing send function as the sender.
+ * The broadcast function handles looping, rate limiting, and result aggregation.
+ *
+ * @param recipients - Array of phone numbers to send to (E.164 format without "+")
+ * @param sendFn - A function that sends to a single recipient. Receives `to` and should return the API response.
+ * @param opts - Broadcast options (delay between sends, concurrency)
+ * @returns Aggregated results with per-recipient success/failure details
+ *
+ * @example
+ * // Text broadcast
+ * await broadcast(
+ *   ['60123456789', '60198765432'],
+ *   (to) => sendText(token, phoneId, to, 'Hello!'),
+ * )
+ *
+ * @example
+ * // Template broadcast (for users outside 24h window)
+ * await broadcast(
+ *   phoneNumbers,
+ *   (to) => sendTemplate(token, phoneId, to, { name: 'hello_world', language: 'en' }),
+ *   { delayMs: 100 },
+ * )
+ *
+ * @example
+ * // Image broadcast with caption
+ * await broadcast(
+ *   phoneNumbers,
+ *   (to) => sendImage(token, phoneId, to, { link: 'https://example.com/promo.jpg' }, { caption: 'Check this out!' }),
+ * )
+ */
+export async function broadcast(
+  recipients: string[],
+  sendFn: (to: string) => Promise<unknown>,
+  opts?: WaBroadcastOpts,
+): Promise<WaBroadcastResult> {
+  const delayMs = opts?.delayMs ?? WA_DEFAULT_DELAY_MS;
+  const concurrency = opts?.concurrency ?? 1;
+  const results: WaBroadcastResultItem[] = [];
+
+  if (concurrency <= 1) {
+    // Sequential mode (default — safest for rate limits)
+    for (let i = 0; i < recipients.length; i++) {
+      const to = recipients[i];
+      try {
+        const data = await sendFn(to);
+        results.push({ to, success: true, data });
+      } catch (err: unknown) {
+        const error =
+          err instanceof WhatsAppError
+            ? { message: err.message, code: err.code, type: err.type }
+            : { message: err instanceof Error ? err.message : String(err) };
+        results.push({ to, success: false, error });
+      }
+      // Delay between sends (skip after last)
+      if (i < recipients.length - 1 && delayMs > 0) {
+        await sleep(delayMs);
+      }
+    }
+  } else {
+    // Concurrent mode — process in batches
+    for (let i = 0; i < recipients.length; i += concurrency) {
+      const batch = recipients.slice(i, i + concurrency);
+      const batchResults = await Promise.allSettled(
+        batch.map(async to => {
+          const data = await sendFn(to);
+          return { to, data };
+        }),
+      );
+
+      for (let j = 0; j < batchResults.length; j++) {
+        const result = batchResults[j];
+        const to = batch[j];
+        if (result.status === 'fulfilled') {
+          results.push({ to, success: true, data: result.value.data });
+        } else {
+          const err = result.reason;
+          const error =
+            err instanceof WhatsAppError
+              ? { message: err.message, code: err.code, type: err.type }
+              : { message: err instanceof Error ? err.message : String(err) };
+          results.push({ to, success: false, error });
+        }
+      }
+
+      // Delay between batches (skip after last)
+      if (i + concurrency < recipients.length && delayMs > 0) {
+        await sleep(delayMs);
+      }
+    }
+  }
+
+  const sent = results.filter(r => r.success).length;
+  return {
+    total: recipients.length,
+    sent,
+    failed: recipients.length - sent,
+    results,
+  };
+}

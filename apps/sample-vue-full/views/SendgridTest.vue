@@ -2,6 +2,12 @@
   <div class="email-test-wrap">
     <a-card title="SendGrid Email Test" style="max-width: 640px; margin: 40px auto">
       <a-form layout="vertical" @submit.prevent="send">
+        <a-form-item label="Send from (config)">
+          <a-select v-model:value="configLabel" placeholder="Select an Email config" style="width: 100%" :loading="configsLoading">
+            <a-select-option v-for="c in configs" :key="c.label" :value="c.label">{{ c.label }} ({{ c.senderIdentity.sender_email }})</a-select-option>
+          </a-select>
+        </a-form-item>
+
         <a-row :gutter="12">
           <a-col :span="10">
             <a-form-item label="Message type">
@@ -49,9 +55,35 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3000';
+
+// ─── Config selector ──────────────────────────────────────────────────────────
+
+const configs = ref([]);
+const configLabel = ref('');
+const configsLoading = ref(false);
+
+async function fetchConfigs() {
+  configsLoading.value = true;
+  try {
+    const res = await fetch(`${API_URL}/api/sample-api/tenant-comms`, { credentials: 'include' });
+    const data = await res.json();
+    if (data.ok) {
+      configs.value = data.data.filter(c => c.channel === 'email');
+    }
+    if (configs.value.length > 0 && !configLabel.value) {
+      configLabel.value = configs.value[0].label;
+    }
+  } catch (err) {
+    console.error('Failed to fetch Email configs:', err);
+  } finally {
+    configsLoading.value = false;
+  }
+}
+
+onMounted(fetchConfigs);
 
 const TYPES = [
   { value: 'html', label: 'HTML Email' },
@@ -181,7 +213,7 @@ async function send() {
     return;
   }
 
-  const payload = { type: type.value, to: to.value, ...parsed };
+  const payload = { type: type.value, to: to.value, configLabel: configLabel.value, ...parsed };
   loading.value = true;
   result.value = null;
   try {

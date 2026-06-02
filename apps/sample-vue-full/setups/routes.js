@@ -63,16 +63,33 @@ export const SECURE_ROUTES = [
 
   { path: '/whatsapp/test', name: 'WhatsApp Test', component: async () => import('../views/WhatsAppTest.vue') },
   {
+    path: '/whatsapp/broadcast',
+    name: 'WA Broadcast',
+    component: async () => import('../views/WhatsAppBroadcast.vue'),
+  },
+  {
     path: '/whatsapp/templates',
     name: 'WA Templates',
     component: async () => import('../views/WhatsAppTemplates.vue'),
   },
   { path: '/sendgrid/test', name: 'Email Test', component: async () => import('../views/SendgridTest.vue') },
   {
+    path: '/sendgrid/broadcast',
+    name: 'Email Broadcast',
+    component: async () => import('../views/SendgridBroadcast.vue'),
+  },
+  {
     path: '/sendgrid/templates',
     name: 'Email Templates',
     component: async () => import('../views/SendgridTemplates.vue'),
   },
+  { path: '/telegram/test', name: 'Telegram Test', component: async () => import('../views/TelegramTest.vue') },
+  {
+    path: '/telegram/broadcast',
+    name: 'TG Broadcast',
+    component: async () => import('../views/TelegramBroadcast.vue'),
+  },
+  { path: '/comms-config', name: 'Comms Config', component: async () => import('../views/TenantCommsConfig.vue') },
 
   { path: '/demo-view/fill', name: 'Fill No Param', component: async () => import('../views/Demo/Filler.vue') },
   {

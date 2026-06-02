@@ -4,6 +4,9 @@
     <a-card title="WhatsApp Templates" style="max-width: 900px; margin: 40px auto">
       <template #extra>
         <a-space>
+          <a-select v-model:value="configLabel" placeholder="Select config" style="width: 200px" :loading="configsLoading" @change="loadTemplates">
+            <a-select-option v-for="c in configs" :key="c.label" :value="c.label">{{ c.label }} ({{ c.senderIdentity.phone_number_id }})</a-select-option>
+          </a-select>
           <a-select v-model:value="filterStatus" style="width: 160px" @change="loadTemplates">
             <a-select-option value="">All statuses</a-select-option>
             <a-select-option value="APPROVED">Approved</a-select-option>
@@ -134,6 +137,37 @@ import { onMounted, ref } from 'vue';
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3000';
 const BASE = `${API_URL}/api/sample-api/whatsapp/templates`;
 
+// ─── Config selector ──────────────────────────────────────────────────────────
+
+const configs = ref([]);
+const configLabel = ref('');
+const configsLoading = ref(false);
+
+async function fetchConfigs() {
+  configsLoading.value = true;
+  try {
+    const res = await fetch(`${API_URL}/api/sample-api/tenant-comms`, { credentials: 'include' });
+    const data = await res.json();
+    if (data.ok) {
+      configs.value = data.data.filter(c => c.channel === 'whatsapp');
+    }
+    if (configs.value.length > 0 && !configLabel.value) {
+      configLabel.value = configs.value[0].label;
+    }
+  } catch (err) {
+    console.error('Failed to fetch WhatsApp configs:', err);
+  } finally {
+    configsLoading.value = false;
+  }
+}
+
+function configQs(extra = '') {
+  const params = new URLSearchParams();
+  if (configLabel.value) params.set('configLabel', configLabel.value);
+  if (extra) return `?${params}&${extra}`;
+  return params.toString() ? `?${params}` : '';
+}
+
 // ── Table ───────────────────────────────────────────────────────────────────
 const columns = [
   { title: 'Name', dataIndex: 'name', key: 'name' },
@@ -163,11 +197,12 @@ const listError = ref('');
 const filterStatus = ref('');
 
 const loadTemplates = async () => {
+  if (!configLabel.value) return;
   listLoading.value = true;
   listError.value = '';
   try {
-    const qs = filterStatus.value ? `?limit=50&status=${filterStatus.value}` : '?limit=50';
-    const res = await fetch(`${BASE}${qs}`);
+    const statusQs = filterStatus.value ? `limit=50&status=${filterStatus.value}` : 'limit=50';
+    const res = await fetch(`${BASE}${configQs(statusQs)}`, { credentials: 'include' });
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
     templates.value = json.data ?? [];
@@ -178,7 +213,10 @@ const loadTemplates = async () => {
   }
 };
 
-onMounted(loadTemplates);
+onMounted(async () => {
+  await fetchConfigs();
+  if (configLabel.value) loadTemplates();
+});
 
 // ── Create / Edit modal ──────────────────────────────────────────────────────
 const modalOpen = ref(false);
@@ -255,16 +293,18 @@ const save = async () => {
   try {
     let res;
     if (editId.value) {
-      res = await fetch(`${BASE}/${editId.value}`, {
+      res = await fetch(`${BASE}/${editId.value}${configQs()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ components }),
+        credentials: 'include',
+        body: JSON.stringify({ components, configLabel: configLabel.value }),
       });
     } else {
-      res = await fetch(BASE, {
+      res = await fetch(`${BASE}${configQs()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form.value, components }),
+        credentials: 'include',
+        body: JSON.stringify({ ...form.value, components, configLabel: configLabel.value }),
       });
     }
     const json = await res.json();
@@ -281,7 +321,10 @@ const save = async () => {
 // ── Delete ───────────────────────────────────────────────────────────────────
 const deleteOne = async name => {
   try {
-    const res = await fetch(`${BASE}?name=${encodeURIComponent(name)}`, { method: 'DELETE' });
+    const res = await fetch(`${BASE}${configQs(`name=${encodeURIComponent(name)}`)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
     await loadTemplates();

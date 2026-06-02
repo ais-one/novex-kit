@@ -181,6 +181,44 @@ export interface ContactData {
   vcard?: string;
 }
 
+// ─── Webhook management types ─────────────────────────────────────────────────
+
+export interface SetWebhookOpts {
+  /** Maximum allowed number of simultaneous HTTPS connections to the webhook (1-100, default 40) */
+  maxConnections?: number;
+  /** List of update types to receive. Omit to receive all. */
+  allowedUpdates?: string[];
+  /** Upload your public key certificate for self-signed webhooks */
+  certificate?: string;
+  /** A fixed IP address to send webhook requests to instead of resolving via DNS */
+  ipAddress?: string;
+  /** Pass True to drop all pending updates */
+  dropPendingUpdates?: boolean;
+}
+
+// ─── Broadcast types ──────────────────────────────────────────────────────────
+
+export interface TgBroadcastOpts {
+  /** Delay in milliseconds between each send. Default: 35 (≈28 msgs/sec, within Telegram's ~30/sec limit). */
+  delayMs?: number;
+  /** Maximum number of concurrent sends. Default: 1 (sequential). */
+  concurrency?: number;
+}
+
+export interface TgBroadcastResultItem {
+  chatId: string | number;
+  success: boolean;
+  data?: unknown;
+  error?: { message: string; code?: number; method?: string };
+}
+
+export interface TgBroadcastResult {
+  total: number;
+  sent: number;
+  failed: number;
+  results: TgBroadcastResultItem[];
+}
+
 // // TODO: Need to be defined
 // data shape (updateType === message):
 // {

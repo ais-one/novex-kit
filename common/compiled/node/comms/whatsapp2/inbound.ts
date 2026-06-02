@@ -4,6 +4,7 @@
 // Meta's webhook payload is deeply nested and varies by event type.
 // This module normalises it into clean, typed structures.
 
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { WaDeliveryStatus, WaInboundContent, WaParsedMessage, WaParsedWebhook } from './types.ts';
 
 // ─── Main parser ──────────────────────────────────────────────────────────────
@@ -175,4 +176,26 @@ function parseContent(type: string, msg: Record<string, unknown>): WaInboundCont
     default:
       return { type };
   }
+}
+
+// ─── Webhook Signature Verification ──────────────────────────────────────────
+
+/**
+ * Verify the HMAC-SHA256 signature of an incoming Meta webhook POST.
+ *
+ * Meta signs every webhook POST with `X-Hub-Signature-256: sha256=<hex>`.
+ * Uses timing-safe comparison to prevent timing attacks.
+ *
+ * @param appSecret - The Meta App Secret from the tenant's credentials
+ * @param rawBody - The raw request body buffer (before JSON parsing)
+ * @param signatureHeader - The value of the `X-Hub-Signature-256` header
+ * @returns true if the signature is valid
+ */
+export function verifyWebhookSignature(appSecret: string, rawBody: Buffer, signatureHeader: string): boolean {
+  if (!appSecret || !signatureHeader) return false;
+  const expected = `sha256=${createHmac('sha256', appSecret).update(rawBody).digest('hex')}`;
+  const sigBuf = Buffer.from(signatureHeader);
+  const expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length) return false;
+  return timingSafeEqual(sigBuf, expBuf);
 }

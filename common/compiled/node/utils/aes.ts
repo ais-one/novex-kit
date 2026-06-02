@@ -62,3 +62,39 @@ export const genKey = (algorithm: string, password: string): Buffer => {
   hash.update(password);
   return Buffer.from(hash.digest('hex'), 'hex').subarray(0, size);
 };
+
+// ─── Higher-level password-based helpers ──────────────────────────────────────
+
+const DEFAULT_ALG = 'aes-256-cbc';
+
+/**
+ * Encrypt a plaintext string using a password.
+ * Derives a key from the password, generates a random IV, and returns the
+ * result as a `base64(iv):base64(ciphertext)` string safe for DB storage.
+ *
+ * @param text     - Plaintext to encrypt.
+ * @param password - Secret password to derive the key from.
+ * @param alg      - Cipher algorithm. Defaults to `'aes-256-cbc'`.
+ */
+export const encryptWithPassword = (text: string, password: string, alg = DEFAULT_ALG): string => {
+  const key = genKey(alg, password);
+  const iv = genIv();
+  const ciphertext = encryptText(alg, key, iv, text);
+  return `${iv.toString('base64')}:${ciphertext}`;
+};
+
+/**
+ * Decrypt a string produced by `encryptWithPassword`.
+ * Expects the format `base64(iv):base64(ciphertext)`.
+ *
+ * @param encrypted - The encrypted string from DB storage.
+ * @param password  - Secret password used during encryption.
+ * @param alg       - Cipher algorithm. Defaults to `'aes-256-cbc'`.
+ */
+export const decryptWithPassword = (encrypted: string, password: string, alg = DEFAULT_ALG): string => {
+  const [ivBase64, ciphertext] = encrypted.split(':');
+  if (!ivBase64 || !ciphertext) throw new Error('Invalid encrypted format. Expected base64(iv):base64(ciphertext)');
+  const key = genKey(alg, password);
+  const iv = Buffer.from(ivBase64, 'base64');
+  return decryptText(alg, key, iv, ciphertext);
+};

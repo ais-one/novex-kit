@@ -1,3 +1,4 @@
+import { resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
 import type { WaTemplateCreate, WaTemplateUpdate } from '@common/node/comms/whatsapp2/template';
 import { createTemplate, deleteTemplate, listTemplates, updateTemplate } from '@common/node/comms/whatsapp2/template';
 import type { Request, Response } from 'express';
@@ -6,25 +7,42 @@ import express from 'express';
 // WhatsApp Template Management API
 // Docs: https://developers.facebook.com/documentation/business-messaging/whatsapp/business-management-api/message-templates
 //
-// Required env vars:
-//   WHATSAPP_TOKEN                — permanent system user access token (needs whatsapp_business_management scope)
-//   WHATSAPP_BUSINESS_ACCOUNT_ID  — WABA ID from Meta Business Manager
+// Credentials are resolved per-tenant from the database via resolveCommsCredentials().
+// Pass ?configLabel=xxx query param to select which WhatsApp config to use.
 
-function getCredentials(res: Response): { token: string; wabaId: string } | null {
-  const { WHATSAPP_TOKEN: token = '', WHATSAPP_BUSINESS_ACCOUNT_ID: wabaId = '' } = process.env;
-  if (!token || !wabaId) {
-    res.status(500).json({ ok: false, error: 'WHATSAPP_TOKEN or WHATSAPP_BUSINESS_ACCOUNT_ID not set' });
+async function getCredentials(req: Request, res: Response): Promise<{ token: string; wabaId: string } | null> {
+  const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
+  if (!tenantId) {
+    res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
     return null;
   }
-  return { token, wabaId };
+  const configLabel = (req.query.configLabel as string) || (req.body?.configLabel as string) || undefined;
+  try {
+    const config = await resolveCommsCredentials(tenantId, 'whatsapp', configLabel);
+    const token = config.credentials.token;
+    const wabaId = config.senderIdentity.business_account_id;
+    if (!token || !wabaId) {
+      res
+        .status(500)
+        .json({ ok: false, error: 'WhatsApp config is missing token or business_account_id in sender identity' });
+      return null;
+    }
+    return { token, wabaId };
+  } catch (err: unknown) {
+    res
+      .status(500)
+      .json({ ok: false, error: err instanceof Error ? err.message : 'Failed to resolve WhatsApp credentials' });
+    return null;
+  }
 }
 
 export default express
   .Router()
 
   // ── GET /api/sample-api/whatsapp/templates ───────────────────────────────
+  // Query: ?limit=N&status=APPROVED|PENDING|...&configLabel=xxx
   .get('/', async (req: Request, res: Response) => {
-    const creds = getCredentials(res);
+    const creds = await getCredentials(req, res);
     if (!creds) return;
 
     const limit = req.query.limit ? Number(req.query.limit) : 20;
@@ -41,8 +59,9 @@ export default express
   })
 
   // ── POST /api/sample-api/whatsapp/templates ──────────────────────────────
+  // Body: { name, language, category, components, configLabel? }
   .post('/', async (req: Request, res: Response) => {
-    const creds = getCredentials(res);
+    const creds = await getCredentials(req, res);
     if (!creds) return;
 
     const payload = req.body as WaTemplateCreate;
@@ -62,8 +81,9 @@ export default express
   })
 
   // ── POST /api/sample-api/whatsapp/templates/:id ──────────────────────────
+  // Body: { components, configLabel? }
   .post('/:id', async (req: Request, res: Response) => {
-    const creds = getCredentials(res);
+    const creds = await getCredentials(req, res);
     if (!creds) return;
 
     const templateId = req.params.id;
@@ -83,9 +103,9 @@ export default express
     }
   })
 
-  // ── DELETE /api/sample-api/whatsapp/templates?name=xxx ──────────────────
+  // ── DELETE /api/sample-api/whatsapp/templates?name=xxx&configLabel=xxx ──
   .delete('/', async (req: Request, res: Response) => {
-    const creds = getCredentials(res);
+    const creds = await getCredentials(req, res);
     if (!creds) return;
 
     const name = req.query.name ? String(req.query.name) : '';

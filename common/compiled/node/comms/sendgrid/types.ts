@@ -1,6 +1,15 @@
 // SendGrid v3 Mail Send API — shared types
 // Docs: https://docs.sendgrid.com/api-reference/mail-send/mail-send
 
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+/** Credentials required for all SendGrid operations. */
+export interface SendGridAuth {
+  apiKey: string;
+  senderName: string;
+  senderEmail: string;
+}
+
 // ─── Outbound ─────────────────────────────────────────────────────────────────
 
 export interface SgEmailAddress {
@@ -82,6 +91,12 @@ export interface SendEmailOpts {
   batchId?: string;
   /** Unsubscribe group ID (SendGrid Suppression Groups) */
   asmGroupId?: number;
+
+  // ── Tenant context (auto-injected into custom_args for event webhook correlation) ──
+  /** Tenant ID — injected as _novex_tenant_id in custom_args */
+  _tenantId?: number;
+  /** Config label — injected as _novex_config_label in custom_args */
+  _configLabel?: string;
 }
 
 /** Extends SendEmailOpts with file attachments support. */

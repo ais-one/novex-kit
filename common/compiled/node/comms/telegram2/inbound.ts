@@ -1,4 +1,5 @@
-import type { TgMessage, TgUpdate } from './types.ts';
+import { apiRequest } from './outbound.ts';
+import type { SetWebhookOpts, TgMessage, TgUpdate } from './types.ts';
 
 // ─── Extractors ───────────────────────────────────────────────────────────────
 
@@ -263,3 +264,54 @@ export const handleUpdate = (update: TgUpdate) => {
 
   return { updateType: 'unknown', data: update };
 };
+
+// ─── Webhook Management ───────────────────────────────────────────────────────
+
+/**
+ * Register a webhook URL for a Telegram bot.
+ * Telegram will send updates to this URL as POST requests.
+ *
+ * @param botToken - The bot's API token
+ * @param url - HTTPS URL to send updates to (must be valid, publicly accessible)
+ * @param secretToken - Secret token for X-Telegram-Bot-Api-Secret-Token header verification (1-256 chars, A-Za-z0-9_-)
+ * @param opts - Additional webhook configuration options
+ * @returns true if webhook was set successfully
+ */
+export async function setWebhook(
+  botToken: string,
+  url: string,
+  secretToken: string,
+  opts: SetWebhookOpts = {},
+): Promise<boolean> {
+  const params: Record<string, unknown> = {
+    url,
+    secret_token: secretToken,
+    max_connections: opts.maxConnections ?? 40,
+  };
+  if (opts.allowedUpdates) params.allowed_updates = opts.allowedUpdates;
+  if (opts.ipAddress) params.ip_address = opts.ipAddress;
+  if (opts.dropPendingUpdates) params.drop_pending_updates = true;
+
+  await apiRequest(botToken, 'setWebhook', params);
+  return true;
+}
+
+/**
+ * Remove the current webhook integration for a bot.
+ *
+ * @param botToken - The bot's API token
+ * @param dropPendingUpdates - Pass true to drop all pending updates
+ * @returns true if webhook was deleted successfully
+ */
+export async function deleteWebhook(botToken: string, dropPendingUpdates = false): Promise<boolean> {
+  await apiRequest(botToken, 'deleteWebhook', { drop_pending_updates: dropPendingUpdates });
+  return true;
+}
+
+/**
+ * Get current webhook status for a bot.
+ * Useful for debugging and displaying webhook info in the UI.
+ */
+export async function getWebhookInfo(botToken: string): Promise<Record<string, unknown>> {
+  return apiRequest(botToken, 'getWebhookInfo') as Promise<Record<string, unknown>>;
+}
