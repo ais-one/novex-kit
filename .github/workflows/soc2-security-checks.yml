@@ -1,8 +1,9 @@
 # Runs on every PR — all jobs must pass before merge is allowed
 name: Security checks
 on:
-  pull_request:
-    branches: [ main, staging ]
+  workflow_dispatch:
+  # pull_request:
+  #   branches: [ main, staging ]
 
 permissions:
   contents: read

@@ -41,9 +41,17 @@ on:
         default: '.'
         required: false
       cr_env:
-        description: 'environment: dev, uat, stg, prd'
-        default: 'dev'
+        description: 'deployment environment (development, staging, production)'
+        default: 'development'
         required: true
+        type: choice
+        options:
+        - development
+        - staging
+        - production
+
+
+
 env:
   CR_IMAGENAME: ${{ github.event.inputs.cr_imagename || vars.CR_IMAGENAME || github.event.repository.name }}
   CR_PASSWORD: ${{ secrets.CR_PASSWORD }}

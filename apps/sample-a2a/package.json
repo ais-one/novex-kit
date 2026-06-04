@@ -15,7 +15,7 @@
     "test:e2e": "exit 0"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.55.0",
+    "@anthropic-ai/sdk": "^0.100.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "express": "^5.1.0",
     "openai": "^6.35.0"

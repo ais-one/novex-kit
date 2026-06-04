@@ -1,8 +1,9 @@
 # Runs on merge to main — deploys to production via Alibaba Cloud OIDC
 name: Deploy to production
 on:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
+  # push:
+  #   branches: [ main ]
 
 permissions:
   id-token: write     # required for OIDC — no static keys
