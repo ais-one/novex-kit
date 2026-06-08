@@ -362,3 +362,32 @@ export const tenantCommsConfig = iamSchema.table(
   },
   t => [unique().on(t.tenant_id, t.channel, t.label)],
 );
+
+// ─── comms_outbox (broadcast queue) ──────────────────────────────────────────
+
+export const commsOutbox = iamSchema.table(
+  'comms_outbox',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    tenant_id: integer('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    channel: varchar('channel', { length: 50 }).notNull(),
+    config_label: varchar('config_label', { length: 100 }),
+    recipient: text('recipient').notNull(),
+    type: varchar('type', { length: 50 }).notNull(),
+    payload: jsonb('payload').notNull(),
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    max_attempts: integer('max_attempts').notNull().default(3),
+    last_error: text('last_error'),
+    scheduled_at: timestamp('scheduled_at', { withTimezone: true }).notNull().default(sql`now()`),
+    sent_at: timestamp('sent_at', { withTimezone: true }),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
+  },
+  t => [
+    index('idx_comms_outbox_status_scheduled').on(t.status, t.scheduled_at),
+    index('idx_comms_outbox_tenant').on(t.tenant_id),
+  ],
+);

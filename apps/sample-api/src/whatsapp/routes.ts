@@ -1,4 +1,5 @@
 import { broadcast } from '@common/node/comms/service/broadcast';
+import { enqueueBroadcast } from '@common/node/comms/service/outbox';
 import { send } from '@common/node/comms/service/send';
 import type { SendRequest } from '@common/node/comms/service/types';
 import { resolveCommsConfigByIdentity, resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
@@ -291,7 +292,7 @@ export default express
   })
 
   // ── POST /api/sample-api/whatsapp/broadcast ─────────────────────────────────
-  // Send the same message to multiple recipients.
+  // Enqueue broadcast message to outbox for async delivery.
   // Body: { recipients: string[], type, configLabel?, ...payload }
   // Example: { recipients: ["+60111", "+60222"], type: "text", text: "Hello everyone!" }
   .post('/broadcast', async (req: Request, res: Response) => {
@@ -314,16 +315,15 @@ export default express
     }
 
     try {
-      const result = await broadcast({
+      const result = await enqueueBroadcast({
         tenantId,
         configLabel: configLabel as string | undefined,
         channel: 'whatsapp',
         recipients: recipients as string[],
         type,
         payload,
-        options: { mode: 'sequential', delayMs: 1000 },
-      } as unknown as Parameters<typeof broadcast>[0]);
-      res.json({ ok: result.success, result });
+      });
+      res.json({ ok: true, ...result });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
     }
