@@ -363,20 +363,3 @@ export interface BroadcastOptions {
   /** Max parallel sends in concurrent mode. Default: 5. */
   concurrency?: number;
 }
-
-/** Result from broadcast — per-recipient status */
-export interface BroadcastResult {
-  success: boolean;
-  channel: CommsChannel;
-  total: number;
-  sent: number;
-  failed: number;
-  results: BroadcastRecipientResult[];
-}
-
-export interface BroadcastRecipientResult {
-  to: string;
-  success: boolean;
-  messageId?: string;
-  error?: string;
-}

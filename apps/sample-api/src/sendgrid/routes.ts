@@ -1,6 +1,5 @@
 import { cancelScheduledEmail, sendBulkDynamicEmail, sendBulkEmail } from '@common/node/comms/sendgrid/outbound';
 import type { SendGridAuth, SgAttachment, SgPersonalization, SgSendEmailOpts } from '@common/node/comms/sendgrid/types';
-import { broadcast } from '@common/node/comms/service/broadcast';
 import { enqueueBroadcast } from '@common/node/comms/service/outbox';
 import { send } from '@common/node/comms/service/send';
 import type { SendRequest } from '@common/node/comms/service/types';

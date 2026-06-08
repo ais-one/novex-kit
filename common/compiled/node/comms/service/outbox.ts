@@ -2,6 +2,7 @@
 // Enqueues broadcast messages to a DB table, processed by a cron worker.
 
 import { and, eq, lte, sql } from 'drizzle-orm';
+import { logger } from '../../logger.ts';
 import type { CommsChannel } from '../tenant/types.ts';
 import { send } from './send.ts';
 import type { BroadcastRequest, SendRequest } from './types.ts';
@@ -112,8 +113,7 @@ export async function startBroadcastWorker(opts?: {
     try {
       await processBatch(batchSize);
     } catch (err) {
-      // biome-ignore lint/suspicious/noConsoleLog: worker error logging
-      console.error('[outbox] worker tick error:', err);
+      logger.error('[outbox] worker tick error:', { error: err });
     } finally {
       _isRunning = false;
     }
