@@ -43,11 +43,14 @@ const idpCert = readFileSync(certPath, 'utf8');
     disableRequestedAuthnContext: true,
   },
   SAML_JWT_MAP: { id: 'nameID', groups: 'groups' },
+  JWT: { JWT_ALG: 'HS256' },
 };
 
 // Provide a JWT secret and user-id field so createToken works in the RelayState test
+// Force-assign (not ||=) because the .env file pre-sets AUTH_USER_FIELD_ID_FOR_JWT=id,
+// and the SAML profile maps nameID → user.sub.
 process.env.JWT_SECRET ||= 'test-saml-integration-key-min32ch';
-process.env.AUTH_USER_FIELD_ID_FOR_JWT ||= 'sub';
+process.env.AUTH_USER_FIELD_ID_FOR_JWT = 'sub';
 
 const { login, auth } = await import('@common/node/auth/controllers/saml');
 const { setup: jwtSetup } = await import('@common/node/auth/jwt');
