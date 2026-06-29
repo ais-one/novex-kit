@@ -196,29 +196,6 @@ export interface SetWebhookOpts {
   dropPendingUpdates?: boolean;
 }
 
-// ─── Broadcast types ──────────────────────────────────────────────────────────
-
-export interface TgBroadcastOpts {
-  /** Delay in milliseconds between each send. Default: 35 (≈28 msgs/sec, within Telegram's ~30/sec limit). */
-  delayMs?: number;
-  /** Maximum number of concurrent sends. Default: 1 (sequential). */
-  concurrency?: number;
-}
-
-export interface TgBroadcastResultItem {
-  chatId: string | number;
-  success: boolean;
-  data?: unknown;
-  error?: { message: string; code?: number; method?: string };
-}
-
-export interface TgBroadcastResult {
-  total: number;
-  sent: number;
-  failed: number;
-  results: TgBroadcastResultItem[];
-}
-
 // // TODO: Need to be defined
 // data shape (updateType === message):
 // {

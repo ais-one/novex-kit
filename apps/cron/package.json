@@ -1,0 +1,15 @@
+{
+  "name": "@novex-kit/cron",
+  "description": "Background cron worker for broadcast outbox",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --watch src/index.ts",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@common/iso": "file:../../common/vanilla/iso",
+    "@common/node": "file:../../common/compiled/node"
+  }
+}

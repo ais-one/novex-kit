@@ -137,29 +137,6 @@ export interface WaFlowOpts extends WaMessageOpts {
   mode?: 'published' | 'draft';
 }
 
-// ─── Broadcast ────────────────────────────────────────────────────────────────
-
-export interface WaBroadcastOpts {
-  /** Delay in milliseconds between each send. Default: 80 (≈12 msgs/sec, well within Meta's limits). */
-  delayMs?: number;
-  /** Maximum number of concurrent sends. Default: 1 (sequential). */
-  concurrency?: number;
-}
-
-export interface WaBroadcastResultItem {
-  to: string;
-  success: boolean;
-  data?: unknown;
-  error?: { message: string; code?: number; type?: string };
-}
-
-export interface WaBroadcastResult {
-  total: number;
-  sent: number;
-  failed: number;
-  results: WaBroadcastResultItem[];
-}
-
 // ─── Inbound ──────────────────────────────────────────────────────────────────
 
 export interface WaInboundText {
