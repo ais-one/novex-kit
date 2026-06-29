@@ -1,4 +1,4 @@
-import { broadcast } from '@common/node/comms/service/broadcast';
+import { enqueueBroadcast } from '@common/node/comms/service/outbox';
 import { send } from '@common/node/comms/service/send';
 import type { SendRequest } from '@common/node/comms/service/types';
 import { handleUpdate } from '@common/node/comms/telegram2/inbound';
@@ -306,7 +306,7 @@ export default express
   })
 
   // ── POST /api/sample-api/telegram/broadcast ───────────────────────────────
-  // Send the same message to multiple recipients.
+  // Enqueue broadcast message to outbox for async delivery.
   // Body: { recipients: string[], type, configLabel?, payload }
   // Example: { recipients: ["123", "456"], type: "text", payload: { text: "Hello everyone!" } }
   .post('/broadcast', async (req: Request, res: Response) => {
@@ -329,16 +329,15 @@ export default express
     }
 
     try {
-      const result = await broadcast({
+      const result = await enqueueBroadcast({
         tenantId,
         configLabel: configLabel as string | undefined,
         channel: 'telegram',
         recipients: recipients as string[],
         type: type === 'message' ? 'text' : type,
         payload,
-        options: { mode: 'sequential', delayMs: 100 },
-      } as unknown as Parameters<typeof broadcast>[0]);
-      res.json({ ok: result.success, result });
+      });
+      res.json({ ok: true, ...result });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
     }

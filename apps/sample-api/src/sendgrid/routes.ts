@@ -1,6 +1,6 @@
 import { cancelScheduledEmail, sendBulkDynamicEmail, sendBulkEmail } from '@common/node/comms/sendgrid/outbound';
 import type { SendGridAuth, SgAttachment, SgPersonalization, SgSendEmailOpts } from '@common/node/comms/sendgrid/types';
-import { broadcast } from '@common/node/comms/service/broadcast';
+import { enqueueBroadcast } from '@common/node/comms/service/outbox';
 import { send } from '@common/node/comms/service/send';
 import type { SendRequest } from '@common/node/comms/service/types';
 import { resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
@@ -166,7 +166,7 @@ export default express
   })
 
   // ── POST /api/sample-api/sendgrid/broadcast ─────────────────────────────────
-  // Send the same email to multiple recipients.
+  // Enqueue broadcast email to outbox for async delivery.
   // Body: { recipients: string[], type, configLabel?, subject, html/templateId/dynamicData }
   // Example: { recipients: ["a@b.com", "c@d.com"], type: "html", subject: "Hello", html: "<p>Hi!</p>" }
   .post('/broadcast', async (req: Request, res: Response) => {
@@ -189,16 +189,15 @@ export default express
     }
 
     try {
-      const result = await broadcast({
+      const result = await enqueueBroadcast({
         tenantId,
         configLabel: configLabel as string | undefined,
         channel: 'email',
         recipients: recipients as string[],
         type: type === 'attachment' ? 'html_attachments' : type,
         payload,
-        options: { mode: 'sequential', delayMs: 100 },
-      } as unknown as Parameters<typeof broadcast>[0]);
-      res.json({ ok: result.success, result });
+      });
+      res.json({ ok: true, ...result });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });
     }
