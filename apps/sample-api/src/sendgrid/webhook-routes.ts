@@ -95,7 +95,7 @@ export default express
     express.json({
       limit: '5mb',
       verify: (req, _res, buf) => {
-        (req as any).rawBody = buf;
+        req.rawBody = buf;
       },
     }),
     async (req: Request, res: Response) => {
@@ -220,7 +220,7 @@ export default express
     express.json({
       limit: '5mb',
       verify: (req, _res, buf) => {
-        (req as any).rawBody = buf;
+        req.rawBody = buf;
       },
     }),
     async (req: Request, res: Response) => {

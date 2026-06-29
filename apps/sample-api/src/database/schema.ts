@@ -1,11 +1,9 @@
-import { relations, sql } from 'drizzle-orm';
+import { relations } from 'drizzle-orm';
 import {
-  bigserial,
   date,
   decimal,
   index,
   integer,
-  jsonb,
   pgTable,
   primaryKey,
   serial,
@@ -13,7 +11,6 @@ import {
   time,
   timestamp,
   unique,
-  uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
 

@@ -163,11 +163,11 @@ export default express
 
     // 4. Parse and process with tenant context
     const parsed = handleUpdate(req.body);
-    if (!parsed || parsed.updateType !== 'message') return;
+    if (parsed?.updateType !== 'message') return;
 
     // biome-ignore lint/suspicious/noExplicitAny: parsed data shape varies by updateType
     const data = parsed.data as any;
-    if (!data?.content || data.content.type !== 'text') return;
+    if (data.content?.type !== 'text') return;
 
     const chatId = String(data.chat?.id ?? '');
     const userText = String(data.content.text ?? '')
@@ -195,11 +195,11 @@ export default express
     if (!token) return;
 
     const parsed = handleUpdate(req.body);
-    if (!parsed || parsed.updateType !== 'message') return;
+    if (parsed?.updateType !== 'message') return;
 
     // biome-ignore lint/suspicious/noExplicitAny: parsed data shape varies by updateType
     const data = parsed.data as any;
-    if (!data?.content || data.content.type !== 'text') return;
+    if (data.content?.type !== 'text') return;
 
     const chatId = String(data.chat?.id ?? '');
     const userText = String(data.content.text ?? '')

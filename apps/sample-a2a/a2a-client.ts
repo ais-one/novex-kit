@@ -46,5 +46,5 @@ export async function sendTask(agentBaseUrl: string, text: string, taskId = rand
   const json = (await res.json()) as A2AResponse;
   if (json.error) throw new Error(`A2A error: ${json.error.message}`);
 
-  return json.result!.artifacts[0].parts[0].text;
+  return json.result?.artifacts[0].parts[0].text;
 }

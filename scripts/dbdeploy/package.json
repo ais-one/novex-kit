@@ -26,9 +26,9 @@
   "license": "ISC",
   "dependencies": {
     "@electric-sql/pglite": "^0.5.1",
-    "@electric-sql/pglite-socket": "^0.2.1",
+    "@electric-sql/pglite-socket": "^0.2.6",
     "mysql": "^2.18.1",
-    "pg": "^8.20.0",
+    "pg": "^8.22.0",
     "ts-to-zod": "^5.1.0"
   }
 }

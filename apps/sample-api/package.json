@@ -43,7 +43,7 @@
     "@common/iso": "file:../../common/vanilla/iso",
     "@common/node": "file:../../common/compiled/node",
     "@json2csv/plainjs": "^7.0.6",
-    "csv-parse": "^6.2.1",
+    "csv-parse": "^7.0.0",
     "fido2-lib": "^3.5.9",
     "pdfkit": "^0.18.0"
   }

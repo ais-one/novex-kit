@@ -28,6 +28,7 @@ declare namespace Express {
       info(msg: unknown, meta?: Record<string, unknown>): void;
       debug(msg: unknown, meta?: Record<string, unknown>): void;
     };
+    rawBody?: Buffer;
     startTime: number;
   }
 }

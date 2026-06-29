@@ -87,7 +87,7 @@ export default express
   // Body: { type, to, configLabel?, ...type-specific fields }
   // Types in the unified service go through send(). Others use direct library calls.
   .post('/test', async (req: Request, res: Response) => {
-    const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
+    const tenantId = req.user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
       return;
@@ -170,7 +170,7 @@ export default express
   // Body: { recipients: string[], type, configLabel?, subject, html/templateId/dynamicData }
   // Example: { recipients: ["a@b.com", "c@d.com"], type: "html", subject: "Hello", html: "<p>Hi!</p>" }
   .post('/broadcast', async (req: Request, res: Response) => {
-    const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
+    const tenantId = req.user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
       return;
