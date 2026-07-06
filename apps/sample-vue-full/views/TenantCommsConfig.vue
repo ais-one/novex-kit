@@ -189,10 +189,11 @@
 </template>
 
 <script setup>
+import { http } from '@common/vue/plugins/fetch.js';
 import { computed, onMounted, ref } from 'vue';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3000';
-const BASE = `${API_URL}/api/sample-api/tenant-comms`;
+const BASE = '/api/sample-api/tenant-comms';
 
 // ─── Channel → Provider mapping ───────────────────────────────────────────────
 
@@ -266,8 +267,7 @@ async function fetchConfigs() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await fetch(BASE, { credentials: 'include' });
-    const data = await res.json();
+    const { data } = await http.get(BASE);
     if (data.ok) {
       configs.value = data.data;
     } else {
@@ -291,13 +291,7 @@ async function createConfig() {
       credentials: form.value.credentials,
       senderIdentity: form.value.senderIdentity,
     };
-    const res = await fetch(BASE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
+    const { data } = await http.post(BASE, body);
     if (data.ok) {
       modalVisible.value = false;
       await fetchConfigs();
@@ -325,13 +319,7 @@ async function updateConfig() {
     const hasIdentity = Object.values(identity).some(v => v && v.trim() !== '');
     if (hasIdentity) body.senderIdentity = identity;
 
-    const res = await fetch(`${BASE}/${editingId.value}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
+    const { data } = await http.put(`${BASE}/${editingId.value}`, body);
     if (data.ok) {
       modalVisible.value = false;
       await fetchConfigs();
@@ -348,11 +336,7 @@ async function updateConfig() {
 async function deleteConfig(id) {
   error.value = '';
   try {
-    const res = await fetch(`${BASE}/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    const data = await res.json();
+    const { data } = await http.del(`${BASE}/${id}`);
     if (data.ok) {
       await fetchConfigs();
     } else {
@@ -366,13 +350,7 @@ async function deleteConfig(id) {
 async function toggleActive(record) {
   error.value = '';
   try {
-    const res = await fetch(`${BASE}/${record.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ isActive: !record.isActive }),
-    });
-    const data = await res.json();
+    const { data } = await http.put(`${BASE}/${record.id}`, { isActive: !record.isActive });
     if (data.ok) {
       await fetchConfigs();
     } else {
@@ -442,12 +420,7 @@ async function registerWebhook(record) {
   registeringWebhook.value = record.id;
   error.value = '';
   try {
-    const res = await fetch(`${BASE}/${record.id}/register-webhook`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-    });
-    const data = await res.json();
+    const { data } = await http.post(`${BASE}/${record.id}/register-webhook`, {});
     if (data.ok) {
       alert(`Webhook registered successfully!\n\nURL: ${data.data.webhookUrl}`);
     } else {

@@ -1,4 +1,4 @@
-import '@common/node/config'; // loads .env.json → sets globalThis.__config (JWT, etc.)
+﻿import '@common/node/config'; // loads .env.json → sets globalThis.__config (JWT, etc.)
 import '@common/node/logger';
 import assert from 'node:assert';
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';

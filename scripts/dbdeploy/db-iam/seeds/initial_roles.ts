@@ -1,6 +1,6 @@
 // biome-ignore lint/suspicious/noExplicitAny: schema type not needed for seed scripts
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { roles } from '../../../../apps/sample-api/src/database/schema-iam.ts';
+import { roles } from '../../../../apps/base-iam/src/database/schema-iam.ts';
 
 // biome-ignore lint/suspicious/noExplicitAny: schema type not needed for seed scripts
 export async function seed(db: NodePgDatabase<any>): Promise<void> {

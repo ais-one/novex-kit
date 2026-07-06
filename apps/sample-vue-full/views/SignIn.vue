@@ -174,7 +174,7 @@
 
 <script setup>
 import parseJwt from '@common/iso/parse-jwt.js';
-import { http } from '@common/vue/plugins/fetch.js';
+import { auth, http } from '@common/vue/plugins/fetch.js';
 import { useI18n } from '@common/vue/plugins/i18n.js';
 import { useMediaQuery } from '@common/vue/plugins/useMediaQuery.js';
 import { onBeforeUnmount, onMounted, onUnmounted, ref } from 'vue';
@@ -186,7 +186,7 @@ const store = useMainStore();
 const route = useRoute();
 const i18n = useI18n();
 const loading = store.loading;
-const email = ref('test');
+const email = ref('test@example.com');
 const password = ref('test');
 const errorMessage = ref('');
 const mode = ref('login'); // login, otp
@@ -236,7 +236,7 @@ const login = async () => {
   store.loading = true;
   errorMessage.value = '';
   try {
-    const { data } = await http.post('/api/auth/login', {
+    const { data } = await auth.post('/api/auth/login', {
       email: email.value,
       password: password.value,
     });
@@ -247,7 +247,9 @@ const login = async () => {
     } else {
       const user = parseJwt(data.access_token);
       http.setTokens({ access: data.access_token, refresh: data.refresh_token });
+      auth.setTokens({ access: data.access_token, refresh: data.refresh_token });
       http.setOptions({ refreshUrl: VITE_REFRESH_URL });
+      auth.setOptions({ refreshUrl: VITE_REFRESH_URL });
       _setUser(data, user);
     }
   } catch (e) {
@@ -262,11 +264,13 @@ const otpLogin = async () => {
   store.loading = true;
   errorMessage.value = '';
   try {
-    http.setOptions({ refreshUrl: VITE_REFRESH_URL });
-    const { data } = await http.post('/api/auth/otp', { id: otpId, pin: otp.value });
+    auth.setOptions({ refreshUrl: VITE_REFRESH_URL });
+    const { data } = await auth.post('/api/auth/otp', { id: otpId, pin: otp.value });
     const user = parseJwt(data.access_token);
     http.setTokens({ access: data.access_token, refresh: data.refresh_token });
+    auth.setTokens({ access: data.access_token, refresh: data.refresh_token });
     http.setOptions({ refreshUrl: VITE_REFRESH_URL });
+    auth.setOptions({ refreshUrl: VITE_REFRESH_URL });
     _setUser(data, user);
   } catch (e) {
     if (e.data.message === 'Token Expired Error') {

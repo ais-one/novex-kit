@@ -61,6 +61,7 @@
 </template>
 
 <script setup>
+import { http } from '@common/vue/plugins/fetch.js';
 import { computed, onMounted, ref } from 'vue';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3000';
@@ -74,10 +75,9 @@ const configsLoading = ref(false);
 async function fetchConfigs() {
   configsLoading.value = true;
   try {
-    const res = await fetch(`${API_URL}/api/sample-api/tenant-comms`, { credentials: 'include' });
-    const data = await res.json();
-    if (data.ok) {
-      configs.value = data.data.filter(c => c.channel === 'email');
+    const res = await http.get('/api/sample-api/tenant-comms');
+    if (res.data.ok) {
+      configs.value = res.data.data.filter(c => c.channel === 'email');
     }
     if (configs.value.length > 0 && !configLabel.value) {
       configLabel.value = configs.value[0].label;
@@ -142,18 +142,13 @@ async function sendBroadcast() {
 
   loading.value = true;
   try {
-    const res = await fetch(`${API_URL}/api/sample-api/sendgrid/broadcast`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        recipients,
-        type: type.value,
-        configLabel: configLabel.value || undefined,
-        ...payload,
-      }),
+    const res = await http.post('/api/sample-api/sendgrid/broadcast', {
+      recipients,
+      type: type.value,
+      configLabel: configLabel.value || undefined,
+      ...payload,
     });
-    result.value = await res.json();
+    result.value = res.data;
   } catch (err) {
     result.value = { ok: false, error: err.message };
   } finally {

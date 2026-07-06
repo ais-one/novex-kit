@@ -1,11 +1,8 @@
 import t4tRoutes from '@common/node/t4t/index';
 import express from 'express';
-import * as auth from './auth/routes.ts';
 import base from './base/routes.ts';
 import categoriesRoute from './categories/routes.ts';
 import fido from './fido/routes.ts';
-import iamUsersRoute from './iam-users/routes.ts';
-import rolesRoute from './roles/routes.ts';
 import email from './sendgrid/routes.ts';
 import emailTemplates from './sendgrid/template-routes.ts';
 import emailWebhooks from './sendgrid/webhook-routes.ts';
@@ -31,8 +28,6 @@ export default ({ app }) => {
     '/api/sample-api',
     router.use('/', base), // http://127.0.0.1:3000/api/sample-api/
     router.use('/categories', categoriesRoute), // http://127.0.0.1:3000/api/sample-api/categories/
-    router.use('/iam-users', iamUsersRoute), // http://127.0.0.1:3000/api/sample-api/iam-users/
-    router.use('/roles', rolesRoute), // http://127.0.0.1:3000/api/sample-api/roles/
     router.use('/webhooks', webhooks),
     router.use('/whatsapp', whatsapp), // http://127.0.0.1:3000/api/sample-api/whatsapp/webhook
     router.use('/whatsapp/templates', whatsappTemplates), // http://127.0.0.1:3000/api/sample-api/whatsapp/templates
@@ -48,15 +43,4 @@ export default ({ app }) => {
   );
 
   t4tRoutes({ app, routePrefix: '/api/t4t' }); // http://127.0.0.1:3000/api/t4t/
-
-  // authentication stuff Below - you can remove if not needed (be aware of routing if you are customizing your auth)
-  // routes used are: /api/auth (own auth rollout), /api/oauth, /api/oidc, /api/saml
-  // this one can actually be a microservice on its own, but for demo purposes we are putting it here
-  app.use(
-    '/api',
-    router.use('/auth', auth.myauthRoute),
-    router.use('/oidc', auth.oidcRoute),
-    router.use('/oauth', auth.oauthRoute),
-    router.use('/saml', auth.samlRoute),
-  );
 };

@@ -63,9 +63,8 @@
 </template>
 
 <script setup>
+import { http } from '@common/vue/plugins/fetch.js';
 import { computed, onMounted, ref } from 'vue';
-
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3000';
 
 // ─── Config selector ──────────────────────────────────────────────────────────
 
@@ -76,8 +75,7 @@ const configsLoading = ref(false);
 async function fetchConfigs() {
   configsLoading.value = true;
   try {
-    const res = await fetch(`${API_URL}/api/sample-api/tenant-comms`, { credentials: 'include' });
-    const data = await res.json();
+    const { data } = await http.get('/api/sample-api/tenant-comms');
     if (data.ok) {
       configs.value = data.data.filter(c => c.channel === 'whatsapp');
     }
@@ -154,18 +152,14 @@ async function sendBroadcast() {
 
   loading.value = true;
   try {
-    const res = await fetch(`${API_URL}/api/sample-api/whatsapp/broadcast`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
+    result.value = (
+      await http.post('/api/sample-api/whatsapp/broadcast', {
         recipients,
         type: type.value,
         configLabel: configLabel.value || undefined,
         ...payload,
-      }),
-    });
-    result.value = await res.json();
+      })
+    ).data;
   } catch (err) {
     result.value = { ok: false, error: err.message };
   } finally {

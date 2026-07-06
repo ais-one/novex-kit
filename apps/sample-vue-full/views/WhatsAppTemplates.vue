@@ -132,10 +132,11 @@
 </template>
 
 <script setup>
+import { http } from '@common/vue/plugins/fetch.js';
 import { onMounted, ref } from 'vue';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3000';
-const BASE = `${API_URL}/api/sample-api/whatsapp/templates`;
+const BASE = '/api/sample-api/whatsapp/templates';
 
 // ─── Config selector ──────────────────────────────────────────────────────────
 
@@ -146,10 +147,9 @@ const configsLoading = ref(false);
 async function fetchConfigs() {
   configsLoading.value = true;
   try {
-    const res = await fetch(`${API_URL}/api/sample-api/tenant-comms`, { credentials: 'include' });
-    const data = await res.json();
-    if (data.ok) {
-      configs.value = data.data.filter(c => c.channel === 'whatsapp');
+    const res = await http.get('/api/sample-api/tenant-comms');
+    if (res.data.ok) {
+      configs.value = res.data.data.filter(c => c.channel === 'whatsapp');
     }
     if (configs.value.length > 0 && !configLabel.value) {
       configLabel.value = configs.value[0].label;
@@ -202,10 +202,9 @@ const loadTemplates = async () => {
   listError.value = '';
   try {
     const statusQs = filterStatus.value ? `limit=50&status=${filterStatus.value}` : 'limit=50';
-    const res = await fetch(`${BASE}${configQs(statusQs)}`, { credentials: 'include' });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
-    templates.value = json.data ?? [];
+    const res = await http.get(`${BASE}${configQs(statusQs)}`);
+    if (!res.data.ok) throw new Error(res.data.error);
+    templates.value = res.data.data ?? [];
   } catch (err) {
     listError.value = err?.message ?? String(err);
   } finally {
@@ -293,23 +292,12 @@ const save = async () => {
   try {
     let res;
     if (editId.value) {
-      res = await fetch(`${BASE}/${editId.value}${configQs()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ components, configLabel: configLabel.value }),
-      });
+      res = await http.post(`${BASE}/${editId.value}${configQs()}`, { components, configLabel: configLabel.value });
     } else {
-      res = await fetch(`${BASE}${configQs()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ...form.value, components, configLabel: configLabel.value }),
-      });
+      res = await http.post(`${BASE}${configQs()}`, { ...form.value, components, configLabel: configLabel.value });
     }
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
-    saveSuccess.value = editId.value ? 'Template updated.' : `Template created (status: ${json.status}).`;
+    if (!res.data.ok) throw new Error(res.data.error);
+    saveSuccess.value = editId.value ? 'Template updated.' : `Template created (status: ${res.data.status}).`;
     await loadTemplates();
   } catch (err) {
     saveError.value = err?.message ?? String(err);
@@ -321,12 +309,8 @@ const save = async () => {
 // ── Delete ───────────────────────────────────────────────────────────────────
 const deleteOne = async name => {
   try {
-    const res = await fetch(`${BASE}${configQs(`name=${encodeURIComponent(name)}`)}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
+    const res = await http.del(`${BASE}${configQs(`name=${encodeURIComponent(name)}`)}`);
+    if (!res.data.ok) throw new Error(res.data.error);
     await loadTemplates();
   } catch (err) {
     listError.value = err?.message ?? String(err);

@@ -1,3 +1,4 @@
+import { authUser } from '@common/node/auth/jwt';
 import { resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
 import type { WaTemplateCreate, WaTemplateUpdate } from '@common/node/comms/whatsapp2/template';
 import { createTemplate, deleteTemplate, listTemplates, updateTemplate } from '@common/node/comms/whatsapp2/template';
@@ -41,7 +42,7 @@ export default express
 
   // ── GET /api/sample-api/whatsapp/templates ───────────────────────────────
   // Query: ?limit=N&status=APPROVED|PENDING|...&configLabel=xxx
-  .get('/', async (req: Request, res: Response) => {
+  .get('/', authUser, async (req: Request, res: Response) => {
     const creds = await getCredentials(req, res);
     if (!creds) return;
 
@@ -60,7 +61,7 @@ export default express
 
   // ── POST /api/sample-api/whatsapp/templates ──────────────────────────────
   // Body: { name, language, category, components, configLabel? }
-  .post('/', async (req: Request, res: Response) => {
+  .post('/', authUser, async (req: Request, res: Response) => {
     const creds = await getCredentials(req, res);
     if (!creds) return;
 
@@ -82,7 +83,7 @@ export default express
 
   // ── POST /api/sample-api/whatsapp/templates/:id ──────────────────────────
   // Body: { components, configLabel? }
-  .post('/:id', async (req: Request, res: Response) => {
+  .post('/:id', authUser, async (req: Request, res: Response) => {
     const creds = await getCredentials(req, res);
     if (!creds) return;
 
@@ -104,7 +105,7 @@ export default express
   })
 
   // ── DELETE /api/sample-api/whatsapp/templates?name=xxx&configLabel=xxx ──
-  .delete('/', async (req: Request, res: Response) => {
+  .delete('/', authUser, async (req: Request, res: Response) => {
     const creds = await getCredentials(req, res);
     if (!creds) return;
 

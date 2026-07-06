@@ -241,10 +241,11 @@
 </template>
 
 <script setup>
+import { http } from '@common/vue/plugins/fetch.js';
 import { onMounted, ref } from 'vue';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3000';
-const BASE = `${API_URL}/api/sample-api/sendgrid/templates`;
+const BASE = '/api/sample-api/sendgrid/templates';
 
 // ─── Config selector ──────────────────────────────────────────────────────────
 
@@ -255,10 +256,9 @@ const configsLoading = ref(false);
 async function fetchConfigs() {
   configsLoading.value = true;
   try {
-    const res = await fetch(`${API_URL}/api/sample-api/tenant-comms`, { credentials: 'include' });
-    const data = await res.json();
-    if (data.ok) {
-      configs.value = data.data.filter(c => c.channel === 'email');
+    const res = await http.get('/api/sample-api/tenant-comms');
+    if (res.data.ok) {
+      configs.value = res.data.data.filter(c => c.channel === 'email');
     }
     if (configs.value.length > 0 && !configLabel.value) {
       configLabel.value = configs.value[0].label;
@@ -294,10 +294,9 @@ const loadTemplates = async () => {
   listLoading.value = true;
   listError.value = '';
   try {
-    const res = await fetch(`${BASE}${configQs()}`, { credentials: 'include' });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error ?? 'Failed to load templates');
-    templates.value = json.templates ?? [];
+    const res = await http.get(`${BASE}${configQs()}`);
+    if (!res.data.ok) throw new Error(res.data.error ?? 'Failed to load templates');
+    templates.value = res.data.templates ?? [];
   } catch (err) {
     listError.value = err?.message ?? String(err);
   } finally {
@@ -330,14 +329,11 @@ const saveCreateTemplate = async () => {
   createSaving.value = true;
   createError.value = '';
   try {
-    const res = await fetch(`${BASE}${configQs()}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ name: createName.value.trim(), configLabel: configLabel.value }),
+    const res = await http.post(`${BASE}${configQs()}`, {
+      name: createName.value.trim(),
+      configLabel: configLabel.value,
     });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
+    if (!res.data.ok) throw new Error(res.data.error);
     createOpen.value = false;
     await loadTemplates();
   } catch (err) {
@@ -369,14 +365,11 @@ const saveRename = async () => {
   renameSaving.value = true;
   renameError.value = '';
   try {
-    const res = await fetch(`${BASE}/${renameId.value}${configQs()}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ name: renameName.value.trim(), configLabel: configLabel.value }),
+    const res = await http.patch(`${BASE}/${renameId.value}${configQs()}`, {
+      name: renameName.value.trim(),
+      configLabel: configLabel.value,
     });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
+    if (!res.data.ok) throw new Error(res.data.error);
     renameOpen.value = false;
     await loadTemplates();
   } catch (err) {
@@ -407,14 +400,8 @@ const saveDuplicate = async () => {
     const body = dupName.value.trim()
       ? { name: dupName.value.trim(), configLabel: configLabel.value }
       : { configLabel: configLabel.value };
-    const res = await fetch(`${BASE}/${dupId.value}/duplicate${configQs()}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
+    const res = await http.post(`${BASE}/${dupId.value}/duplicate${configQs()}`, body);
+    if (!res.data.ok) throw new Error(res.data.error);
     dupOpen.value = false;
     await loadTemplates();
   } catch (err) {
@@ -427,9 +414,8 @@ const saveDuplicate = async () => {
 // ── Delete Template ──────────────────────────────────────────────────────────
 const deleteOne = async id => {
   try {
-    const res = await fetch(`${BASE}/${id}${configQs()}`, { method: 'DELETE', credentials: 'include' });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
+    const res = await http.del(`${BASE}/${id}${configQs()}`);
+    if (!res.data.ok) throw new Error(res.data.error);
     await loadTemplates();
   } catch (err) {
     listError.value = err?.message ?? String(err);
@@ -466,10 +452,9 @@ const reloadVersions = async () => {
   versionLoading.value = true;
   versionListError.value = '';
   try {
-    const res = await fetch(`${BASE}/${selectedTemplate.value.id}${configQs()}`, { credentials: 'include' });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error ?? 'Failed to load versions');
-    const versions = json.versions ?? [];
+    const res = await http.get(`${BASE}/${selectedTemplate.value.id}${configQs()}`);
+    if (!res.data.ok) throw new Error(res.data.error ?? 'Failed to load versions');
+    const versions = res.data.versions ?? [];
     selectedVersions.value = versions;
     templates.value = templates.value.map(t => (t.id === selectedTemplate.value.id ? { ...t, versions } : t));
   } catch (err) {
@@ -482,12 +467,8 @@ const reloadVersions = async () => {
 const activateVersion = async version => {
   versionActionMsg.value = null;
   try {
-    const res = await fetch(`${BASE}/${selectedTemplate.value.id}/versions/${version.id}/activate${configQs()}`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
+    const res = await http.post(`${BASE}/${selectedTemplate.value.id}/versions/${version.id}/activate${configQs()}`);
+    if (!res.data.ok) throw new Error(res.data.error);
     versionActionMsg.value = { ok: true, text: `Version '${version.name}' is now active.` };
     await reloadVersions();
   } catch (err) {
@@ -498,12 +479,8 @@ const activateVersion = async version => {
 const deleteVersion = async version => {
   versionActionMsg.value = null;
   try {
-    const res = await fetch(`${BASE}/${selectedTemplate.value.id}/versions/${version.id}${configQs()}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
+    const res = await http.del(`${BASE}/${selectedTemplate.value.id}/versions/${version.id}${configQs()}`);
+    if (!res.data.ok) throw new Error(res.data.error);
     versionActionMsg.value = { ok: true, text: `Version '${version.name}' deleted.` };
     await reloadVersions();
   } catch (err) {
@@ -561,23 +538,18 @@ const saveVersion = async () => {
 
     let res;
     if (editVersionId.value) {
-      res = await fetch(`${BASE}/${templateId}/versions/${editVersionId.value}${configQs()}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ...payload, configLabel: configLabel.value }),
+      res = await http.patch(`${BASE}/${templateId}/versions/${editVersionId.value}${configQs()}`, {
+        ...payload,
+        configLabel: configLabel.value,
       });
     } else {
-      res = await fetch(`${BASE}/${templateId}/versions${configQs()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ...payload, configLabel: configLabel.value }),
+      res = await http.post(`${BASE}/${templateId}/versions${configQs()}`, {
+        ...payload,
+        configLabel: configLabel.value,
       });
     }
 
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
+    if (!res.data.ok) throw new Error(res.data.error);
     versionModalOpen.value = false;
     versionActionMsg.value = {
       ok: true,

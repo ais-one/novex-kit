@@ -1,3 +1,4 @@
+import { authUser } from '@common/node/auth/jwt';
 import { enqueueBroadcast } from '@common/node/comms/service/outbox';
 import { send } from '@common/node/comms/service/send';
 import type { SendRequest } from '@common/node/comms/service/types';
@@ -219,7 +220,7 @@ export default express
   // ── POST /api/sample-api/telegram/send ────────────────────────────────────
   // Simple text send via unified comms service.
   // Body: { to, message, configLabel? }
-  .post('/send', async (req: Request, res: Response) => {
+  .post('/send', authUser, async (req: Request, res: Response) => {
     const { to, message, configLabel } = req.body as { to?: string; message?: string; configLabel?: string };
     if (!to || !message) {
       res.status(400).json({ ok: false, error: 'to (chatId) and message are required' });
@@ -249,7 +250,7 @@ export default express
   // Multi-type test dispatcher.
   // Body: { type, to, configLabel?, ...type-specific fields }
   // Types in the unified service go through send(). Others use direct library calls.
-  .post('/test', async (req: Request, res: Response) => {
+  .post('/test', authUser, async (req: Request, res: Response) => {
     const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
@@ -309,7 +310,7 @@ export default express
   // Enqueue broadcast message to outbox for async delivery.
   // Body: { recipients: string[], type, configLabel?, payload }
   // Example: { recipients: ["123", "456"], type: "text", payload: { text: "Hello everyone!" } }
-  .post('/broadcast', async (req: Request, res: Response) => {
+  .post('/broadcast', authUser, async (req: Request, res: Response) => {
     const tenantId = (req as any).user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });

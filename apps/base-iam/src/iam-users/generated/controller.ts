@@ -1,11 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // AUTO-GENERATED — DO NOT EDIT
 // Re-run `npm run generate:crud` to regenerate this file.
-// Source table: roles
+// Source table: iamUsers
 // ─────────────────────────────────────────────────────────────────────────────
 import * as realServices from '@common/node/services';
 import { eq } from 'drizzle-orm';
-import { roles as table } from '../../database/schema-iam.ts';
+import { iamUsers as table } from '../../database/schema-iam.ts';
 
 // biome-ignore lint/suspicious/noExplicitAny: services interface varies by store type
 let services: any = realServices;
@@ -24,7 +24,30 @@ const create = async (req, res) => {
 };
 
 const findOne = async (req, res) => {
-  const rows = await db().select().from(table).where(eq(table.id, req.params.id)).limit(1);
+  const rows = await db()
+    .select({
+      id: table.id,
+      username: table.username,
+      email: table.email,
+      email_verified_at: table.email_verified_at,
+      phone: table.phone,
+      phone_verified_at: table.phone_verified_at,
+      display_name: table.display_name,
+      avatar_url: table.avatar_url,
+      status: table.status,
+      locale: table.locale,
+      timezone: table.timezone,
+      metadata: table.metadata,
+      roles: table.roles,
+      revoked: table.revoked,
+      githubId: table.githubId,
+      created_at: table.created_at,
+      updated_at: table.updated_at,
+      deleted_at: table.deleted_at,
+    })
+    .from(table)
+    .where(eq(table.id, req.params.id))
+    .limit(1);
   if (rows.length) return res.status(200).json(rows[0]);
   return res.status(404).json({});
 };
@@ -39,7 +62,26 @@ const find = async (req, res) => {
   const limit = req.query.limit ? Number(req.query.limit) : 10;
   const page = req.query.page ? Number(req.query.page) : 0;
   const result = await db()
-    .select()
+    .select({
+      id: table.id,
+      username: table.username,
+      email: table.email,
+      email_verified_at: table.email_verified_at,
+      phone: table.phone,
+      phone_verified_at: table.phone_verified_at,
+      display_name: table.display_name,
+      avatar_url: table.avatar_url,
+      status: table.status,
+      locale: table.locale,
+      timezone: table.timezone,
+      metadata: table.metadata,
+      roles: table.roles,
+      revoked: table.revoked,
+      githubId: table.githubId,
+      created_at: table.created_at,
+      updated_at: table.updated_at,
+      deleted_at: table.deleted_at,
+    })
     .from(table)
     .limit(limit)
     .offset((page > 0 ? page - 1 : 0) * limit);

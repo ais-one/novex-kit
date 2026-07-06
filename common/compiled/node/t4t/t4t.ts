@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import type { NextFunction, Response } from 'express';
 import express from 'express';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import multer from 'multer';
 import { memoryUpload } from '../express/upload.ts';
 import * as svc from '../services/index.ts';

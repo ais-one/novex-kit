@@ -1,0 +1,14 @@
+{
+  "$schema": "../../scripts/generators/generate-crud.config.schema.json",
+  "exclude": ["fgaConfig", "rsaSigningKeys", "userCredentials", "userMfaRecoveryCodes", "userOtpChallenges"],
+  "schemaOnly": ["authAuditLog", "userSessions", "userMfaTotp", "userFederatedIdentities", "userRoles"],
+  "tables": {
+    "iamUsers": {
+      "excludeFromBody": ["password", "salt", "email_verified_at", "phone_verified_at", "deleted_at"],
+      "excludeFromResponse": ["password", "salt", "gaKey"]
+    },
+    "roles": {
+      "excludeFromBody": ["is_system"]
+    }
+  }
+}

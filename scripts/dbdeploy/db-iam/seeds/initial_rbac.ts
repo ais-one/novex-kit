@@ -1,4 +1,4 @@
-/**
+﻿/**
  * RBAC seed — populates tenants, tenant_roles, permissions, role_permissions
  * and user_tenant_roles in db-iam.
  *
@@ -18,7 +18,7 @@ import {
   tenantRoles,
   tenants,
   userTenantRoles,
-} from '../../../../apps/sample-api/src/database/schema-iam.ts';
+} from '../../../../apps/base-iam/src/database/schema-iam.ts';
 import { TEST_USER_IDS } from './initial_iam_users.ts';
 
 // biome-ignore lint/suspicious/noExplicitAny: schema type not needed for seed scripts
