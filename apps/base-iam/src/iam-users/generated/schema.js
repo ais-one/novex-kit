@@ -16,6 +16,10 @@ export const IamUsersBodySchema = z
     status: z.string().optional(),
     locale: z.string().optional(),
     timezone: z.string().optional(),
+    roles: z.string().optional(),
+    revoked: z.string().optional(),
+    gaKey: z.string().optional(),
+    githubId: z.number().int().optional(),
   })
   .meta({ id: 'IamUsersBody' });
 
@@ -52,6 +56,9 @@ export const IamUsersResponseSchema = z
     locale: z.string(),
     timezone: z.string().nullable(),
     metadata: z.unknown(),
+    roles: z.string().nullable(),
+    revoked: z.string().nullable(),
+    githubId: z.number().int().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
     deleted_at: z.string().nullable(),

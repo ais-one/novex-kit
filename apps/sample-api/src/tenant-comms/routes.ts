@@ -10,6 +10,7 @@
 //   POST   /tenant-comms/:id/register-webhook — manually (re-)register Telegram webhook
 
 import { randomBytes } from 'node:crypto';
+import { authUser } from '@common/node/auth/jwt';
 import { deleteWebhook, setWebhook } from '@common/node/comms/telegram2/inbound';
 import { decryptCredentials, encryptCredentials } from '@common/node/comms/tenant/crypto';
 import type { CommsChannel, CommsProvider } from '@common/node/comms/tenant/types';
@@ -17,7 +18,7 @@ import * as realServices from '@common/node/services';
 import { and, eq } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import express from 'express';
-import { tenantCommsConfig } from '../database/schema-iam.ts';
+import { tenantCommsConfig } from '../database/schema.ts';
 
 // biome-ignore lint/suspicious/noExplicitAny: services interface varies by store type
 const services: any = realServices;
@@ -105,7 +106,7 @@ export default express
   // ── GET /tenant-comms ─────────────────────────────────────────────────────
   // List all channel configs for the authenticated tenant.
   // Credentials are masked in the response.
-  .get('/', async (req: Request, res: Response) => {
+  .get('/', authUser, async (req: Request, res: Response) => {
     const tenantId = getTenantId(req);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
@@ -136,7 +137,7 @@ export default express
   // ── GET /tenant-comms/:channel ────────────────────────────────────────────
   // Get a specific channel config for the authenticated tenant.
   // Credentials are masked in the response.
-  .get('/:channel', async (req: Request, res: Response) => {
+  .get('/:channel', authUser, async (req: Request, res: Response) => {
     const tenantId = getTenantId(req);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
@@ -183,7 +184,7 @@ export default express
   // ── POST /tenant-comms ────────────────────────────────────────────────────
   // Create a new channel config for the authenticated tenant.
   // Body: { channel, provider, credentials: {...}, senderIdentity: {...} }
-  .post('/', async (req: Request, res: Response) => {
+  .post('/', authUser, async (req: Request, res: Response) => {
     const tenantId = getTenantId(req);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
@@ -302,7 +303,7 @@ export default express
   // Update an existing channel config.
   // Body: { credentials?: {...}, senderIdentity?: {...}, isActive?: boolean }
   // Only fields provided will be updated.
-  .put('/:id', async (req: Request, res: Response) => {
+  .put('/:id', authUser, async (req: Request, res: Response) => {
     const tenantId = getTenantId(req);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
@@ -363,7 +364,7 @@ export default express
 
   // ── DELETE /tenant-comms/:id ──────────────────────────────────────────────
   // Delete a channel config.
-  .delete('/:id', async (req: Request, res: Response) => {
+  .delete('/:id', authUser, async (req: Request, res: Response) => {
     const tenantId = getTenantId(req);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
@@ -415,7 +416,7 @@ export default express
   // ── POST /tenant-comms/:id/register-webhook ───────────────────────────────
   // Manually (re-)register the Telegram webhook for a config.
   // Useful if auto-registration failed or if APP_DOMAIN changed.
-  .post('/:id/register-webhook', async (req: Request, res: Response) => {
+  .post('/:id/register-webhook', authUser, async (req: Request, res: Response) => {
     const tenantId = getTenantId(req);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });

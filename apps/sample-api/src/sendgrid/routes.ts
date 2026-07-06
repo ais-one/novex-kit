@@ -1,3 +1,4 @@
+import { authUser } from '@common/node/auth/jwt';
 import { cancelScheduledEmail, sendBulkDynamicEmail, sendBulkEmail } from '@common/node/comms/sendgrid/outbound';
 import type { SendGridAuth, SgAttachment, SgPersonalization, SgSendEmailOpts } from '@common/node/comms/sendgrid/types';
 import { enqueueBroadcast } from '@common/node/comms/service/outbox';
@@ -86,7 +87,7 @@ export default express
   // Multi-type test dispatcher.
   // Body: { type, to, configLabel?, ...type-specific fields }
   // Types in the unified service go through send(). Others use direct library calls.
-  .post('/test', async (req: Request, res: Response) => {
+  .post('/test', authUser, async (req: Request, res: Response) => {
     const tenantId = req.user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });
@@ -169,7 +170,7 @@ export default express
   // Enqueue broadcast email to outbox for async delivery.
   // Body: { recipients: string[], type, configLabel?, subject, html/templateId/dynamicData }
   // Example: { recipients: ["a@b.com", "c@d.com"], type: "html", subject: "Hello", html: "<p>Hi!</p>" }
-  .post('/broadcast', async (req: Request, res: Response) => {
+  .post('/broadcast', authUser, async (req: Request, res: Response) => {
     const tenantId = req.user?.tenant_id ?? (process.env.NODE_ENV === 'development' ? 1 : null);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });

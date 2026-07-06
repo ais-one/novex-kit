@@ -146,7 +146,10 @@ class Fetch {
         // no longer needed urlPath !== '/api/auth/refresh'
         if (rv0.data.message === 'Token Expired Error' && this.options.refreshUrl) {
           // just throw if error
-          const rv1 = await this.http('POST', urlOrigin + this.options.refreshUrl, {
+          const refreshUrl = this.options.refreshUrl.startsWith('http')
+            ? this.options.refreshUrl
+            : urlOrigin + this.options.refreshUrl;
+          const rv1 = await this.http('POST', refreshUrl, {
             refresh_token: this.tokens.refresh,
           }); // rv1 JSON already processed
           // status code should be < 400 here

@@ -1,3 +1,0 @@
-Start you IAM API server here...
-
-Use sample-api as reference.

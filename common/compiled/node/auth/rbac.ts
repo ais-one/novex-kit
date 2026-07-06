@@ -26,7 +26,6 @@
  */
 
 import { and, eq } from 'drizzle-orm';
-import type { NextFunction, Request, Response } from 'express';
 
 // biome-ignore lint/suspicious/noExplicitAny: configurable table references injected by the app
 let _permissions: any = null;
@@ -200,23 +199,12 @@ const revokePermission = async (roleId: number, permissionId: number) => {
     .where(and(eq(_rolePermissions.role_id, roleId), eq(_rolePermissions.permission_id, permissionId)));
 };
 
-/**
- * Route middleware — requires the user to hold at least one of the given roles.
- */
-const requireRole =
-  (...roles: string[]) =>
-  (req: Request, res: Response, next: NextFunction) => {
-    if (req.user?.roles?.some((r: string) => roles.includes(r))) return next();
-    return res.sendStatus(403);
-  };
-
 export {
   assignRole,
   getActiveTenant,
   getUserTenantsData,
   grantPermission,
   isSetup,
-  requireRole,
   revokePermission,
   revokeRole,
   setup,

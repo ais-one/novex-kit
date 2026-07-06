@@ -1,4 +1,4 @@
-import '@common/node/config';
+﻿import '@common/node/config';
 import '@common/node/logger';
 import assert from 'node:assert';
 import { spawn } from 'node:child_process';
