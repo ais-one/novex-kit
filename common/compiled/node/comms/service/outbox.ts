@@ -80,51 +80,6 @@ export async function enqueueBroadcast(req: BroadcastRequest): Promise<{ queued:
 
 // ─── Worker ───────────────────────────────────────────────────────────────────
 
-let _isRunning = false;
-let _stopRequested = false;
-
-/** @deprecated Use processBatch() via an HTTP-triggered cron endpoint instead. */
-export async function startBroadcastWorker(opts?: {
-  cronExpression?: string;
-  batchSize?: number;
-}): Promise<() => void> {
-  if (!isConfigured()) {
-    throw new Error('Comms outbox not initialized. Call configure() before starting the worker.');
-  }
-
-  const cronExpression = opts?.cronExpression ?? process.env.COMMS_OUTBOX_CRON ?? '*/5 * * * * *';
-  const batchSize = opts?.batchSize ?? Number.parseInt(process.env.COMMS_OUTBOX_BATCH_SIZE ?? '50', 10);
-
-  _stopRequested = false;
-
-  // Import cron package
-  const { CronJob } = await import('cron');
-
-  const tick = async () => {
-    if (_isRunning || _stopRequested) return;
-    _isRunning = true;
-
-    try {
-      await processBatch(batchSize);
-    } catch (err) {
-      logger.error('[outbox] worker tick error:', { error: err });
-    } finally {
-      _isRunning = false;
-    }
-  };
-
-  const job = new CronJob(cronExpression, tick);
-  job.start();
-
-  // Run first tick immediately
-  tick();
-
-  return () => {
-    _stopRequested = true;
-    job.stop();
-  };
-}
-
 /**
  * Process a batch of pending outbox rows.
  * Uses FOR UPDATE SKIP LOCKED to safely claim rows across multiple instances.
