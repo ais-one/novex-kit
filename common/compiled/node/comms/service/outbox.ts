@@ -83,13 +83,7 @@ export async function enqueueBroadcast(req: BroadcastRequest): Promise<{ queued:
 let _isRunning = false;
 let _stopRequested = false;
 
-/**
- * Start the broadcast outbox worker using the cron package.
- * Picks up pending rows and sends them. Uses FOR UPDATE SKIP LOCKED for safe multi-instance processing.
- *
- * @param opts - Optional overrides for cron expression and batch size
- * @returns A stop function
- */
+/** @deprecated Use processBatch() via an HTTP-triggered cron endpoint instead. */
 export async function startBroadcastWorker(opts?: {
   cronExpression?: string;
   batchSize?: number;
@@ -135,7 +129,8 @@ export async function startBroadcastWorker(opts?: {
  * Process a batch of pending outbox rows.
  * Uses FOR UPDATE SKIP LOCKED to safely claim rows across multiple instances.
  */
-async function processBatch(batchSize: number): Promise<void> {
+export async function processBatch(batchSize?: number): Promise<void> {
+  const size = batchSize ?? Number.parseInt(process.env.COMMS_OUTBOX_BATCH_SIZE ?? '50', 10);
   // Claim rows atomically
   // Note: FOR UPDATE SKIP LOCKED may not work in PGlite, use simple UPDATE for local dev
   const result = await db().execute(sql`
@@ -145,7 +140,7 @@ async function processBatch(batchSize: number): Promise<void> {
       SELECT id FROM ${_commsOutbox}
       WHERE status = 'pending' AND scheduled_at <= now()
       ORDER BY id
-      LIMIT ${batchSize}
+      LIMIT ${size}
     )
     RETURNING *
   `);

@@ -1,0 +1,22 @@
+# Using - https://github.com/Huachao/vscode-restclient
+
+### Healthcheck endpoint
+GET http://127.0.0.1:4000/health
+
+### Test cron service (requires CRON_API_KEY)
+GET http://127.0.0.1:4000/cron/test
+Authorization: Bearer generate-a-random-32-char-secret
+
+### Test cron service - unauthorized (no token)
+GET http://127.0.0.1:4000/cron/test
+
+### Test cron service - unauthorized (wrong token)
+GET http://127.0.0.1:4000/cron/test
+Authorization: Bearer wrong-token
+
+### Process outbox (fire-and-forget)
+POST http://127.0.0.1:4000/cron/process-outbox
+Authorization: Bearer generate-a-random-32-char-secret
+
+### Process outbox - unauthorized
+POST http://127.0.0.1:4000/cron/process-outbox
