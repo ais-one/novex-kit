@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
-import { getVerifier, registerVerifier } from '../registry.ts';
-import type { CronVerifier } from '../types.ts';
+import { getVerifier, registerVerifier } from './registry.ts';
+import type { CronVerifier } from './types.ts';
 
 class BearerVerifier implements CronVerifier {
   #token: string;
