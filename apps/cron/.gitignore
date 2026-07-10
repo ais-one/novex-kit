@@ -1,0 +1,10 @@
+# ─── Generated output ─────────────────────────────────────────────────────────
+# Per-table generated CRUD output (if generate:crud is used)
+src/*/generated/*
+src/*/schema.js
+
+# ─── OpenAPI spec — generated artifact ───────────────────────────────────────
+docs/openapi/
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+logs/

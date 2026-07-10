@@ -80,62 +80,12 @@ export async function enqueueBroadcast(req: BroadcastRequest): Promise<{ queued:
 
 // ─── Worker ───────────────────────────────────────────────────────────────────
 
-let _isRunning = false;
-let _stopRequested = false;
-
-/**
- * Start the broadcast outbox worker using the cron package.
- * Picks up pending rows and sends them. Uses FOR UPDATE SKIP LOCKED for safe multi-instance processing.
- *
- * @param opts - Optional overrides for cron expression and batch size
- * @returns A stop function
- */
-export async function startBroadcastWorker(opts?: {
-  cronExpression?: string;
-  batchSize?: number;
-}): Promise<() => void> {
-  if (!isConfigured()) {
-    throw new Error('Comms outbox not initialized. Call configure() before starting the worker.');
-  }
-
-  const cronExpression = opts?.cronExpression ?? process.env.COMMS_OUTBOX_CRON ?? '*/5 * * * * *';
-  const batchSize = opts?.batchSize ?? Number.parseInt(process.env.COMMS_OUTBOX_BATCH_SIZE ?? '50', 10);
-
-  _stopRequested = false;
-
-  // Import cron package
-  const { CronJob } = await import('cron');
-
-  const tick = async () => {
-    if (_isRunning || _stopRequested) return;
-    _isRunning = true;
-
-    try {
-      await processBatch(batchSize);
-    } catch (err) {
-      logger.error('[outbox] worker tick error:', { error: err });
-    } finally {
-      _isRunning = false;
-    }
-  };
-
-  const job = new CronJob(cronExpression, tick);
-  job.start();
-
-  // Run first tick immediately
-  tick();
-
-  return () => {
-    _stopRequested = true;
-    job.stop();
-  };
-}
-
 /**
  * Process a batch of pending outbox rows.
  * Uses FOR UPDATE SKIP LOCKED to safely claim rows across multiple instances.
  */
-async function processBatch(batchSize: number): Promise<void> {
+export async function processBatch(batchSize?: number): Promise<void> {
+  const size = batchSize ?? Number.parseInt(process.env.COMMS_OUTBOX_BATCH_SIZE ?? '50', 10);
   // Claim rows atomically
   // Note: FOR UPDATE SKIP LOCKED may not work in PGlite, use simple UPDATE for local dev
   const result = await db().execute(sql`
@@ -145,7 +95,7 @@ async function processBatch(batchSize: number): Promise<void> {
       SELECT id FROM ${_commsOutbox}
       WHERE status = 'pending' AND scheduled_at <= now()
       ORDER BY id
-      LIMIT ${batchSize}
+      LIMIT ${size}
     )
     RETURNING *
   `);

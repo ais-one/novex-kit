@@ -44,7 +44,6 @@
     "connect-history-api-fallback": "^2.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
-    "cron": "^3.3.1",
     "drizzle-orm": "^0.45.2",
     "drizzle-zod": "^0.8.3",
     "express": "^5.2.1",
