@@ -9,6 +9,7 @@
     "lint": "biome check ."
   },
   "dependencies": {
-    "@common/node": "file:../../common/compiled/node"
+    "@common/node": "file:../../common/compiled/node",
+    "@db/sample": "file:../../db/sample"
   }
 }

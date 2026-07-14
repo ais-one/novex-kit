@@ -5,8 +5,8 @@ import * as dbAudit from '@common/node/db-audit';
 import postRoute from '@common/node/express/postRoute';
 import preRoute from '@common/node/express/preRoute';
 import * as services from '@common/node/services';
-import { commsOutbox, tenantCommsConfig, users } from './database/schema.ts';
-import { hardDeleteLog } from './database/schema-audit.ts';
+import { hardDeleteLog } from '@db/audit/schema';
+import { commsOutbox, tenantCommsConfig, users } from '@db/sample/schema';
 import apiRoutes from './router.ts';
 
 store.configure({ users });

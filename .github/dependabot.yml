@@ -7,3 +7,11 @@ updates:
     # Check the npm registry for updates every week
     schedule:
       interval: 'weekly'
+
+  # Enable version updates for GitHub Actions used in workflows and composite actions
+  - package-ecosystem: 'github-actions'
+    directories:
+      - '/' # scans .github/workflows/*.yml
+      - '.github/actions/*' # composite actions, e.g. .github/actions/checkout/action.yml
+    schedule:
+      interval: 'weekly'

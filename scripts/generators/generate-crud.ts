@@ -5,24 +5,24 @@
 // Files inside generated/ directories are always overwritten on each run.
 // Sidecar files outside generated/ are created once and then owned by the developer.
 //
-// Usage (run from the target app directory):
+// Usage (run from the target db/<schema> workspace directory):
 //   node ../../scripts/generators/generate-crud.ts \
-//     --schema   ./src/database/schema.ts \
+//     --schema   ./schema.ts \
 //     --app      . \
 //     --db       drizzle1 \
 //     [--tables  categories,student] \
-//     [--route-prefix /api/sample-api]
+//     [--route-prefix /api/sample]
 //
 //   --schema-module is optional. When omitted, the relative .ts import path is
 //   computed automatically from --schema relative to the generated controller location.
 //
 // Output layout (relative to --app):
-//   src/<table>/generated/schema.js      ← ALWAYS overwritten (Zod schemas)
-//   src/<table>/generated/routes.ts      ← ALWAYS overwritten (Express routes)
-//   src/<table>/generated/controller.ts  ← ALWAYS overwritten (CRUD handlers)
-//   src/<table>/schema.js                ← created ONCE  (your sidecar)
-//   src/<table>/controller.ts            ← created ONCE  (your sidecar)
-//   src/<table>/routes.ts                ← created ONCE  (your sidecar)
+//   crud/<table>/generated/schema.js      ← ALWAYS overwritten (Zod schemas)
+//   crud/<table>/generated/routes.ts      ← ALWAYS overwritten (Express routes)
+//   crud/<table>/generated/controller.ts  ← ALWAYS overwritten (CRUD handlers)
+//   crud/<table>/schema.js                ← created ONCE  (your sidecar)
+//   crud/<table>/controller.ts            ← created ONCE  (your sidecar)
+//   crud/<table>/routes.ts                ← created ONCE  (your sidecar)
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
@@ -421,7 +421,7 @@ ${responseLines}
 }
 
 /**
- * Generates the content of a `src/routes/generated/<table>.ts` file.
+ * Generates the content of a `crud/routes/generated/<table>.ts` file.
  *
  * The file exports a single Express `Router` that wires up the five standard CRUD
  * operations, each protected by `authUser` middleware and validated against the
@@ -433,7 +433,7 @@ ${responseLines}
  * - `DELETE /:pk`      — remove
  *
  * The route delegates all business logic to the sidecar controller
- * (`src/controllers/<table>.ts`) so developer overrides are picked up automatically.
+ * (`crud/controllers/<table>.ts`) so developer overrides are picked up automatically.
  *
  * @param info - Aggregated table metadata built in the main loop.
  * @returns The full file content as a UTF-8 string ready to be written to disk.
@@ -470,7 +470,7 @@ export default express
 }
 
 /**
- * Generates the content of a `src/controllers/generated/<table>.ts` file.
+ * Generates the content of a `crud/controllers/generated/<table>.ts` file.
  *
  * The file exports five async Express handler functions (`create`, `find`, `findOne`,
  * `update`, `remove`) that implement standard CRUD operations using Drizzle ORM.
@@ -593,7 +593,7 @@ export * from './generated/schema.js';
 }
 
 /**
- * Generates the content of a sidecar controller file (`src/controllers/<table>.ts`).
+ * Generates the content of a sidecar controller file (`crud/controllers/<table>.ts`).
  *
  * The sidecar is created once the first time `generate:crud` runs for the table.
  * It re-exports the generated controller as the default export so the route file
@@ -624,7 +624,7 @@ export { default } from './generated/controller.ts';
 }
 
 /**
- * Generates the content of a sidecar routes file (`src/<table>/routes.ts`).
+ * Generates the content of a sidecar routes file (`crud/<table>/routes.ts`).
  *
  * The sidecar is created once the first time `generate:crud` runs for the table.
  * By default it re-exports the generated router unchanged. Developers extend it
@@ -658,14 +658,17 @@ export default express
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+/** Per-table output directory name, relative to --app. */
+const OUTPUT_DIR = 'crud';
+
 const appRoot = resolve(process.cwd(), appDir);
 const schemaPath = resolve(process.cwd(), schemaFilePath);
 
 // Compute the relative .ts import path from the generated controller location to the schema.
-// Controllers are always at src/{entity}/generated/controller.ts — use a placeholder entity
+// Controllers are always at crud/{entity}/generated/controller.ts — use a placeholder entity
 // to compute depth (it's the same for every entity).
 const computedSchemaModule = (() => {
-  const controllerDir = resolve(appRoot, 'src', '_entity_', 'generated');
+  const controllerDir = resolve(appRoot, OUTPUT_DIR, '_entity_', 'generated');
   const rel = relative(controllerDir, schemaPath).replace(/\\/g, '/');
   return rel.startsWith('.') ? rel : `./${rel}`;
 })();
@@ -780,7 +783,7 @@ for (const [varName, exported] of Object.entries(schemaExports)) {
     excludeFromResponse,
   };
 
-  const tableDir = resolve(appRoot, 'src', kebabName);
+  const tableDir = resolve(appRoot, OUTPUT_DIR, kebabName);
   const tableGenDir = resolve(tableDir, 'generated');
 
   // ── Always generate the Zod schema file ───────────────────────────────────
@@ -826,9 +829,9 @@ for (const name of generated) {
     ? ` [response: -${tCfg.excludeFromResponse.length} fields]`
     : '';
   console.log(`  ${name}${bodyNote}${responseNote}`);
-  console.log(`    src/${kebab}/generated/schema.js      (overwritten)`);
-  console.log(`    src/${kebab}/generated/routes.ts      (overwritten)`);
-  console.log(`    src/${kebab}/generated/controller.ts  (overwritten)`);
+  console.log(`    crud/${kebab}/generated/schema.js      (overwritten)`);
+  console.log(`    crud/${kebab}/generated/routes.ts      (overwritten)`);
+  console.log(`    crud/${kebab}/generated/controller.ts  (overwritten)`);
 }
 
 if (schemaOnlyGenerated.length) {
@@ -836,7 +839,7 @@ if (schemaOnlyGenerated.length) {
   for (const name of schemaOnlyGenerated) {
     const kebab = toKebabCase(name);
     console.log(`  ${name}`);
-    console.log(`    src/${kebab}/generated/schema.js    (overwritten)`);
+    console.log(`    crud/${kebab}/generated/schema.js    (overwritten)`);
   }
 }
 
@@ -849,15 +852,15 @@ if (sidecarsCreated.length) {
   console.log(`\nSidecars created (once — yours to edit):`);
   for (const name of sidecarsCreated) {
     const kebab = toKebabCase(name);
-    console.log(`  src/${kebab}/schema.js`);
-    console.log(`  src/${kebab}/controller.ts`);
-    console.log(`  src/${kebab}/routes.ts`);
+    console.log(`  crud/${kebab}/schema.js`);
+    console.log(`  crud/${kebab}/controller.ts`);
+    console.log(`  crud/${kebab}/routes.ts`);
   }
 }
 
 if (generated.length) {
   const prefix = routePrefix ? `${routePrefix}` : '';
-  console.log(`\nNext step — mount routes in src/router.ts:`);
+  console.log(`\nNext step — mount routes in crud/router.ts:`);
   for (const name of generated) {
     const kebab = toKebabCase(name);
     console.log(`  import ${name}Route from './${kebab}/routes.ts';`);

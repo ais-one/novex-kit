@@ -12,18 +12,18 @@ the generator never touches them again.
 
 Generates Zod schemas, Express routes, and controllers from a Drizzle schema.
 
-Run from an app directory:
+Run from the schema's workspace directory (`db/sample`, `db/iam`, or `db/audit`):
 
 ```sh
-npm run generate:crud
+npm run crud:generate   # generate:crud in db/audit
 ```
 
 Or directly with custom options:
 
 ```sh
 node ../../scripts/generators/generate-crud.ts \
-  --schema         ../../common/compiled/node/services/db/schema.ts \
-  --schema-module  @common/node/services/db/schema \
+  --schema         ../../db/sample/schema.ts \
+  --schema-module  @db/sample/schema \
   --app            . \
   --db             drizzle1 \
   --tables         categories,student \
@@ -43,26 +43,17 @@ Skips tables with composite primary keys or no primary key.
 
 #### Multiple schemas
 
-When your app uses more than one Drizzle schema file (e.g. `db/schema.ts`, `db-iam/schema.ts`,
-`db-audit/schema.ts`), run the generator once per schema file. All runs share the same
-`generate-crud.config.json` — each run only processes the tables found in the schema file
-it was given, so config entries for other schemas are silently ignored.
-
-All schemas pointing to the same database use the same `--db` service name.
+Each PostgreSQL schema (`sample`, `iam`, `audit`) is its own `db/<schema>/` workspace with its
+own Drizzle schema file, its own `generate-crud.config.json`, and its own `crud/` output — run
+the generator independently in each:
 
 ```sh
-# public schema
-npm run generate:crud
-
-# IAM schema (same DB service — just a different PostgreSQL schema namespace)
-npm run generate:crud:iam
-
-# audit schema
-npm run generate:crud:audit
-
-# or run all three in sequence
-npm run generate:crud:all
+npm run crud:generate --workspace=db/sample
+npm run crud:generate --workspace=db/iam
+npm run generate:crud --workspace=db/audit
 ```
+
+All schemas pointing to the same database use the same `--db` service name.
 
 Tables created with `pgSchema('name').table(...)` are detected and handled identically to
 plain `pgTable(...)` tables. The generated controller imports the table from the correct
@@ -71,10 +62,9 @@ right schema prefix at query time.
 
 #### Config file
 
-Optionally place a `generate-crud.config.json` next to `package.json` to control
-which tables and fields are included or excluded.
-**One config file covers all schema runs** — entries for tables not present in the current
-schema are silently ignored.
+Optionally place a `generate-crud.config.json` next to `db/<schema>/package.json` to control
+which tables and fields are included or excluded for that schema. Entries for tables not
+present in the schema are silently ignored.
 
 ```json
 {
@@ -108,21 +98,23 @@ For each table, the generator produces six files:
 
 | File | Owned by | Behaviour |
 |---|---|---|
-| `src/<table>/generated/schema.js` | Generator | Always overwritten |
-| `src/<table>/generated/routes.ts` | Generator | Always overwritten |
-| `src/<table>/generated/controller.ts` | Generator | Always overwritten |
-| `src/<table>/schema.js` | Developer | Created once, never overwritten |
-| `src/<table>/controller.ts` | Developer | Created once, never overwritten |
-| `src/<table>/routes.ts` | Developer | Created once, never overwritten |
+| `crud/<table>/generated/schema.js` | Generator | Always overwritten |
+| `crud/<table>/generated/routes.ts` | Generator | Always overwritten |
+| `crud/<table>/generated/controller.ts` | Generator | Always overwritten |
+| `crud/<table>/schema.js` | Developer | Created once, never overwritten |
+| `crud/<table>/controller.ts` | Developer | Created once, never overwritten |
+| `crud/<table>/routes.ts` | Developer | Created once, never overwritten |
 
 The three sidecar files (`schema.js`, `controller.ts`, `routes.ts`) are the developer's
 entry points for customisation. The generator creates them with starter content on the
 first run and skips them on every subsequent run.
 
-After generation, register the new table in `src/router.ts`:
+After generation, mount the new table's routes in the **consuming app's** `src/router.ts`
+(not inside `db/<schema>/`), importing via the `@db/<schema>` package — no `.ts` extension,
+the package's `exports` map appends it:
 
 ```ts
-import awardRoute from './award/routes.ts';
+import awardRoute from '@db/sample/crud/award/routes';
 // ...
 router.use('/award', awardRoute);
 ```
@@ -137,7 +129,7 @@ The generated routes already import from `../controller.ts` (the sidecar), so th
 override is picked up automatically — no changes to `routes.ts` are needed.
 
 ```ts
-// src/award/controller.ts
+// crud/award/controller.ts
 import generatedController from './generated/controller.ts';
 
 export { _injectServices } from './generated/controller.ts';
@@ -158,7 +150,7 @@ Adding an endpoint that does not exist in the generated routes requires two step
 Step 1 — add a named export to the sidecar `controller.ts`:
 
 ```ts
-// src/award/controller.ts
+// crud/award/controller.ts
 export { _injectServices, default } from './generated/controller.ts';
 
 export const search = async (req, res) => {
@@ -171,7 +163,7 @@ Step 2 — add your new endpoint **before** `.use('/', generatedRoutes)` in the 
 and fill in the relevant line:
 
 ```ts
-// src/award/routes.ts
+// crud/award/routes.ts
 import express from 'express';
 import { authUser } from '@common/node/auth/jwt';
 import { validate } from '@common/node/errors/validate';
@@ -195,8 +187,9 @@ export default express
   .use('/', generatedRoutes);                // GET / PATCH DELETE fall through
 ```
 
-`src/router.ts` does not need to change — it already mounts `./award/routes.ts`
-(the sidecar), so whatever the sidecar exports becomes the full router for that table.
+The consuming app's `router.ts` does not need to change — it already mounts
+`@db/sample/crud/award/routes` (the sidecar), so whatever the sidecar exports becomes
+the full router for that table.
 
 **Adding a custom validation schema**
 
@@ -207,7 +200,7 @@ Use `export *` to keep everything from generated, then add your new export along
 There is no name conflict because the new export name does not exist in generated.
 
 ```js
-// src/award/schema.js
+// crud/award/schema.js
 import { z } from 'zod';
 
 export * from './generated/schema.js';    // keep all generated schemas
@@ -223,7 +216,7 @@ Instead, re-export everything from generated individually except the one you are
 then declare your own version:
 
 ```js
-// src/award/schema.js
+// crud/award/schema.js
 import { z } from 'zod';
 import { AwardBodySchema as GeneratedBodySchema } from './generated/schema.js';
 
@@ -250,7 +243,7 @@ The OpenAPI generator reads the sidecar `schema.js`, so it will pick up your ove
 
 Generates an OpenAPI 3.1 YAML document from Zod v4 schemas.
 
-Run from an app directory:
+Run from the schema's workspace directory (`db/sample`, `db/iam`, or `db/audit`):
 
 ```sh
 npm run docs:generate
@@ -260,8 +253,9 @@ Or directly with custom options:
 
 ```sh
 node ../../scripts/generators/generate-openapi.ts \
-  --out        ./docs/openapi/openapi.yaml \
-  --prefix     /api/sample-api \
+  --src        ./crud \
+  --out        ./openapi/openapi.yaml \
+  --prefix     /api/sample \
   --title      "Sample API" \
   --version    1.0.0 \
   --server     http://localhost:8080
@@ -270,6 +264,8 @@ node ../../scripts/generators/generate-openapi.ts \
 | Flag | Required | Description |
 |---|---|---|
 | `--out` | yes | Output YAML file path |
+| `--src` | at least one of `--src` / `--schemas` | `src/` (or `crud/`) directory containing per-table subfolders |
+| `--schemas` | at least one of `--src` / `--schemas` | Directory of standalone `*.schema.js` files (e.g. `common/schemas`) |
 | `--prefix` | no | URL prefix prepended to all CRUD paths (e.g. `/api/sample-api`) |
 | `--title` | no | `info.title` in the OpenAPI document (default: `API`) |
 | `--version` | no | `info.version` in the OpenAPI document (default: `1.0.0`) |
@@ -278,7 +274,7 @@ node ../../scripts/generators/generate-openapi.ts \
 The `*ResponseSchema` export from each schema file is used as the GET response body shape.
 Tables without a `ResponseSchema` export fall back to a generic object schema.
 
-**No changes needed for multiple schemas.** The openapi generator scans `src/<table>/schema.js`
-and `src/<table>/generated/schema.js` — it reads Zod files, not Drizzle schemas. Tables from
-`db/schema.ts`, `db-iam/schema.ts`, and `db-audit/schema.ts` all land under the same `src/`
-directory after generation, so a single `npm run docs:generate` picks them all up automatically.
+**Each schema generates its own OpenAPI doc.** The openapi generator scans `crud/<table>/schema.js`
+and `crud/<table>/generated/schema.js` — it reads Zod files, not Drizzle schemas. Since `sample`,
+`iam`, and `audit` are separate `db/<schema>/` workspaces, each has its own `docs:generate` script
+and its own output file (`db/<schema>/openapi/openapi.yaml`) — run it once per schema.

@@ -15,10 +15,10 @@ import { deleteWebhook, setWebhook } from '@common/node/comms/telegram2/inbound'
 import { decryptCredentials, encryptCredentials } from '@common/node/comms/tenant/crypto';
 import type { CommsChannel, CommsProvider } from '@common/node/comms/tenant/types';
 import * as realServices from '@common/node/services';
+import { tenantCommsConfig } from '@db/sample/schema';
 import { and, eq } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import express from 'express';
-import { tenantCommsConfig } from '../database/schema.ts';
 
 // biome-ignore lint/suspicious/noExplicitAny: services interface varies by store type
 const services: any = realServices;

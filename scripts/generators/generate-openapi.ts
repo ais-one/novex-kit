@@ -23,7 +23,7 @@
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { z } from 'zod';
 import { createDocument } from 'zod-openapi';
 
@@ -50,12 +50,13 @@ function parseArgs(argv: string[]): Record<string, string> {
 
 const args = parseArgs(process.argv.slice(2));
 
-if (!args.src || !args.out) {
+if ((!args.src && !args.schemas) || !args.out) {
   console.error(`
 Usage: node scripts/generators/generate-openapi.ts \\
-  --src        <dir>     src/ directory containing per-table subfolders (relative to cwd)
   --out        <file>    Output YAML file path (relative to cwd)
-  [--schemas   <dir>]    Also scan this directory for standalone *.schema.js files
+  [--src       <dir>]    src/ directory containing per-table subfolders (relative to cwd)
+  [--schemas   <dir>]    Scan this directory for standalone *.schema.js files
+                         At least one of --src / --schemas is required.
   [--prefix    <prefix>] URL prefix for all CRUD route paths (e.g. /api/sample-api)
   [--title     <title>]  OpenAPI info.title (default: API)
   [--version   <ver>]    OpenAPI info.version (default: 1.0.0)
@@ -64,7 +65,7 @@ Usage: node scripts/generators/generate-openapi.ts \\
   process.exit(1);
 }
 
-const srcDir = resolve(process.cwd(), args.src);
+const srcDir = args.src ? resolve(process.cwd(), args.src) : null;
 const extraSchemasDir = args.schemas ? resolve(process.cwd(), args.schemas) : null;
 const outFile = resolve(process.cwd(), args.out);
 const prefix = (args.prefix ?? '').replace(/\/$/, '');
@@ -93,7 +94,7 @@ const filesToProcess: { kebab: string; filePath: string; isSidecar: boolean }[] 
 const seenKebabs = new Set<string>();
 
 // 1. Per-table layout: src/<table>/schema.js (sidecar) and src/<table>/generated/schema.js (generated-only)
-if (existsSync(srcDir)) {
+if (srcDir && existsSync(srcDir)) {
   for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const kebab = entry.name;
@@ -127,7 +128,8 @@ if (extraSchemasDir && existsSync(extraSchemasDir)) {
 }
 
 if (filesToProcess.length === 0) {
-  console.error(`No schema.js files found in ${srcDir}`);
+  const scanned = [srcDir, extraSchemasDir].filter(Boolean).join(', ');
+  console.error(`No schema.js files found in ${scanned}`);
   process.exit(1);
 }
 
