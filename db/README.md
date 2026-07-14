@@ -1,27 +1,31 @@
 ## Description
 
-`db/` holds all database schema, migration, and seed code for the project, kept separate from `apps/` and `common/` since this is userland data code that consuming applications import from, not template-owned code. It's organized as one npm workspace per PostgreSQL schema, plus a shared server:
+`db/` holds all database schema, migration, and seed code for the project, kept separate from `apps/` and `common/` since this is userland data code that consuming applications import from, not template-owned code. It's organized as one npm workspace per PostgreSQL schema:
 
 - **`db/sample`** (`@db/sample`) — public schema, the main application database (used by `apps/sample-api`, `apps/cron`)
 - **`db/iam`** (`@db/iam`) — identity and access management tables
 - **`db/audit`** (`@db/audit`) — audit log and hard-delete log tables
-- **`db/` itself** (`@db/core`) — not a schema; just the shared PGlite server (`serve-db.ts`) and its data file (`dev.db`)
 
-All three schemas share the one PGlite socket server on port **5432**, run from `db/` itself. Migration and seeding uses **drizzle-orm** / **drizzle-kit** with per-schema `drizzle.config.ts` files, colocated with each schema's `schema.ts`.
+`db/` itself is not a workspace — it just holds the shared PGlite data file (`dev.db`, gitignored). The server that runs it (`scripts/db-mocks/serve-db.ts`, `@tools/db-mocks`) lives outside `db/`, grouped with the other local dev-infra mocks (redis, kafka, SAML/OIDC).
+
+All three schemas share the one PGlite socket server on port **5432**. Migration and seeding uses **drizzle-orm** / **drizzle-kit** with per-schema `drizzle.config.ts` files, colocated with each schema's `schema.ts`.
 
 ---
 
 ## Quick Start (local dev)
 
-Run everything from `db/` — the server, and migration/seed commands (which `cd` into the relevant schema subfolder via their own npm scripts).
+Start the server from `scripts/db-mocks/`; run migration/seed commands from `db/` (or the repo root via `--workspace`).
 
 ### 1. Start the local database server
 
 ```bash
+cd ../scripts/db-mocks
 npm run serve
 ```
 
 This starts a single PGlite socket server on `127.0.0.1:5432` serving all three schemas (`public`, `iam`, `audit`), backed by `db/dev.db`. Leave this terminal open while running migrations or seeding.
+
+Override the data file location with `--dbpath`, e.g. `npm run serve -- --dbpath /tmp/scratch.db`.
 
 ### 2. Run migrations (in order)
 
@@ -59,7 +63,7 @@ npm run db:seed --workspace=db/audit
 
 | Script | What it does |
 |---|---|
-| `npm run serve` (from `db/`) | Start PGlite on 5432 (public + iam + audit schemas) |
+| `npm run serve` (from `scripts/db-mocks/`) | Start PGlite on 5432 (public + iam + audit schemas) |
 | `npm run db:migrate --workspace=db/<schema>` | Apply pending migrations for that schema |
 | `npm run db:generate --workspace=db/<schema>` | Generate a new migration from schema changes |
 | `npm run db:seed --workspace=db/<schema>` | Run all seed files for that schema, in order |
@@ -81,7 +85,7 @@ rm -rf dev.db
 Then restart and rerun migrations in order:
 
 ```bash
-# in a separate terminal, from db/
+# in a separate terminal, from scripts/db-mocks/
 npm run serve
 
 npm run db:migrate --workspace=db/sample        # public schema
@@ -99,9 +103,7 @@ npm run db:migrate --workspace=db/audit  # audit schema (after public)
 
 ```
 db/
-├── package.json                  # @db/core — just the shared PGlite server
-├── serve-db.ts                   # starts single PGlite socket server on 5432
-├── dev.db/                       # PGlite data file (gitignored)
+├── dev.db/                       # PGlite data file (gitignored) — served by scripts/db-mocks/serve-db.ts
 ├── sample/                      # public schema
 │   ├── schema.ts                 # Drizzle schema (source of truth)
 │   ├── .env                     # local DATABASE_URL (gitignored)

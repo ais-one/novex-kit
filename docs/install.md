@@ -54,7 +54,7 @@ npm i
 
 If sample database at `db/dev.db` folder is not present, see [Quick Create DB](../db/README.md#quick-create-db) to generate one. Due to size, the DB is not commited to git.
 
-For local development, run `npm run serve` command in `db` folder to serve the database.
+For local development, run `npm run serve` command in `scripts/db-mocks` folder to serve the database.
 
 3. Run the sample api application
 

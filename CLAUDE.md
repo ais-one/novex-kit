@@ -34,7 +34,7 @@ common/              # shared reusable code (npm workspaces)
     web/             # browser-only utilities and web components
   schemas/           # shared zod schemas (not a workspace — imported directly)
 db/                  # database schemas, migrations, seeds — separate npm workspaces, one per schema
-  package.json       # @db/core — not a schema; just the shared PGlite server (serve-db.ts) and its data (dev.db)
+  dev.db/            # PGlite data file for local dev (gitignored) — served by scripts/db-mocks
   sample/            # @db/sample — public schema: schema.ts, drizzle.config.ts, migrations, seeds (consumed by sample-api, cron)
   iam/               # @db/iam — iam schema: schema.ts, drizzle.config.ts, migrations, seeds (consumed by base-iam)
   audit/             # @db/audit — audit schema: schema.ts, drizzle.config.ts, migrations (SOC2/HIPAA trail)
@@ -42,7 +42,8 @@ docs/                # project documentation
 generated/           # gitignored scratch folder for local build/runtime artifacts — only .gitignore/README.md are tracked
 scripts/             # code/OpenAPI generation tooling, service mocks
   generators/        # generate-crud.ts (Drizzle schema → Zod/routes/controllers) and generate-openapi.ts
-  service-mocks/     # redis/kafka/SAML/OIDC mocks (the PGlite db server itself lives in db/, not here)
+  service-mocks/     # redis/kafka/SAML/OIDC mocks
+  db-mocks/          # serve-db.ts — local PGlite socket server backing db/sample, db/iam, db/audit
 .github/             # GitHub Actions workflows and CONTRIBUTING.md
 .githooks/           # native git hooks (pre-commit, pre-push)
 ```
@@ -169,9 +170,9 @@ CRUD generation lives in `db/<schema>/` (`sample`, `iam`, `audit`), not in the c
 | `iam` | `apps/base-iam` | `db/iam/schema.ts` | `@db/iam/schema` |
 | `audit` | audit trail (SOC2/HIPAA) | `db/audit/schema.ts` | `@db/audit/schema` |
 
-`db/` itself is a fourth workspace (`@db/core`) that isn't a schema — it's just the shared PGlite socket server (`db/serve-db.ts`, `npm run serve`, port 5432) and its data file (`db/dev.db`, gitignored).
+The PGlite socket server itself (`scripts/db-mocks/serve-db.ts`, `npm run serve`, port 5432) lives outside `db/`, alongside the other local service mocks (redis, kafka, SAML/OIDC) — it's dev-infra tooling, not schema/migrations. It reads and writes `db/dev.db` (gitignored).
 
-Migration order matters: `public` must migrate **before** `audit` (an audit trigger on `public.users` depends on it). Typical flow: `npm run serve` (from `db/`) in one terminal, then `npm run db:migrate --workspace=db/sample` → `db/iam` → `db/audit`, followed by the matching `db:seed --workspace=...` commands. See `db/README.md` for the full command table and how to reset local state.
+Migration order matters: `public` must migrate **before** `audit` (an audit trigger on `public.users` depends on it). Typical flow: `npm run serve` (from `scripts/db-mocks/`) in one terminal, then `npm run db:migrate --workspace=db/sample` → `db/iam` → `db/audit`, followed by the matching `db:seed --workspace=...` commands. See `db/README.md` for the full command table and how to reset local state.
 
 ## Creating a new backend service
 
@@ -308,7 +309,6 @@ The following paths are never overwritten or deleted by the upstream sync workfl
 | Path | Purpose |
 |---|---|
 | `apps/**` | All backend and frontend apps |
-| `scripts/**` | Local deployment and tooling scripts |
 | `db/**` | Database schemas, migrations, and seeds (userland — separate from `common/`) |
 | `.github/workflows/local-*.yml` | Downstream-only GitHub Actions workflows |
 | `.github/actions/local-**` | Downstream-only composite/reusable actions |

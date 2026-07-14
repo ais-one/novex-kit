@@ -24,17 +24,17 @@ export async function seed(db: NodePgDatabase<any>): Promise<void> {
   await db.delete(iamUsers);
 
   // Scrypt hash for password "test"
-  const TEST_PASSWORD_HASH =
+  const TEST_SCRYPT_HASH =
     '2a365cad1a49cfaa3d6cf68c5a688089cf5a77452cd35dd5afc3741b067e33c09a5bdc5e1135611f961265876d73ef8eabda824f05ef13d56ebd54438d59d380';
-  const TEST_PASSWORD_SALT = 'dca6d1a35a7a0a3ca7020aeae3af34be';
+  const TEST_SCRYPT_SALT = 'dca6d1a35a7a0a3ca7020aeae3af34be';
 
   await db.insert(iamUsers).values([
     {
       id: TEST_USER_IDS.test,
       username: 'test',
       email: 'test@example.com',
-      password: TEST_PASSWORD_HASH,
-      salt: TEST_PASSWORD_SALT,
+      password: TEST_SCRYPT_HASH,
+      salt: TEST_SCRYPT_SALT,
       display_name: 'Test User',
       status: 'active',
     },
@@ -42,8 +42,8 @@ export async function seed(db: NodePgDatabase<any>): Promise<void> {
       id: TEST_USER_IDS['ais-one'],
       username: 'ais-one',
       email: 'ais-one@example.com',
-      password: TEST_PASSWORD_HASH,
-      salt: TEST_PASSWORD_SALT,
+      password: TEST_SCRYPT_HASH,
+      salt: TEST_SCRYPT_SALT,
       display_name: 'AIS One',
       status: 'active',
     },
@@ -51,8 +51,8 @@ export async function seed(db: NodePgDatabase<any>): Promise<void> {
       id: TEST_USER_IDS.aaronjxz,
       username: 'aaronjxz',
       email: 'aaronjxz@example.com',
-      password: TEST_PASSWORD_HASH,
-      salt: TEST_PASSWORD_SALT,
+      password: TEST_SCRYPT_HASH,
+      salt: TEST_SCRYPT_SALT,
       display_name: 'Aaron',
       status: 'active',
     },

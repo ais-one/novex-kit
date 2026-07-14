@@ -57,10 +57,9 @@
   },
   "workspaces": [
     "apps/*",
-    "common/vanilla/*",
     "common/compiled/*",
-    "scripts/*",
-    "db",
-    "db/*"
+    "common/vanilla/*",
+    "db/*",
+    "scripts/*"
   ]
 }

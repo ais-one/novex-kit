@@ -1,7 +1,7 @@
 {
-  "name": "@db/core",
+  "name": "@tools/db-mocks",
   "version": "1.0.0",
-  "description": "Shared PGlite database server backing the iam, sample, and audit schemas.",
+  "description": "Local PGlite database server backing the db/sample, db/iam, and db/audit schemas.",
   "main": "serve-db.ts",
   "type": "module",
   "private": true,
