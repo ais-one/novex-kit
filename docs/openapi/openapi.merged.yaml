@@ -1,0 +1,231 @@
+openapi: 3.1.0
+info:
+  title: Shared Schemas
+  description: Auto-generated from Zod v4 schemas via scripts/generators/generate-openapi.ts. Do not edit manually.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths: {}
+components:
+  schemas:
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          pattern: ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+          example: user@example.com
+        password:
+          type: string
+          minLength: 1
+          example: securepassword
+      required:
+        - email
+        - password
+      additionalProperties: false
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Operation completed successfully
+      required:
+        - message
+      additionalProperties: false
+    RegisterBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          pattern: ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+          example: user@example.com
+        password:
+          type: string
+          minLength: 8
+          example: securepassword
+      required:
+        - email
+        - password
+      additionalProperties: false
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT — expires in 1 hour
+          example: eyJhbGciOiJIUzI1NiJ9...
+      required:
+        - token
+      additionalProperties: false
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: email and password are required
+          required:
+            - code
+            - message
+          additionalProperties: false
+      required:
+        - error
+      additionalProperties: false
+    NotificationParams:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+      required:
+        - id
+      additionalProperties: false
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        recipient:
+          type: string
+          example: user@example.com
+        channel:
+          type: string
+          enum:
+            - email
+            - sms
+            - push
+          example: email
+        message:
+          type: string
+          example: Your order has been confirmed.
+        status:
+          type: string
+          enum:
+            - sent
+            - failed
+          example: sent
+        sentAt:
+          type: string
+          format: date-time
+          pattern: >-
+            ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+          example: '2025-01-01T00:00:00.000Z'
+      required:
+        - id
+        - recipient
+        - channel
+        - message
+        - status
+        - sentAt
+      additionalProperties: false
+    SendNotificationBody:
+      type: object
+      properties:
+        recipient:
+          type: string
+          minLength: 1
+          example: user@example.com
+        channel:
+          type: string
+          enum:
+            - email
+            - sms
+            - push
+          example: email
+        message:
+          type: string
+          minLength: 1
+          example: Your order has been confirmed.
+      required:
+        - recipient
+        - channel
+        - message
+      additionalProperties: false
+    CreatePaymentBody:
+      type: object
+      properties:
+        amount:
+          type: number
+          exclusiveMinimum: 0
+          example: 99.99
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: USD
+        description:
+          example: 'Order #123'
+          type: string
+      required:
+        - amount
+        - currency
+      additionalProperties: false
+    PaymentParams:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+      required:
+        - id
+      additionalProperties: false
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        amount:
+          type: number
+          exclusiveMinimum: 0
+          example: 99.99
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: USD
+        description:
+          example: 'Order #123'
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - completed
+            - failed
+          example: pending
+        createdAt:
+          type: string
+          format: date-time
+          pattern: >-
+            ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+          example: '2025-01-01T00:00:00.000Z'
+      required:
+        - id
+        - amount
+        - currency
+        - status
+        - createdAt
+      additionalProperties: false
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT obtained from the authentication endpoint

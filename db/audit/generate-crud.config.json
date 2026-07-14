@@ -1,0 +1,4 @@
+{
+  "$schema": "../../scripts/generators/generate-crud.config.schema.json",
+  "schemaOnly": ["auditLog", "hardDeleteLog"]
+}

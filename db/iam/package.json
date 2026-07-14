@@ -1,0 +1,27 @@
+{
+  "name": "@db/iam",
+  "version": "1.0.0",
+  "description": "IAM database schema, migration, seed, openapi and crud generation",
+  "main": "schema.ts",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./*": "./*.ts",
+    "./**/*": "./**/*.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "node --env-file=.env seed.ts",
+    "crud:generate": "node ../../scripts/generators/generate-crud.ts --schema ./schema.ts --schema-module @db/iam/schema --app . --db drizzle1 --route-prefix /api/iam",
+    "docs:generate": "node ../../scripts/generators/generate-openapi.ts --src ./crud --out ./openapi/openapi.yaml --prefix /api/iam --title \"IAM API\" --version 1.0.0",
+    "docs:validate": "npx openapi-cli validate ./openapi/openapi.yaml"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@common/node": "file:../../common/compiled/node"
+  }
+}

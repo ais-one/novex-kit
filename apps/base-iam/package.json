@@ -8,8 +8,6 @@
   "scripts": {
     "lint": "biome check .",
     "start": "node --watch --watch-preserve-output --trace-warnings src/index.ts",
-    "generate:crud": "node ../../scripts/generators/generate-crud.ts --schema ./src/database/schema-iam.ts --app . --db drizzle1 --route-prefix /api/iam",
-    "docs:generate": "node ../../scripts/generators/generate-openapi.ts --src ./src --out ./docs/openapi/openapi.yaml --prefix /api/iam --title \"IAM API\" --version 1.0.0",
     "test:unit": "node --test-reporter=spec --experimental-test-coverage --experimental-test-module-mocks --test --test-only ./__tests__/unit/*.test.ts",
     "test:integration": "node --test-reporter=spec --test --test-only --test-isolation=process --test-concurrency=1 ./__tests__/integration/*.test.ts",
     "test:integration:oidc": "node --test-reporter=spec --test --test-only ./__tests__/integration/oidc.routes.test.ts",
@@ -19,6 +17,7 @@
   },
   "dependencies": {
     "@common/iso": "file:../../common/vanilla/iso",
-    "@common/node": "file:../../common/compiled/node"
+    "@common/node": "file:../../common/compiled/node",
+    "@db/iam": "file:../../db/iam"
   }
 }

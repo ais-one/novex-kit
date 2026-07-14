@@ -52,9 +52,9 @@ npm i
 
 2. Create and populate file-based pglite (serve as pg) database
 
-If sample database at `scripts/dbdeploy/db-sample/dev.db` folder is not present, see [Quick Create DB](scripts/dbdeploy/README.md#quick-create-db) to generate one. Due to size, the DB is not commited to git.
+If sample database at `db/dev.db` folder is not present, see [Quick Create DB](../db/README.md#quick-create-db) to generate one. Due to size, the DB is not commited to git.
 
-For local development, run `npm run serve` command in `scripts/dbdeploy` folder to serve the database.
+For local development, run `npm run serve` command in `db` folder to serve the database.
 
 3. Run the sample api application
 

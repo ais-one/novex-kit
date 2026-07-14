@@ -1,0 +1,1958 @@
+openapi: 3.1.0
+info:
+  title: IAM API
+  description: Auto-generated from Zod v4 schemas via scripts/generators/generate-openapi.ts. Do not edit manually.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/iam/iam-users:
+    post:
+      tags:
+        - IamUsers
+      summary: Create a Iam Users
+      description: >-
+        Insert a new row into the Iam Users table. Server-managed fields (primary key, audit timestamps, etc.) are
+        excluded from the request body.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IamUsersBody'
+      responses:
+        '201':
+          description: Iam Users created — returns the primary key of the new record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IamUsersCreateResponse'
+        '401': &ref_1
+          description: Unauthorized — valid JWT required
+          content:
+            application/json:
+              schema: &ref_0
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Error message
+                  error:
+                    type: string
+                    example: Error detail
+        '422': &ref_3
+          description: Validation error
+          content:
+            application/json:
+              schema: *ref_0
+    get:
+      tags:
+        - IamUsers
+      summary: List Iam Users records
+      description: Returns a paginated array of Iam Users rows. Use `limit` and `page` query parameters to control pagination.
+      security:
+        - bearerAuth: []
+      parameters:
+        - &ref_4
+          name: limit
+          in: query
+          required: false
+          description: Maximum number of records to return (1–100)
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+            example: 10
+        - &ref_5
+          name: page
+          in: query
+          required: false
+          description: Zero-based page offset
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+            example: 0
+      responses:
+        '200':
+          description: Paginated list of Iam Users records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IamUsersListResponse'
+        '401': *ref_1
+  /api/iam/iam-users/{id}:
+    get:
+      tags:
+        - IamUsers
+      summary: Get a Iam Users by id
+      description: Returns a single Iam Users row matching the given primary key. Returns 404 if not found.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            minLength: 1
+            example: example-id
+          required: true
+      responses:
+        '200':
+          description: Iam Users found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IamUsersResponse'
+        '401': *ref_1
+        '404': &ref_2
+          description: Not found
+          content:
+            application/json:
+              schema: *ref_0
+    patch:
+      tags:
+        - IamUsers
+      summary: Update a Iam Users
+      description: >-
+        Partially updates a Iam Users row. All body fields are optional (PATCH semantics). Returns `{ count: 1 }` on
+        success or 404 if the record does not exist.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            minLength: 1
+            example: example-id
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IamUsersUpdate'
+      responses:
+        '200':
+          description: Row updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '401': *ref_1
+        '404': *ref_2
+        '422': *ref_3
+    delete:
+      tags:
+        - IamUsers
+      summary: Delete a Iam Users
+      description: 'Permanently deletes a Iam Users row. Returns `{ count: 1 }` on success or 404 if the record does not exist.'
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            minLength: 1
+            example: example-id
+          required: true
+      responses:
+        '200':
+          description: Row deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '401': *ref_1
+        '404': *ref_2
+  /api/iam/permissions:
+    post:
+      tags:
+        - Permissions
+      summary: Create a Permissions
+      description: >-
+        Insert a new row into the Permissions table. Server-managed fields (primary key, audit timestamps, etc.) are
+        excluded from the request body.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PermissionsBody'
+      responses:
+        '201':
+          description: Permissions created — returns the primary key of the new record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionsCreateResponse'
+        '401': *ref_1
+        '422': *ref_3
+    get:
+      tags:
+        - Permissions
+      summary: List Permissions records
+      description: Returns a paginated array of Permissions rows. Use `limit` and `page` query parameters to control pagination.
+      security:
+        - bearerAuth: []
+      parameters:
+        - *ref_4
+        - *ref_5
+      responses:
+        '200':
+          description: Paginated list of Permissions records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionsListResponse'
+        '401': *ref_1
+  /api/iam/permissions/{id}:
+    get:
+      tags:
+        - Permissions
+      summary: Get a Permissions by id
+      description: Returns a single Permissions row matching the given primary key. Returns 404 if not found.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            exclusiveMinimum: 0
+            maximum: 9007199254740991
+            example: 1
+          required: true
+      responses:
+        '200':
+          description: Permissions found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionsResponse'
+        '401': *ref_1
+        '404': *ref_2
+    patch:
+      tags:
+        - Permissions
+      summary: Update a Permissions
+      description: >-
+        Partially updates a Permissions row. All body fields are optional (PATCH semantics). Returns `{ count: 1 }` on
+        success or 404 if the record does not exist.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            exclusiveMinimum: 0
+            maximum: 9007199254740991
+            example: 1
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PermissionsUpdate'
+      responses:
+        '200':
+          description: Row updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '401': *ref_1
+        '404': *ref_2
+        '422': *ref_3
+    delete:
+      tags:
+        - Permissions
+      summary: Delete a Permissions
+      description: 'Permanently deletes a Permissions row. Returns `{ count: 1 }` on success or 404 if the record does not exist.'
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            exclusiveMinimum: 0
+            maximum: 9007199254740991
+            example: 1
+          required: true
+      responses:
+        '200':
+          description: Row deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '401': *ref_1
+        '404': *ref_2
+  /api/iam/roles:
+    post:
+      tags:
+        - Roles
+      summary: Create a Roles
+      description: >-
+        Insert a new row into the Roles table. Server-managed fields (primary key, audit timestamps, etc.) are excluded
+        from the request body.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolesBody'
+      responses:
+        '201':
+          description: Roles created — returns the primary key of the new record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolesCreateResponse'
+        '401': *ref_1
+        '422': *ref_3
+    get:
+      tags:
+        - Roles
+      summary: List Roles records
+      description: Returns a paginated array of Roles rows. Use `limit` and `page` query parameters to control pagination.
+      security:
+        - bearerAuth: []
+      parameters:
+        - *ref_4
+        - *ref_5
+      responses:
+        '200':
+          description: Paginated list of Roles records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolesListResponse'
+        '401': *ref_1
+  /api/iam/roles/{id}:
+    get:
+      tags:
+        - Roles
+      summary: Get a Roles by id
+      description: Returns a single Roles row matching the given primary key. Returns 404 if not found.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            minLength: 1
+            example: example-id
+          required: true
+      responses:
+        '200':
+          description: Roles found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolesResponse'
+        '401': *ref_1
+        '404': *ref_2
+    patch:
+      tags:
+        - Roles
+      summary: Update a Roles
+      description: >-
+        Partially updates a Roles row. All body fields are optional (PATCH semantics). Returns `{ count: 1 }` on success
+        or 404 if the record does not exist.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            minLength: 1
+            example: example-id
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolesUpdate'
+      responses:
+        '200':
+          description: Row updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '401': *ref_1
+        '404': *ref_2
+        '422': *ref_3
+    delete:
+      tags:
+        - Roles
+      summary: Delete a Roles
+      description: 'Permanently deletes a Roles row. Returns `{ count: 1 }` on success or 404 if the record does not exist.'
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            minLength: 1
+            example: example-id
+          required: true
+      responses:
+        '200':
+          description: Row deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '401': *ref_1
+        '404': *ref_2
+  /api/iam/tenant-roles:
+    post:
+      tags:
+        - TenantRoles
+      summary: Create a Tenant Roles
+      description: >-
+        Insert a new row into the Tenant Roles table. Server-managed fields (primary key, audit timestamps, etc.) are
+        excluded from the request body.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantRolesBody'
+      responses:
+        '201':
+          description: Tenant Roles created — returns the primary key of the new record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantRolesCreateResponse'
+        '401': *ref_1
+        '422': *ref_3
+    get:
+      tags:
+        - TenantRoles
+      summary: List Tenant Roles records
+      description: Returns a paginated array of Tenant Roles rows. Use `limit` and `page` query parameters to control pagination.
+      security:
+        - bearerAuth: []
+      parameters:
+        - *ref_4
+        - *ref_5
+      responses:
+        '200':
+          description: Paginated list of Tenant Roles records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantRolesListResponse'
+        '401': *ref_1
+  /api/iam/tenant-roles/{id}:
+    get:
+      tags:
+        - TenantRoles
+      summary: Get a Tenant Roles by id
+      description: Returns a single Tenant Roles row matching the given primary key. Returns 404 if not found.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            exclusiveMinimum: 0
+            maximum: 9007199254740991
+            example: 1
+          required: true
+      responses:
+        '200':
+          description: Tenant Roles found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantRolesResponse'
+        '401': *ref_1
+        '404': *ref_2
+    patch:
+      tags:
+        - TenantRoles
+      summary: Update a Tenant Roles
+      description: >-
+        Partially updates a Tenant Roles row. All body fields are optional (PATCH semantics). Returns `{ count: 1 }` on
+        success or 404 if the record does not exist.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            exclusiveMinimum: 0
+            maximum: 9007199254740991
+            example: 1
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantRolesUpdate'
+      responses:
+        '200':
+          description: Row updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '401': *ref_1
+        '404': *ref_2
+        '422': *ref_3
+    delete:
+      tags:
+        - TenantRoles
+      summary: Delete a Tenant Roles
+      description: 'Permanently deletes a Tenant Roles row. Returns `{ count: 1 }` on success or 404 if the record does not exist.'
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            exclusiveMinimum: 0
+            maximum: 9007199254740991
+            example: 1
+          required: true
+      responses:
+        '200':
+          description: Row deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '401': *ref_1
+        '404': *ref_2
+  /api/iam/tenants:
+    post:
+      tags:
+        - Tenants
+      summary: Create a Tenants
+      description: >-
+        Insert a new row into the Tenants table. Server-managed fields (primary key, audit timestamps, etc.) are
+        excluded from the request body.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantsBody'
+      responses:
+        '201':
+          description: Tenants created — returns the primary key of the new record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantsCreateResponse'
+        '401': *ref_1
+        '422': *ref_3
+    get:
+      tags:
+        - Tenants
+      summary: List Tenants records
+      description: Returns a paginated array of Tenants rows. Use `limit` and `page` query parameters to control pagination.
+      security:
+        - bearerAuth: []
+      parameters:
+        - *ref_4
+        - *ref_5
+      responses:
+        '200':
+          description: Paginated list of Tenants records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantsListResponse'
+        '401': *ref_1
+  /api/iam/tenants/{id}:
+    get:
+      tags:
+        - Tenants
+      summary: Get a Tenants by id
+      description: Returns a single Tenants row matching the given primary key. Returns 404 if not found.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            exclusiveMinimum: 0
+            maximum: 9007199254740991
+            example: 1
+          required: true
+      responses:
+        '200':
+          description: Tenants found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantsResponse'
+        '401': *ref_1
+        '404': *ref_2
+    patch:
+      tags:
+        - Tenants
+      summary: Update a Tenants
+      description: >-
+        Partially updates a Tenants row. All body fields are optional (PATCH semantics). Returns `{ count: 1 }` on
+        success or 404 if the record does not exist.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            exclusiveMinimum: 0
+            maximum: 9007199254740991
+            example: 1
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantsUpdate'
+      responses:
+        '200':
+          description: Row updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '401': *ref_1
+        '404': *ref_2
+        '422': *ref_3
+    delete:
+      tags:
+        - Tenants
+      summary: Delete a Tenants
+      description: 'Permanently deletes a Tenants row. Returns `{ count: 1 }` on success or 404 if the record does not exist.'
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            exclusiveMinimum: 0
+            maximum: 9007199254740991
+            example: 1
+          required: true
+      responses:
+        '200':
+          description: Row deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '401': *ref_1
+        '404': *ref_2
+components:
+  schemas:
+    IamUsersBody:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+        status:
+          type: string
+        locale:
+          type: string
+        timezone:
+          type: string
+        roles:
+          type: string
+        revoked:
+          type: string
+        gaKey:
+          type: string
+        githubId:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+    IamUsersUpdate:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+        status:
+          type: string
+        locale:
+          type: string
+        timezone:
+          type: string
+        roles:
+          type: string
+        revoked:
+          type: string
+        gaKey:
+          type: string
+        githubId:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+    PermissionsBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - name
+    PermissionsUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+    RolesBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - name
+    RolesUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+    TenantRolesBody:
+      type: object
+      properties:
+        tenant_id:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - tenant_id
+        - name
+    TenantRolesUpdate:
+      type: object
+      properties:
+        tenant_id:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        name:
+          type: string
+        description:
+          type: string
+    TenantsBody:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        plan:
+          type: string
+        is_active:
+          type: boolean
+      required:
+        - name
+        - slug
+    TenantsUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        plan:
+          type: string
+        is_active:
+          type: boolean
+    IamUsersCreateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          example: example-id
+      required:
+        - id
+      additionalProperties: false
+    IamUsersListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/IamUsersResponse'
+    CountResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 1
+      required:
+        - count
+      additionalProperties: false
+    PermissionsCreateResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+          example: 1
+      required:
+        - id
+      additionalProperties: false
+    PermissionsListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/PermissionsResponse'
+    RolesCreateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          example: example-id
+      required:
+        - id
+      additionalProperties: false
+    RolesListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/RolesResponse'
+    TenantRolesCreateResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+          example: 1
+      required:
+        - id
+      additionalProperties: false
+    TenantRolesListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/TenantRolesResponse'
+    TenantsCreateResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+          example: 1
+      required:
+        - id
+      additionalProperties: false
+    TenantsListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/TenantsResponse'
+    IamUsersResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        username:
+          anyOf:
+            - type: string
+            - type: 'null'
+        email:
+          anyOf:
+            - type: string
+            - type: 'null'
+        email_verified_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+        phone:
+          anyOf:
+            - type: string
+            - type: 'null'
+        phone_verified_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+        display_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+        avatar_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+        status:
+          type: string
+        locale:
+          type: string
+        timezone:
+          anyOf:
+            - type: string
+            - type: 'null'
+        metadata: {}
+        roles:
+          anyOf:
+            - type: string
+            - type: 'null'
+        revoked:
+          anyOf:
+            - type: string
+            - type: 'null'
+        githubId:
+          anyOf:
+            - type: integer
+              minimum: -9007199254740991
+              maximum: 9007199254740991
+            - type: 'null'
+        created_at:
+          type: string
+        updated_at:
+          type: string
+        deleted_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+      required:
+        - id
+        - username
+        - email
+        - email_verified_at
+        - phone
+        - phone_verified_at
+        - display_name
+        - avatar_url
+        - status
+        - locale
+        - timezone
+        - metadata
+        - roles
+        - revoked
+        - githubId
+        - created_at
+        - updated_at
+        - deleted_at
+      additionalProperties: false
+    PermissionsResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+        name:
+          type: string
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+        created_at:
+          type: string
+        updated_at:
+          type: string
+      required:
+        - id
+        - name
+        - description
+        - created_at
+        - updated_at
+      additionalProperties: false
+    RolesResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        name:
+          type: string
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+        permissions: {}
+        is_system:
+          type: boolean
+        created_at:
+          type: string
+        updated_at:
+          type: string
+      required:
+        - id
+        - name
+        - description
+        - permissions
+        - is_system
+        - created_at
+        - updated_at
+      additionalProperties: false
+    TenantRolesResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+        tenant_id:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        name:
+          type: string
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+        created_at:
+          type: string
+        updated_at:
+          type: string
+      required:
+        - id
+        - tenant_id
+        - name
+        - description
+        - created_at
+        - updated_at
+      additionalProperties: false
+    TenantsResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+        name:
+          type: string
+        slug:
+          type: string
+        plan:
+          anyOf:
+            - type: string
+            - type: 'null'
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+        updated_at:
+          type: string
+      required:
+        - id
+        - name
+        - slug
+        - plan
+        - is_active
+        - created_at
+        - updated_at
+      additionalProperties: false
+    AuthAuditLogBody:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        actor_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        event_type:
+          type: string
+        channel:
+          type: string
+        provider:
+          type: string
+        session_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        ip_address:
+          type: string
+        user_agent:
+          type: string
+      required:
+        - event_type
+      additionalProperties: false
+    AuthAuditLogParams:
+      type: object
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+          example: 1
+      required:
+        - id
+      additionalProperties: false
+    AuthAuditLogQuery:
+      type: object
+      properties:
+        limit:
+          default: 10
+          example: 10
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 100
+        page:
+          default: 0
+          example: 0
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+        - limit
+        - page
+      additionalProperties: false
+    AuthAuditLogResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+        user_id:
+          anyOf:
+            - type: string
+              format: uuid
+              pattern: >-
+                ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+            - type: 'null'
+        actor_id:
+          anyOf:
+            - type: string
+              format: uuid
+              pattern: >-
+                ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+            - type: 'null'
+        event_type:
+          type: string
+        channel:
+          anyOf:
+            - type: string
+            - type: 'null'
+        provider:
+          anyOf:
+            - type: string
+            - type: 'null'
+        session_id:
+          anyOf:
+            - type: string
+              format: uuid
+              pattern: >-
+                ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+            - type: 'null'
+        ip_address:
+          anyOf:
+            - type: string
+            - type: 'null'
+        user_agent:
+          anyOf:
+            - type: string
+            - type: 'null'
+        metadata: {}
+        created_at:
+          type: string
+      required:
+        - id
+        - user_id
+        - actor_id
+        - event_type
+        - channel
+        - provider
+        - session_id
+        - ip_address
+        - user_agent
+        - metadata
+        - created_at
+      additionalProperties: false
+    AuthAuditLogUpdate:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        actor_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        event_type:
+          type: string
+        channel:
+          type: string
+        provider:
+          type: string
+        session_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        ip_address:
+          type: string
+        user_agent:
+          type: string
+      additionalProperties: false
+    IamUsersParams:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          example: example-id
+      required:
+        - id
+      additionalProperties: false
+    IamUsersQuery:
+      type: object
+      properties:
+        limit:
+          default: 10
+          example: 10
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 100
+        page:
+          default: 0
+          example: 0
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+        - limit
+        - page
+      additionalProperties: false
+    PermissionsParams:
+      type: object
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+          example: 1
+      required:
+        - id
+      additionalProperties: false
+    PermissionsQuery:
+      type: object
+      properties:
+        limit:
+          default: 10
+          example: 10
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 100
+        page:
+          default: 0
+          example: 0
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+        - limit
+        - page
+      additionalProperties: false
+    RolesParams:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          example: example-id
+      required:
+        - id
+      additionalProperties: false
+    RolesQuery:
+      type: object
+      properties:
+        limit:
+          default: 10
+          example: 10
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 100
+        page:
+          default: 0
+          example: 0
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+        - limit
+        - page
+      additionalProperties: false
+    TenantRolesParams:
+      type: object
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+          example: 1
+      required:
+        - id
+      additionalProperties: false
+    TenantRolesQuery:
+      type: object
+      properties:
+        limit:
+          default: 10
+          example: 10
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 100
+        page:
+          default: 0
+          example: 0
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+        - limit
+        - page
+      additionalProperties: false
+    TenantsParams:
+      type: object
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+          example: 1
+      required:
+        - id
+      additionalProperties: false
+    TenantsQuery:
+      type: object
+      properties:
+        limit:
+          default: 10
+          example: 10
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 100
+        page:
+          default: 0
+          example: 0
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+        - limit
+        - page
+      additionalProperties: false
+    UserFederatedIdentitiesBody:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        provider:
+          type: string
+        provider_user_id:
+          type: string
+        provider_email:
+          type: string
+        provider_display_name:
+          type: string
+        access_token_encrypted:
+          type: string
+        refresh_token_encrypted:
+          type: string
+        token_expires_at:
+          type: string
+      required:
+        - user_id
+        - provider
+        - provider_user_id
+      additionalProperties: false
+    UserFederatedIdentitiesParams:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          example: example-id
+      required:
+        - id
+      additionalProperties: false
+    UserFederatedIdentitiesQuery:
+      type: object
+      properties:
+        limit:
+          default: 10
+          example: 10
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 100
+        page:
+          default: 0
+          example: 0
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+        - limit
+        - page
+      additionalProperties: false
+    UserFederatedIdentitiesResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        provider:
+          type: string
+        provider_user_id:
+          type: string
+        provider_email:
+          anyOf:
+            - type: string
+            - type: 'null'
+        provider_display_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+        access_token_encrypted:
+          anyOf:
+            - type: string
+            - type: 'null'
+        refresh_token_encrypted:
+          anyOf:
+            - type: string
+            - type: 'null'
+        token_expires_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+        scopes: {}
+        metadata: {}
+        created_at:
+          type: string
+        updated_at:
+          type: string
+      required:
+        - id
+        - user_id
+        - provider
+        - provider_user_id
+        - provider_email
+        - provider_display_name
+        - access_token_encrypted
+        - refresh_token_encrypted
+        - token_expires_at
+        - scopes
+        - metadata
+        - created_at
+        - updated_at
+      additionalProperties: false
+    UserFederatedIdentitiesUpdate:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        provider:
+          type: string
+        provider_user_id:
+          type: string
+        provider_email:
+          type: string
+        provider_display_name:
+          type: string
+        access_token_encrypted:
+          type: string
+        refresh_token_encrypted:
+          type: string
+        token_expires_at:
+          type: string
+      additionalProperties: false
+    UserMfaTotpBody:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        label:
+          type: string
+        secret_encrypted:
+          type: string
+        algorithm:
+          type: string
+        digits:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        period:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        is_active:
+          type: boolean
+        verified_at:
+          type: string
+      required:
+        - user_id
+        - secret_encrypted
+      additionalProperties: false
+    UserMfaTotpParams:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          example: example-id
+      required:
+        - id
+      additionalProperties: false
+    UserMfaTotpQuery:
+      type: object
+      properties:
+        limit:
+          default: 10
+          example: 10
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 100
+        page:
+          default: 0
+          example: 0
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+        - limit
+        - page
+      additionalProperties: false
+    UserMfaTotpResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        label:
+          anyOf:
+            - type: string
+            - type: 'null'
+        secret_encrypted:
+          type: string
+        algorithm:
+          type: string
+        digits:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        period:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        is_active:
+          type: boolean
+        verified_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+        created_at:
+          type: string
+      required:
+        - id
+        - user_id
+        - label
+        - secret_encrypted
+        - algorithm
+        - digits
+        - period
+        - is_active
+        - verified_at
+        - created_at
+      additionalProperties: false
+    UserMfaTotpUpdate:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        label:
+          type: string
+        secret_encrypted:
+          type: string
+        algorithm:
+          type: string
+        digits:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        period:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        is_active:
+          type: boolean
+        verified_at:
+          type: string
+      additionalProperties: false
+    UserRolesBody:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        role_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        granted_by:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        expires_at:
+          type: string
+      required:
+        - user_id
+        - role_id
+      additionalProperties: false
+    UserRolesParams:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          example: example-id
+      required:
+        - id
+      additionalProperties: false
+    UserRolesQuery:
+      type: object
+      properties:
+        limit:
+          default: 10
+          example: 10
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 100
+        page:
+          default: 0
+          example: 0
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+        - limit
+        - page
+      additionalProperties: false
+    UserRolesResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        role_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        granted_by:
+          anyOf:
+            - type: string
+              format: uuid
+              pattern: >-
+                ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+            - type: 'null'
+        granted_at:
+          type: string
+        expires_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+      required:
+        - id
+        - user_id
+        - role_id
+        - granted_by
+        - granted_at
+        - expires_at
+      additionalProperties: false
+    UserRolesUpdate:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        role_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        granted_by:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        expires_at:
+          type: string
+      additionalProperties: false
+    UserSessionsBody:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        signing_key_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        refresh_token_hash:
+          type: string
+        refresh_expires_at:
+          type: string
+        ip_address:
+          type: string
+        user_agent:
+          type: string
+        device_id:
+          type: string
+        expires_at:
+          type: string
+        revoked_at:
+          type: string
+        revoke_reason:
+          type: string
+      required:
+        - user_id
+        - signing_key_id
+        - expires_at
+      additionalProperties: false
+    UserSessionsParams:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          example: example-id
+      required:
+        - id
+      additionalProperties: false
+    UserSessionsQuery:
+      type: object
+      properties:
+        limit:
+          default: 10
+          example: 10
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 100
+        page:
+          default: 0
+          example: 0
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+        - limit
+        - page
+      additionalProperties: false
+    UserSessionsResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        signing_key_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        refresh_token_hash:
+          anyOf:
+            - type: string
+            - type: 'null'
+        refresh_expires_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+        ip_address:
+          anyOf:
+            - type: string
+            - type: 'null'
+        user_agent:
+          anyOf:
+            - type: string
+            - type: 'null'
+        device_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+        issued_at:
+          type: string
+        expires_at:
+          type: string
+        last_active_at:
+          type: string
+        revoked_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+        revoke_reason:
+          anyOf:
+            - type: string
+            - type: 'null'
+      required:
+        - id
+        - user_id
+        - signing_key_id
+        - refresh_token_hash
+        - refresh_expires_at
+        - ip_address
+        - user_agent
+        - device_id
+        - issued_at
+        - expires_at
+        - last_active_at
+        - revoked_at
+        - revoke_reason
+      additionalProperties: false
+    UserSessionsUpdate:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        signing_key_id:
+          type: string
+          format: uuid
+          pattern: >-
+            ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        refresh_token_hash:
+          type: string
+        refresh_expires_at:
+          type: string
+        ip_address:
+          type: string
+        user_agent:
+          type: string
+        device_id:
+          type: string
+        expires_at:
+          type: string
+        revoked_at:
+          type: string
+        revoke_reason:
+          type: string
+      additionalProperties: false
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT obtained from the authentication endpoint

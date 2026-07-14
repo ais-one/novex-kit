@@ -10,7 +10,7 @@
     "@ant-design/icons-vue": "^7.0.1",
     "@common/iso": "file:../../vanilla/iso",
     "@common/web": "file:../../vanilla/web",
-    "@sentry/vue": "^10.61.0",
+    "@sentry/vue": "^10.65.0",
     "ant-design-vue": "^4.2.6",
     "pinia": "^3.0.4",
     "vue": "^3.3.8",

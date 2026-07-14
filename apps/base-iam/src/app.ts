@@ -3,14 +3,7 @@ import * as store from '@common/node/auth/store';
 import postRoute from '@common/node/express/postRoute';
 import preRoute from '@common/node/express/preRoute';
 import * as services from '@common/node/services';
-import {
-  iamUsers,
-  permissions,
-  rolePermissions,
-  tenantRoles,
-  tenants,
-  userTenantRoles,
-} from './database/schema-iam.ts';
+import { iamUsers, permissions, rolePermissions, tenantRoles, tenants, userTenantRoles } from '@db/iam/schema';
 import apiRoutes from './router.ts';
 
 store.configure({ users: iamUsers });

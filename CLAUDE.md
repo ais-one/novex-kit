@@ -15,26 +15,39 @@ A monorepo template for building full-stack JavaScript applications with Node.js
 ## Repository structure
 
 ```
-apps/              # backend and frontend apps (npm workspace)
-  sample-api/      # sample backend app — copy and rename, do not develop here directly
+apps/                # backend and frontend apps (npm workspace)
+  sample-api/        # sample backend app — copy and rename, do not develop here directly
+  base-iam/          # sample IAM service — auth, RBAC/FGA, user management (SAML/OIDC)
+  cron/              # HTTP-triggered cron microservice (no internal scheduler; hit its routes from an external scheduler)
   sample-mcp/        # MCP server example
+  sample-a2a/        # agent-to-agent sample — supervisor (Claude) + specialist (OpenAI RAG) over MCP
+  sample-rag/        # RAG sample — document ingestion + retrieval via MCP tools + OpenAI generation
   sample-vue-full/   # full-featured sample Vue app (port 8081)
   sample-vue-minimal/ # minimal Vue app (port 8080)
-  shared-sample/   # internal shared backend code for apps/* workspaces
-common/            # shared reusable code (npm workspaces)
-  compiled/        # modules that require a build step
-    node/          # Node.js modules, Express middleware and services (@common/node)
-    vue/           # Vue-specific shared modules (@common/vue)
-  vanilla/         # plain JS modules, no build step
-    iso/           # isomorphic utilities, runs in Node and browser (@common/iso)
-    web/           # browser-only utilities and web components
-  schemas/         # shared zod schemas (not a workspace — imported directly)
-docs/              # project documentation
-scripts/           # DB deployment, OpenAPI generation tooling
-  dbdeploy/        # database migration and seed scripts
-.github/           # GitHub Actions workflows and CONTRIBUTING.md
-.githooks/         # native git hooks (pre-commit, pre-push)
+  sample-common/     # internal shared backend code for apps/* workspaces (@apps/sample-common)
+common/              # shared reusable code (npm workspaces)
+  compiled/          # modules that require a build step
+    node/            # Node.js modules, Express middleware and services (@common/node)
+    vue/             # Vue-specific shared modules (@common/vue)
+  vanilla/           # plain JS modules, no build step
+    iso/             # isomorphic utilities, runs in Node and browser (@common/iso)
+    web/             # browser-only utilities and web components
+  schemas/           # shared zod schemas (not a workspace — imported directly)
+db/                  # database schemas, migrations, seeds — separate npm workspaces, one per schema
+  package.json       # @db/core — not a schema; just the shared PGlite server (serve-db.ts) and its data (dev.db)
+  sample/            # @db/sample — public schema: schema.ts, drizzle.config.ts, migrations, seeds (consumed by sample-api, cron)
+  iam/               # @db/iam — iam schema: schema.ts, drizzle.config.ts, migrations, seeds (consumed by base-iam)
+  audit/             # @db/audit — audit schema: schema.ts, drizzle.config.ts, migrations (SOC2/HIPAA trail)
+docs/                # project documentation
+generated/           # gitignored scratch folder for local build/runtime artifacts — only .gitignore/README.md are tracked
+scripts/             # code/OpenAPI generation tooling, service mocks
+  generators/        # generate-crud.ts (Drizzle schema → Zod/routes/controllers) and generate-openapi.ts
+  service-mocks/     # redis/kafka/SAML/OIDC mocks (the PGlite db server itself lives in db/, not here)
+.github/             # GitHub Actions workflows and CONTRIBUTING.md
+.githooks/           # native git hooks (pre-commit, pre-push)
 ```
+
+`sample-mcp`, `sample-a2a`, and `sample-rag` are demo scripts (`npm run demo`, etc.), not long-running services — most have no real `test` script (stubbed to exit 0).
 
 ## Setup
 
@@ -114,6 +127,20 @@ mock.module('@common/node/auth/store.ts', { namedExports: { findUser: mockFn } }
 | `@common/node/tests/http-mocks` | `common/compiled/node/tests/http-mocks.ts` | Express req/res stubs for unit tests |
 | `@common/node/tests/http-request` | `common/compiled/node/tests/http-request.ts` | Real HTTP client for integration tests |
 
+### Running a single test file
+
+From within an app workspace (e.g. `apps/sample-api`), call `node --test` directly on one file instead of the glob the `test:unit`/`test:integration` scripts use:
+
+```bash
+# unit test (mocks allowed)
+node --test-reporter=spec --experimental-test-coverage --experimental-test-module-mocks --test --test-only ./__tests__/unit/users.test.ts
+
+# integration test (real HTTP, isolated process)
+node --test-reporter=spec --test --test-only --test-isolation=process --test-concurrency=1 ./__tests__/integration/users.routes.test.ts
+```
+
+Per-workspace `test` scripts run `test:unit`, `test:integration`, then `test:schema` (validates `zod` schema exports via `scripts/test-schemas.ts`) — see each app's `package.json` for its exact composition.
+
 ## Local URLs (sample backend)
 
 | URL | Purpose |
@@ -121,6 +148,30 @@ mock.module('@common/node/auth/store.ts', { namedExports: { findUser: mockFn } }
 | `http://127.0.0.1:3000/api/healthcheck` | Health check |
 | `http://127.0.0.1:3000` | Express app with samples |
 | `http://127.0.0.1:3000/native/index.html` | Unbundled Vue sample |
+
+## Backend architecture: generated CRUD + OpenAPI
+
+CRUD generation lives in `db/<schema>/` (`sample`, `iam`, `audit`), not in the consuming apps — apps import the generated routes/controllers via the `@db/<schema>` package rather than owning a copy. Each schema workspace follows a **generate once, own forever** pattern driven by its Drizzle schema:
+
+- `npm run crud:generate` (from `db/<schema>/`, via `scripts/generators/generate-crud.ts`) reads that schema's Drizzle file and, per table, emits `crud/<table>/generated/{schema.js,routes.ts,controller.ts}` (always overwritten) plus sidecar `crud/<table>/{schema.js,controller.ts,routes.ts}` (created once, then developer-owned — the generator never touches them again). Customize a table by editing the sidecar files, not the `generated/` ones.
+- Optional `generate-crud.config.json` next to `db/<schema>/package.json` controls per-table exclusions (`exclude`, `schemaOnly`, `excludeFromBody`, `excludeFromResponse`).
+- `npm run docs:generate` (from `db/<schema>/`, via `scripts/generators/generate-openapi.ts`) scans the sidecar `schema.js` files (Zod, not Drizzle) to build an OpenAPI 3.1 YAML — it automatically picks up schema overrides.
+- Consuming apps mount the generated routes directly, e.g. `apps/sample-api/src/router.ts` does `import categoriesRoute from '@db/sample/crud/categories/routes';` (no app-local copy, no `.ts` extension — the package's `exports` map appends it).
+- Full details, flags, and override examples: `scripts/generators/README.md`.
+
+## Database (local dev)
+
+`db/` holds one npm workspace per PostgreSQL schema, separate from `apps/` and `common/` — schema, migrations, and seeds are userland code, protected from upstream template sync the same way `apps/**` is. Each schema workspace colocates `schema.ts` + `drizzle.config.ts` + migrations + seeds:
+
+| Schema | Consumed by | Drizzle schema source | Import (from apps) |
+|---|---|---|---|
+| `public` | `apps/sample-api`, `apps/cron` | `db/sample/schema.ts` | `@db/sample/schema` |
+| `iam` | `apps/base-iam` | `db/iam/schema.ts` | `@db/iam/schema` |
+| `audit` | audit trail (SOC2/HIPAA) | `db/audit/schema.ts` | `@db/audit/schema` |
+
+`db/` itself is a fourth workspace (`@db/core`) that isn't a schema — it's just the shared PGlite socket server (`db/serve-db.ts`, `npm run serve`, port 5432) and its data file (`db/dev.db`, gitignored).
+
+Migration order matters: `public` must migrate **before** `audit` (an audit trigger on `public.users` depends on it). Typical flow: `npm run serve` (from `db/`) in one terminal, then `npm run db:migrate --workspace=db/sample` → `db/iam` → `db/audit`, followed by the matching `db:seed --workspace=...` commands. See `db/README.md` for the full command table and how to reset local state.
 
 ## Creating a new backend service
 
@@ -258,6 +309,7 @@ The following paths are never overwritten or deleted by the upstream sync workfl
 |---|---|
 | `apps/**` | All backend and frontend apps |
 | `scripts/**` | Local deployment and tooling scripts |
+| `db/**` | Database schemas, migrations, and seeds (userland — separate from `common/`) |
 | `.github/workflows/local-*.yml` | Downstream-only GitHub Actions workflows |
 | `.github/actions/local-**` | Downstream-only composite/reusable actions |
 
@@ -348,7 +400,7 @@ Route middleware available after `authUser`:
 |---|---|
 | `.github/CONTRIBUTING.md` | Contributor workflow, hooks, issue reporting, PR rules |
 | `docs/conventions.md` | Coding, tooling, commit, and runtime standards |
-| `docs/git.md` | Git workflow, branch/tag patterns, merge strategy |
+| `docs/git-github.md` | Git workflow, branch/tag patterns, merge strategy, GitHub repo settings (branch protection, CodeQL) |
 | `docs/install.md` | Backend, frontend setup, development guide, and workspace reference |
 | `docs/design/authn.md` | Authentication setup — SAML 2.0 and OIDC provider configuration |
 | `docs/design/authz.md` | Authorization — RBAC and FGA: setup, JWT payload, roles fallback chain, usage |
@@ -356,3 +408,5 @@ Route middleware available after `authUser`:
 | `docs/cloud/` | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare |
 | `docs/release-troubleshooting.md` | Troubleshooting `release-please` CI job failures |
 | `docs/NOTES.md` | Design decisions, caveats, open questions, TODOs |
+| `scripts/generators/README.md` | `generate-crud.ts` / `generate-openapi.ts` flags, config file, override recipes |
+| `db/README.md` | Local PGlite multi-schema DB server, migrations, seeding, reset |

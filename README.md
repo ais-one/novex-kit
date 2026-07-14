@@ -20,7 +20,7 @@ Other files and folders are managed by template maintainers.
 - Sample Vue frontend [apps/sample-vue-full](docs/install.md#install--run-sample-vue-application)
 - Shared codes [`common/*`](`common/*`) ESM modules for Node, browser, Vue, and isomorphic code
   - sample implementations for SAML, OIDC, OAuth, OTP, FIDO2, and push notifications, zod, OpenAPI, etc.
-- Scripts for DB deployments [scripts/dbdeploy](scripts/dbdeploy) and Mock serivces[scripts/service-mocks](scripts/service-mocks)
+- Database schemas, migrations, and seeds [db](db) and Mock serivces[scripts/service-mocks](scripts/service-mocks)
 
 ### Creating Own apps/services
 - API [backend](docs/install.md#Create-New-Backend-App-Or-Service)
@@ -33,17 +33,17 @@ Other files and folders are managed by template maintainers.
 End Users: **BEFORE** making **ANY** changes. Read the following:
 
 - SETUP
-  - [git hooks](docs/git.md#hooks-setup-and-usage)
+  - [git hooks](docs/git-github.md#hooks-setup-and-usage)
   - [template updating](.github/workflows/update-template.yml)
-  - [branching-and-protection](docs/git.md#branch-and-protection-rules)
-  - [commit message lint](docs/git.md#commit-message)
-  - [release automation](docs/git.md#release-automation)
+  - [branching-and-protection](docs/git-github.md#branch-and-protection-rules)
+  - [commit message lint](docs/git-github.md#commit-message)
+  - [release automation](docs/git-github.md#release-automation)
   - [secret scanning](https://docs.github.com/en/enterprise-cloud@latest/code-security/concepts/secret-security/about-secret-scanning)
   - [security](https://github.com/settings/security_analysis)
 - READ
-  - [Merge strategy](docs/git.md#rebase-or-merge)
+  - [Merge strategy](docs/git-github.md#rebase-or-merge)
   - [Engineering standards](docs/conventions.md) format, lint, commit message, language, tooling, etc.
-  - [Workflows](docs/git.md#ci)
+  - [Workflows](docs/git-github.md#ci)
   - [Design Features](docs/NOTES.md#design-features)
   - [OPTIONAL: Roadmap](docs/NOTES.md#roadmap)
   - [OPTIONAL: repo custom properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization)

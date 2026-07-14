@@ -1,0 +1,25 @@
+{
+  "name": "@db/audit",
+  "version": "1.0.0",
+  "description": "Audit database schema, migration, seed, openapi and crud generation",
+  "main": "schema.ts",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./*": "./*.ts",
+    "./**/*": "./**/*.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "node --env-file=.env seed.ts",
+    "generate:crud": "node ../../scripts/generators/generate-crud.ts --schema ./schema.ts --schema-module @db/audit/schema --app . --db drizzle1 --route-prefix /api/audit-api"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@common/node": "file:../../common/compiled/node"
+  }
+}
