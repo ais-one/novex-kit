@@ -54,7 +54,7 @@ jobs:
         # Fails if any high or critical CVE found in npm deps
       - name: Audit Python packages
         run: pip install pip-audit && pip-audit --severity high
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/dependency-review-action@v5
         # Compares base vs head — blocks PRs that introduce new vulns
 
   # ── 4. SAST — Semgrep (custom rules) ─────────────────────────────
