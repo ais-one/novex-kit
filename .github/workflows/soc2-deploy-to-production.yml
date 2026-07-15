@@ -27,7 +27,7 @@ jobs:
 
       # Inject app secrets from Doppler — never stored in GitHub
       - name: Fetch secrets from Doppler
-        uses: dopplerhq/secrets-fetch-action@bc453b9c7614b89e02c6de38c8f04746879fffa4 # v1.2.0
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534 # v2.0.0
         with:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
           inject-env-vars: true
