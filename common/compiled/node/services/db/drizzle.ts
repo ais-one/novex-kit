@@ -29,7 +29,7 @@ export default class StoreDrizzle {
         const pgvector = await import('pgvector/pg');
         const client = await pool.connect();
         try {
-          await pgvector.registerType(client);
+          await pgvector.registerTypes(client);
         } finally {
           client.release();
         }
