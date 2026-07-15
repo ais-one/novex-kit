@@ -9,6 +9,7 @@
  *   00000000-0000-0000-0000-000000000002  → "ais-one"
  *   00000000-0000-0000-0000-000000000003  → "aaronjxz"
  */
+import { setScryptHash } from '@common/node/auth/scrypt';
 // biome-ignore lint/suspicious/noExplicitAny: schema type not needed for seed scripts
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { iamUsers } from '../schema.ts';
@@ -23,10 +24,9 @@ export const TEST_USER_IDS = {
 export async function seed(db: NodePgDatabase<any>): Promise<void> {
   await db.delete(iamUsers);
 
-  // Scrypt hash for password "test"
-  const TEST_SCRYPT_HASH =
-    '2a365cad1a49cfaa3d6cf68c5a688089cf5a77452cd35dd5afc3741b067e33c09a5bdc5e1135611f961265876d73ef8eabda824f05ef13d56ebd54438d59d380';
+  // Fixed salt + scrypt hash for password "test" — deterministic so seeded users can always log in with "test"
   const TEST_SCRYPT_SALT = 'dca6d1a35a7a0a3ca7020aeae3af34be';
+  const TEST_SCRYPT_HASH = await setScryptHash('test', TEST_SCRYPT_SALT);
 
   await db.insert(iamUsers).values([
     {

@@ -1,6 +1,6 @@
 ###Querying and Setting Telegram Webhooks
 
-@bot_key = bot437966140:AAFqH9MedcP32nae4TdvF77L_3oM5Q5fVm0
+@bot_key = <REDACTED>
 
 ###  Querying webhook:
 GET https://api.telegram.org/{{bot_key}}/getWebhookInfo
