@@ -418,5 +418,6 @@ Route middleware available after `authUser`:
 | `docs/cloud/` | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare |
 | `docs/release-troubleshooting.md` | Troubleshooting `release-please` CI job failures |
 | `docs/NOTES.md` | Design decisions, caveats, open questions, TODOs |
+| `docs/housekeeping.md` | Dependency/Actions updates — Dependabot config plus the `/housekeeping-scan-actions` and `/housekeeping-update-packages` Claude Code commands |
 | `scripts/generators/README.md` | `generate-crud.ts` / `generate-openapi.ts` flags, config file, override recipes |
 | `db/README.md` | Local PGlite multi-schema DB server, migrations, seeding, reset |
