@@ -71,7 +71,7 @@ jobs:
         run: cd apps/${{ github.event.inputs.app }} && npm run build --mode ${{ github.event.inputs.env }}
         # run: npm run build # will create a dist folder (TODO build environment??)
       - name: upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: my-build
           path: ${{ github.workspace }}/apps/${{ github.event.inputs.app }}/dist
