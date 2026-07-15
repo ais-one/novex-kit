@@ -17,10 +17,10 @@ jobs:
     name: Gitleaks secret scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0       # full history needed for diff scan
-      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
@@ -33,7 +33,7 @@ jobs:
       matrix:
         language: [ javascript-typescript, python ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
@@ -48,13 +48,13 @@ jobs:
     name: Dependency vulnerability scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Audit npm packages
         run: npm audit --audit-level=high
         # Fails if any high or critical CVE found in npm deps
       - name: Audit Python packages
         run: pip install pip-audit && pip-audit --severity high
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/dependency-review-action@v5
         # Compares base vs head — blocks PRs that introduce new vulns
 
   # ── 4. SAST — Semgrep (custom rules) ─────────────────────────────
@@ -64,7 +64,7 @@ jobs:
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: semgrep ci --config auto --severity ERROR
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
