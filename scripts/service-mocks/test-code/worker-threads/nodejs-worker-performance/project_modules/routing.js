@@ -2,10 +2,6 @@ const cpuIntensive = require('./cpuIntensive');
 
 const configure = app => {
   app.get('/cpu-intensive/:type/:num/:threads', (req, res) => {
-    console.log('Type: ', req.params.type);
-    console.log('Num:', req.params.num);
-    console.log('Threads:', req.params.threads);
-
     if (req.params.type === '1') {
       console.log('asynch!');
       cpuIntensive.asynch_calculus(req.params.num).then(n => {

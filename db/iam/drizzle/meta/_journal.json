@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1779165338553,
+      "tag": "0000_cultured_iron_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779693827288,
+      "tag": "0001_modern_shiver_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779760901003,
+      "tag": "0002_strong_thanos",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780886146965,
+      "tag": "0003_round_zombie",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782966065456,
+      "tag": "0004_modern_mercury",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782969731080,
+      "tag": "0005_eminent_tenebrous",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782985123268,
+      "tag": "0006_mighty_punisher",
+      "breakpoints": true
+    }
+  ]
+}

@@ -5,6 +5,15 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router.js';
 
+import '@fontsource/fraunces/400.css';
+import '@fontsource/fraunces/700.css';
+import '@fontsource/fraunces/900.css';
+import '@fontsource/fraunces/400-italic.css';
+import '@fontsource/fraunces/700-italic.css';
+import '@fontsource/dm-sans/300.css';
+import '@fontsource/dm-sans/400.css';
+import '@fontsource/dm-sans/500.css';
+import '@fontsource/dm-sans/600.css';
 import './style/main.css'; // app overall custom style
 import './msw.js'; // msw
 import './pwa.js'; // pwa

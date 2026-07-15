@@ -30,7 +30,7 @@ server.on('connection', client => {
   // client.setEncoding('utf8')
   client.on('error', () => console.log('Socket error'));
   client.on('data', data => {
-    console.log(`TCP Client data: ${client.remoteAddress}: ${client.remotePort}`, data);
+    console.log(`TCP Client data received from ${client.remoteAddress}:${client.remotePort}`);
     // close if number of connections exceeded
     if (tcpClientLimit && sockets.length > tcpClientLimit) {
       client.destroy(); // close if too many connections

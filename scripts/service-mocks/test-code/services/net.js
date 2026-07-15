@@ -62,7 +62,7 @@ server.on('connection', socket => {
     var bwrite = socket.bytesWritten;
     console.log(`Bytes read : ${bread}`);
     console.log(`Bytes written : ${bwrite}`);
-    console.log(`Data sent to server : ${data}`);
+    console.log('Data received from client');
 
     //echo data
     var is_kernel_buffer_full = socket.write(`Data ::${data}`);
@@ -90,7 +90,6 @@ server.on('connection', socket => {
 
   socket.on('end', data => {
     console.log('Socket ended from other end!');
-    console.log(`End data : ${data}`);
   });
 
   socket.on('close', error => {
@@ -176,7 +175,7 @@ client.on('connect', () => {
 client.setEncoding('utf8');
 
 client.on('data', data => {
-  console.log(`Data from server:${data}`);
+  console.log('Data received from server');
 });
 
 setTimeout(() => {
@@ -197,7 +196,7 @@ const clients = net.connect({ port: 2222 }, () => {
   clients.write('world!\r\n');
 });
 clients.on('data', data => {
-  console.log(data.toString());
+  console.log('Data received from server');
   clients.end();
 });
 clients.on('end', () => {

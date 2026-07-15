@@ -31,11 +31,9 @@
     "clean:all": "find . -name node_modules -type d -prune -exec rm -rf '{}' + && find . -name package-lock.json -type f -delete",
     "git:hash": "git rev-parse --verify --short HEAD",
     "git:branch": "git rev-parse --abbrev-ref HEAD",
-    "check": "biome check --write .",
+    "check": "biome check",
+    "check:write": "biome check --write .",
     "ci": "biome ci .",
-    "docs:generate": "node scripts/generate-openapi.ts",
-    "docs:validate": "npx redocly lint docs/openapi/openapi.merged.yaml",
-    "docs:make-html": "npx @redocly/cli build-docs docs/openapi/openapi.merged.yaml --output index.html",
     "prepare": "git config core.hooksPath .githooks && chmod +x .githooks/pre-commit .githooks/pre-push || echo 'Can not set git hooks'",
     "test:schemas": "node scripts/test-schemas.ts",
     "test:workspaces": "npm run test --workspaces",
@@ -45,20 +43,21 @@
     "update-commit-hash": "git rev-parse --verify --short HEAD > commit-hash"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.12",
-    "@playwright/test": "^1.59.1",
-    "@redocly/cli": "^2.30.3",
+    "@biomejs/biome": "2.5.3",
+    "@playwright/test": "^1.61.1",
+    "@redocly/cli": "^2.39.0",
     "@types/express": "^5.0.6",
-    "@vitejs/plugin-vue": "^6.0.6",
-    "msw": "^2.14.2",
-    "start-server-and-test": "^3.0.2",
+    "@vitejs/plugin-vue": "^6.0.7",
+    "msw": "^2.15.0",
+    "start-server-and-test": "^3.0.11",
     "typescript": "^6.0.3",
-    "vite": "^8.0.10"
+    "vite": "^8.1.4"
   },
   "workspaces": [
     "apps/*",
-    "common/vanilla/*",
     "common/compiled/*",
+    "common/vanilla/*",
+    "db/*",
     "scripts/*"
   ]
 }

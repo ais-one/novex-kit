@@ -126,7 +126,13 @@ const preRoute = () => {
         // raw routes - ignore bodyparser json
         next();
       } else {
-        express.json(BODYPARSER_JSON || { limit: '2mb' })(req, res, next);
+        express.json({
+          ...(BODYPARSER_JSON || { limit: '2mb' }),
+          // Capture the raw bytes so webhook signature verification can use them.
+          verify: (req: Express.Request & { rawBody?: Buffer }, _res: unknown, buf: Buffer) => {
+            req.rawBody = buf;
+          },
+        })(req, res, next);
       }
     });
     app.use(express.urlencoded(BODYPARSER_URLENCODED || { extended: true, limit: '2mb' })); // https://stackoverflow.com/questions/29175465/body-parser-extended-option-qs-vs-querystring/29177740#29177740

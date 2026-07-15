@@ -37,33 +37,27 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 export const auth = async (req: Request, res: Response): Promise<void> => {
   try {
     const parsedResponse = await saml?.validatePostResponseAsync(req.body);
-    try {
-      const TO = req.body.RelayState as string;
-      const authenticated = !parsedResponse?.loggedOut;
-      const user = {
-        sub: parsedResponse?.profile[samlJwtMap.id],
-        roles: parsedResponse?.profile[samlJwtMap.groups],
-      };
-      if (!TO) {
-        res.status(200).json({ authenticated, user });
-        return;
-      }
-      if (authenticated) {
-        const tokens = await createToken(user);
-        setTokensToHeader(res, tokens);
-        res.redirect(`${TO}#${tokens.access_token};${tokens.refresh_token};${JSON.stringify(tokens.user_meta)}`);
-        return;
-      }
-      AUTH_ERROR_URL ? res.redirect(AUTH_ERROR_URL) : res.status(401).json({ error: 'NOT Authenticated' });
-    } catch (_inner) {
-      // inner parse errors swallowed — outer catch handles redirect
+    const TO = req.body.RelayState as string;
+    const authenticated = !parsedResponse?.loggedOut;
+    const user = {
+      sub: parsedResponse?.profile[samlJwtMap?.id ?? 'nameID'],
+      roles: parsedResponse?.profile[samlJwtMap?.groups ?? 'groups'],
+    };
+    if (!TO) {
+      res.status(200).json({ authenticated, user });
+      return;
     }
+    if (authenticated) {
+      const tokens = await createToken(user);
+      setTokensToHeader(res, tokens);
+      res.redirect(`${TO}#${tokens.access_token};${tokens.refresh_token};${JSON.stringify(tokens.user_meta)}`);
+      return;
+    }
+    AUTH_ERROR_URL ? res.redirect(AUTH_ERROR_URL) : res.status(401).json({ error: 'NOT Authenticated' });
   } catch (e) {
     res.json({
       message: String(e),
       note: 'Currently it always triggers invalid document signature fix is on the way',
     });
-    return;
   }
-  res.send('ok');
 };

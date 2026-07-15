@@ -1,0 +1,64 @@
+# Using - https://github.com/Huachao/vscode-restclient
+
+### Health
+GET http://127.0.0.1:3001/health
+
+### Login — captures tokens into variables for subsequent requests
+# @name login
+POST http://127.0.0.1:3001/api/auth/login
+content-type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "test"
+}
+
+@access_token = {{login.response.body.$.access_token}}
+@refresh_token = {{login.response.body.$.refresh_token}}
+
+### Login — wrong password (should return 401)
+POST http://127.0.0.1:3001/api/auth/login
+content-type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "wrongpassword"
+}
+
+### Verify token
+GET http://127.0.0.1:3001/api/auth/verify
+Authorization: Bearer {{access_token}}
+
+### Get current user
+GET http://127.0.0.1:3001/api/auth/me
+Authorization: Bearer {{access_token}}
+
+### Logout
+GET http://127.0.0.1:3001/api/auth/logout
+Authorization: Bearer {{access_token}}
+
+### Refresh token
+POST http://127.0.0.1:3001/api/auth/refresh
+refresh_token: {{refresh_token}}
+access_token: {{access_token}}
+
+### List IAM users
+GET http://127.0.0.1:3001/api/iam/iam-users
+Authorization: Bearer {{access_token}}
+
+### List roles
+GET http://127.0.0.1:3001/api/iam/roles
+Authorization: Bearer {{access_token}}
+
+### Get user by ID
+GET http://127.0.0.1:3001/api/iam/iam-users/00000000-0000-0000-0000-000000000001
+Authorization: Bearer {{access_token}}
+
+# ─── Cross-service: using base-iam token against sample-api (port 3000) ───────
+
+### Sample-api health
+GET http://127.0.0.1:3000/health
+
+### Sample-api categories — verifies token issued by base-iam is accepted by sample-api's authUser
+GET http://127.0.0.1:3000/api/sample-api/categories
+Authorization: Bearer {{access_token}}

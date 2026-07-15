@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import initRagTools from './rag.js';
 
 // --- Mock data — replace with real DB queries keyed by telegram_id ---
 const USER_REPORTS = {
@@ -131,6 +132,8 @@ export default function initTools(server, initialHeaders) {
       };
     },
   );
+
+  initRagTools(server);
 
   // --- Register a "days-to-due-date" tool ---
   server.registerTool(

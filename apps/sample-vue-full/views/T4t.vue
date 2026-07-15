@@ -498,7 +498,6 @@ export default {
                     },
                   };
                   // if (column?.__type === 'link') rv.innerHTML = record[key] + ' - ' + table.config.cols[key].link?.text // || 'Click To View'
-                  if (column?.__type === 'link') table.config.cols[key].link?.text; // || 'Click To View'
                   return rv;
                 },
                 resizable: true, // these 2 for resizing

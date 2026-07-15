@@ -1,0 +1,14 @@
+{
+  "name": "@tools/db-mocks",
+  "description": "Local PGlite database server backing the db/sample, db/iam, and db/audit schemas.",
+  "main": "serve-db.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "serve": "node serve-db.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.1",
+    "@electric-sql/pglite-socket": "^0.2.7"
+  }
+}

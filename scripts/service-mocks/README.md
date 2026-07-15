@@ -4,9 +4,8 @@ This workspace contains mocks of useful services such as
 - redis
 - kafka
 - saml-idp
+- postgresql
 - oidc provider
-
-Postgres Database mocks is in [dbdeploy](../dbdeploy/) workspace
 
 ### Mocks Not implemented
 

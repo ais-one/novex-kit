@@ -18,7 +18,7 @@ server.on('connection', sock => {
 
   // sock.setEncoding('utf8')
   sock.on('data', data => {
-    console.log(`DATA ${sock.remoteAddress}: ${data}`);
+    console.log(`DATA received from ${sock.remoteAddress}`);
     // Write the data back to all the connected, the client will receive it as data from the server
     sockets.forEach((_sock, index, array) => {
       sock.write(`${_sock.remoteAddress}:${_sock.remotePort} said ${data}\n`);

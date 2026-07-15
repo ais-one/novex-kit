@@ -1,0 +1,5 @@
+# Generated CRUD output (schemas, routes, controllers) now lives in @db/iam/crud —
+# see db/README.md. Nothing in this app's src/ is generated.
+
+# OpenAPI spec — regenerate with: npm run docs:generate
+docs/openapi/

@@ -48,12 +48,14 @@ export const setup = (getServer: () => any, getServices: () => any) => {
     ['SIGINT', 'SIGTERM', 'SIGQUIT'].forEach(signal => {
       process.on(signal, gracefulShutdown);
     }); // SIGKILL cannot be caught
-    process.on('uncaughtException', (err, origin) =>
-      logger.info(`Uncaught Exception - error: ${err} origin: ${origin}` && process.exit(1)),
-    );
-    process.on('unhandledRejection', (reason, promise) =>
-      logger.info(`Unhandled Rejection - promise: ${promise} reason: ${reason}` && process.exit(1)),
-    );
+    process.on('uncaughtException', (err, origin) => {
+      logger.info(`Uncaught Exception - error: ${err} origin: ${origin}`);
+      process.exit(1);
+    });
+    process.on('unhandledRejection', (reason, promise) => {
+      logger.info(`Unhandled Rejection - promise: ${promise} reason: ${reason}`);
+      process.exit(1);
+    });
   }
 };
 

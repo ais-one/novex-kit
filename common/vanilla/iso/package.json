@@ -1,27 +1,11 @@
 {
   "name": "@common/iso",
-  "version": "0.0.2",
-  "author": "Aaron Gong",
-  "license": "MIT",
   "description": "Shareable isomorphic JS library using ES modules",
-  "keywords": [
-    "javascript",
-    "module"
-  ],
-  "homepage": "https://github.com/ais-one/novex-kit#readme",
-  "bugs": {
-    "url": "https://github.com/ais-one/novex-kit/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ais-one/novex-kit.git"
-  },
   "type": "module",
   "exports": {
     "./*": "./*.js",
     "./**/*": "./**/*.js"
   },
-  "main": "fetch.js",
   "scripts": {
     "test": "node --experimental-test-coverage --test-reporter=spec --test **/__tests__/*.test.js",
     "cover": "node --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=lcov.info --test __tests__/**/*.spec.js"

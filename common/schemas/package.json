@@ -1,0 +1,11 @@
+{
+  "name": "@common/schemas",
+  "description": "Common schemas for Novex Kit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "docs:generate": "node ../../scripts/generators/generate-openapi.ts --schemas . --out ./docs/openapi/openapi.merged.yaml --title \"Shared Schemas\" --version 1.0.0",
+    "docs:validate": "npx redocly lint docs/openapi/openapi.merged.yaml",
+    "docs:make-html": "npx redocly build-docs docs/openapi/openapi.merged.yaml --output index.html"
+  }
+}

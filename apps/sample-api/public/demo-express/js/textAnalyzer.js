@@ -1,5 +1,5 @@
 self.addEventListener('message', event => {
-  // if (event.origin !== "http://example.org") return // check and reject if not correct origin
+  if (event.origin !== self.location.origin) return;
   if (typeof event.data === 'string') {
     postMessage(analyze(event.data));
   } else {

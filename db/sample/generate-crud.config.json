@@ -1,0 +1,26 @@
+{
+  "$schema": "../../scripts/generators/generate-crud.config.schema.json",
+  "schemaOnly": ["t4tAuditLogs"],
+  "tables": {
+    "users": {
+      "excludeFromBody": [
+        "password",
+        "salt",
+        "gaKey",
+        "refreshToken",
+        "smsOtpPin",
+        "smsVerified",
+        "smsLastSent",
+        "retryCount",
+        "retryLimit",
+        "retryReset",
+        "revoked"
+      ],
+      "excludeFromResponse": ["password", "salt", "gaKey", "refreshToken", "smsOtpPin"]
+    },
+    "student": {
+      "excludeFromBody": ["secret"],
+      "excludeFromResponse": ["secret"]
+    }
+  }
+}

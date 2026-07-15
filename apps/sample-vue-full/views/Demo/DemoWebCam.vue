@@ -9,7 +9,7 @@
 </template>
 
 <script>
-import '../../../../common/vanilla/web/web-cam'; // served from express /esm static route
+import '@common/web/web-cam.js';
 
 const snappedFn = e => {
   alert('see console log for snapped picture data');

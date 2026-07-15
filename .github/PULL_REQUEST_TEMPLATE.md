@@ -14,6 +14,7 @@ Select all that apply.
 
 - [ ] apps
 - [ ] common
+- [ ] db
 - [ ] docs
 - [ ] scripts
 - [ ] CI/CD or GitHub Actions

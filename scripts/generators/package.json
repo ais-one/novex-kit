@@ -1,0 +1,9 @@
+{
+  "name": "@tools/generators",
+  "description": "Tools for generating Zod schemas, crud and openapi yaml",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

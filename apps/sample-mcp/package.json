@@ -21,7 +21,10 @@
   "dependencies": {
     "@common/iso": "file:../../common/vanilla/iso",
     "@common/node": "file:../../common/compiled/node",
+    "@langchain/textsplitters": "^1.0.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "openai": "^6.35.0"
+    "mammoth": "^1.12.0",
+    "pdf-parse": "^2.4.5",
+    "pgvector": "^0.3.0"
   }
 }

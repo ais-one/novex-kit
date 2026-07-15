@@ -9,7 +9,7 @@ const BASE_URL = (token: string) => `https://api.telegram.org/bot${token}`;
 
 // ─── Core Request Helper ──────────────────────────────────────────────────────
 
-async function apiRequest(
+export async function apiRequest(
   token: string,
   method: string,
   params: Record<string, unknown> = {},

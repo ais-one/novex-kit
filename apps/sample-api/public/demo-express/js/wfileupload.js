@@ -17,10 +17,7 @@ async function process() {
   if (result.ok) {
     self.postMessage('Files Uploaded Succesfully');
   } else {
-    const msg =
-      `Files Uploaded Error: ${result.message}` && result.message.includes('MulterError:')
-        ? result.message.split('\n', 1)
-        : 'Unknown'; // TODO move text transform to backend API instead?
+    const msg = result.message.includes('MulterError:') ? result.message.split('\n', 1) : 'Unknown'; // TODO move text transform to backend API instead?
     self.postMessage(msg);
   }
   p = true;

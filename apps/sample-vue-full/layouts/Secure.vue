@@ -1,93 +1,127 @@
 <template>
-  <a-layout>
-    <bwc-loading-overlay v-if="loading"></bwc-loading-overlay>
+  <a-layout class="secure-layout">
+    <bwc-loading-overlay v-if="loading" />
     <a-back-top />
-    <a-layout-sider v-model:collapsed="collapsed" :trigger="null" collapsible :collapsed-width="0">
-      <div class="sider-logo" />
-      <a-menu class="sider-menu" theme="dark" mode="inline" v-model:selectedKeys="selectedKeys">
-        <template v-for="route in mappedRoutes">
-          <a-sub-menu v-if="route.submenu" :key="route.submenu" :title="toPascalCase(route.submenu)">
-            <a-menu-item v-for="menu in subMenus[route.submenu]" :key="`sm-${menu.path}`" @click="$router.push(menu)"
-              >{{ menu.name }}</a-menu-item
-            >
-          </a-sub-menu>
-          <a-menu-item v-else :key="`m-${route.path}`" @click="$router.push(route)">{{ route.name }}</a-menu-item>
-        </template>
-        <a-menu-item data-cy="logout" key="logout" @click="logout">Logout</a-menu-item>
-      </a-menu>
-    </a-layout-sider>
-    <a-layout>
-      <a-layout-header style="background: #fff; padding: 0">
-        <menu-unfold-outlined v-if="collapsed" class="trigger" @click="() => (collapsed = !collapsed)" />
-        <menu-fold-outlined v-else class="trigger" @click="() => (collapsed = !collapsed)" />
-        <span>Sample App</span>
-      </a-layout-header>
-      <a-layout-content
-        :style="{ overflowY: 'auto', margin: '8px 8px', padding: '8px', background: '#fff', height: 'calc(100vh - 96px)' }"
-      >
-        <a-breadcrumb style="margin: 8px 0">
-          <a-breadcrumb-item>Home</a-breadcrumb-item>
-          <a-breadcrumb-item>Dashboard</a-breadcrumb-item>
-        </a-breadcrumb>
-        <router-view :key="$route.fullPath"></router-view>
+
+    <AppSidebar
+      v-model:collapsed="collapsed"
+      :mapped-routes="mappedRoutes"
+      :sub-menus="subMenus"
+      brand-icon="N"
+      brand-name="novex"
+      @logout="logout"
+    />
+
+    <Transition name="backdrop-fade">
+      <div v-if="!collapsed" class="mobile-backdrop" @click="collapsed = true" />
+    </Transition>
+
+    <a-layout class="main-layout">
+      <AppHeader
+        v-model:collapsed="collapsed"
+        :notifications="notifications"
+        :messages="messages"
+        user-label="U"
+        @logout="logout"
+        @notif-read="markNotifRead"
+        @notif-read-all="markAllNotifsRead"
+        @message-read="markMessageRead"
+        @message-read-all="markAllMessagesRead"
+      />
+
+      <a-layout-content class="main-content">
+        <router-view :key="$route.fullPath" />
       </a-layout-content>
-      <a-layout-footer hidden style="text-align: center">Ant Design ©2023</a-layout-footer>
+
+      <AppFooter brand="novex" />
     </a-layout>
   </a-layout>
 </template>
 
 <script setup>
 import idleTimer from '@common/web/idle';
-// :key="$route.fullPath" // this is causing problems
 import { computed, onBeforeUnmount, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { onLogin, onLogout } from '../setups/events.js';
 import { SECURE_ROUTES } from '../setups/routes.js';
 import { useMainStore } from '../store.js';
+// biome-ignore lint/correctness/noUnusedImports: components used in Vue template
+import AppFooter from './components/AppFooter.vue';
+// biome-ignore lint/correctness/noUnusedImports: components used in Vue template
+import AppHeader from './components/AppHeader.vue';
+// biome-ignore lint/correctness/noUnusedImports: components used in Vue template
+import AppSidebar from './components/AppSidebar.vue';
 
 const store = useMainStore();
-// const loading = store.loading
 const mappedRoutes = reactive([]);
 const subMenus = reactive({});
 const loading = computed(() => store.loading);
-const selectedKeys = ref(['1']);
 const collapsed = ref(false);
 
-const toPascalCase = str => {
-  str = str.replace(/-\w/g, x => ` ${x[1].toUpperCase()}`);
-  return str[0].toUpperCase() + str.substring(1, str.length);
+/* ── Notifications ── */
+const notifications = ref([
+  { id: 1, message: 'New user registered', time: '2 min ago', read: false },
+  { id: 2, message: 'Server deployment completed', time: '1 hr ago', read: false },
+  { id: 3, message: 'Weekly report is ready', time: 'Yesterday', read: true },
+]);
+
+const markNotifRead = id => {
+  const n = notifications.value.find(n => n.id === id);
+  if (n) n.read = true;
 };
 
+const markAllNotifsRead = () => {
+  notifications.value.forEach(n => {
+    n.read = true;
+  });
+};
+
+/* ── Messages ── */
+const messages = ref([
+  { id: 1, name: 'Aaron Gong', initials: 'AG', preview: 'Can you review the PR?', time: '5 min ago', read: false },
+  { id: 2, name: 'Tech Lead', initials: 'TL', preview: 'Deploy is ready for staging', time: '30 min ago', read: false },
+  { id: 3, name: 'System', initials: 'SY', preview: 'Scheduled maintenance tonight', time: '2 hr ago', read: true },
+]);
+
+const markMessageRead = id => {
+  const m = messages.value.find(m => m.id === id);
+  if (m) m.read = true;
+};
+
+const markAllMessagesRead = () => {
+  messages.value.forEach(m => {
+    m.read = true;
+  });
+};
+
+/* ── Routes ── */
 onMounted(async () => {
   console.log('SECURE mounted!');
   idleTimer.timeouts.push({ time: 300, fn: () => alert('Idle Timeout Test'), stop: true });
   idleTimer.start();
 
-  SECURE_ROUTES.filter(route => route.meta.layout === 'layout-secure').forEach(route => {
-    if (!route.hidden) {
-      const pathLen = route.path.split('/').length;
-      if (pathLen === 2 || pathLen === 3) {
-        const submenu = pathLen === 3 ? route.path.split('/', 2)[1] : '';
-        // console.log('submenu', route, '-', submenu, '-', pathLen)
-        if (submenu) {
-          if (!subMenus[submenu]) {
-            // first time
-            subMenus[submenu] = [];
-            mappedRoutes.push({ ...route, submenu: submenu });
-          }
-          subMenus[submenu].push({ ...route }); // add item
-        } else {
-          mappedRoutes.push({ ...route, submenu: '' }); // add item
+  SECURE_ROUTES.filter(route => !route.hidden).forEach(route => {
+    const pathLen = route.path.split('/').length;
+    if (pathLen === 2 || pathLen === 3) {
+      const submenu = pathLen === 3 ? route.path.split('/', 2)[1] : '';
+      if (submenu) {
+        if (!subMenus[submenu]) {
+          subMenus[submenu] = [];
+          mappedRoutes.push({ ...route, submenu });
         }
+        subMenus[submenu].push({ ...route });
+      } else {
+        mappedRoutes.push({ ...route, submenu: '' });
       }
     }
   });
   onLogin?.();
 });
+
 onUnmounted(() => {
   console.log('SECURE unmounted');
 });
+
 onBeforeUnmount(() => {
-  // close WS
   idleTimer.stop();
   onLogout?.();
 });
@@ -101,6 +135,41 @@ const logout = async () => {
 };
 </script>
 
-<style>
-@import 'Secure.css';
+<style scoped>
+.secure-layout {
+  min-height: 100vh;
+  background: #f1f5f9;
+}
+
+.main-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background: #f1f5f9;
+}
+
+.mobile-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 199;
+}
+
+.backdrop-fade-enter-active,
+.backdrop-fade-leave-active { transition: opacity 0.2s ease; }
+.backdrop-fade-enter-from,
+.backdrop-fade-leave-to { opacity: 0; }
+
+@media (max-width: 767px) {
+  .mobile-backdrop { display: block; }
+  .main-content { padding: 16px; }
+}
 </style>

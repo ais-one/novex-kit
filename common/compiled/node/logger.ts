@@ -1,3 +1,4 @@
+import { safeReplacer } from '@common/iso/util';
 import type { NextFunction, Request, Response } from 'express';
 
 const LOG_LEVELS: Record<string, number> = { error: 0, warn: 1, info: 2, debug: 3 };
@@ -6,13 +7,16 @@ const { npm_package_name, npm_package_version } = process.env;
 
 const log = (level: string, message: unknown, meta: Record<string, unknown> = {}) => {
   if (LOG_LEVELS[level] > currentLevel) return;
-  const entry = JSON.stringify({
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    service: `${npm_package_name}@${npm_package_version}`,
-    ...meta,
-  });
+  const entry = JSON.stringify(
+    {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      service: `${npm_package_name}@${npm_package_version}`,
+      ...meta,
+    },
+    safeReplacer(),
+  );
   // biome-ignore lint/suspicious/noConsole: Using console for logging
   level === 'error' ? console.error(entry) : console.log(entry);
 };

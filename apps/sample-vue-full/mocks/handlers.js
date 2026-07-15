@@ -13,10 +13,8 @@ export default [
   http.post('http://127.0.0.1:8080/api/auth/otp', ({ request, params, cookies }) => {
     console.log(request.body); // {"id":1,"pin":"111111"}
     return HttpResponse.json({
-      access_token:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZ3JvdXBzIjoiVGVzdEdyb3VwIiwiaWF0IjoxNjk0NDk2NDA5LCJleHAiOjE2OTQ0OTkxMDl9.vW3XwxNIJ0LVdenwqcZZzl04T-ufJuTed7FvyVYb2Io',
-      refresh_token:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjk0NDk2NDA5LCJleHAiOjE2OTQ1MDAwMDl9.p3xFoXix9_xBJOOLgH2hkvomQnz5D4ct_Zk21tcsojE',
+      access_token: 'mock-access-token',
+      refresh_token: 'mock-refresh-token',
       user_meta: {
         email: 'test',
         roles: ['TestGroup'],

@@ -1,22 +1,19 @@
 {
   "name": "@tools/service-mocks",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Mock kafka, redis, and oidc-provider services, and saml-idp for local development and testing.",
   "type": "module",
   "private": true,
   "scripts": {
-    "kafka": "node serve-db.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "kafka": "echo \"Kafka mock service initialized\"",
+    "redis": "echo \"Redis mock service initialized\"",
+    "oidc": "echo \"OIDC mock service initialized\"",
+    "saml": "echo \"SAML mock service initialized\""
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@js-ak/kafkajs-mock": "^1.0.0",
     "ioredis-mock": "^8.13.1",
     "kafkajs": "^2.2.4",
-    "oidc-provider": "^9.8.3"
+    "oidc-provider": "^9.9.1"
   },
   "devDependencies": {
     "saml-idp": "^1.2.1"

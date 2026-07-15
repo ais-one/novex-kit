@@ -2,7 +2,7 @@ import '@common/node/config';
 import '@common/node/logger';
 import assert from 'node:assert';
 import { beforeEach, describe, it } from 'node:test';
-import CategoryController, { _injectServices } from '../../src/controllers/category.ts';
+import CategoryController, { _injectServices } from '@db/sample/crud/categories/controller';
 
 // Drizzle-style chainable query builder stub — resolves to an empty result set
 const mockQueryBuilder = {

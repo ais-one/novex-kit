@@ -19,12 +19,12 @@ function collectSchemaFiles(dirPath: string): string[] {
     }
 
     const extension = extname(entry.name);
-    if (extension === '.js' || extension === '.mjs' || extension === '.cjs') {
+    if (extension === '.js' || extension === '.mjs' || extension === '.cjs' || extension === '.ts') {
       files.push(entryPath);
     }
   }
 
-  return files.sort();
+  return files.sort((a, b) => a.localeCompare(b));
 }
 
 function isSchemaLike(value: unknown): boolean {

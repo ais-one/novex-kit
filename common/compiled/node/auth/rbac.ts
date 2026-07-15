@@ -1,12 +1,12 @@
 /**
  * DB-backed RBAC service — tenant-scoped roles and permissions.
  *
- * Tables required (created by migration 20260416000001_rbac_tables):
+ * Tables required (in db-iam, migration 0002_rbac_fga):
  *   tenants           — registered tenants
- *   roles             — named roles, each scoped to a tenant
+ *   tenant_roles      — named roles, each scoped to a tenant
  *   permissions       — global permission strings (e.g. "users:read")
- *   role_permissions  — M:N join between roles and permissions
- *   user_tenant_roles — M:N:N join of user × tenant × role
+ *   role_permissions  — M:N join between tenant_roles and permissions
+ *   user_tenant_roles — M:N:N join of user × tenant × role (user_id is uuid)
  *
  * This service is optional — when not configured, createToken falls back to
  * the flat DB roles column or FGA as before.
@@ -26,8 +26,32 @@
  */
 
 import { and, eq } from 'drizzle-orm';
-import type { NextFunction, Request, Response } from 'express';
-import { permissions, rolePermissions, roles, tenants, userTenantRoles } from '../services/db/schema.ts';
+
+// biome-ignore lint/suspicious/noExplicitAny: configurable table references injected by the app
+let _permissions: any = null;
+// biome-ignore lint/suspicious/noExplicitAny: configurable table references injected by the app
+let _rolePermissions: any = null;
+// biome-ignore lint/suspicious/noExplicitAny: configurable table references injected by the app
+let _tenantRoles: any = null;
+// biome-ignore lint/suspicious/noExplicitAny: configurable table references injected by the app
+let _tenants: any = null;
+// biome-ignore lint/suspicious/noExplicitAny: configurable table references injected by the app
+let _userTenantRoles: any = null;
+
+/** Register IAM Drizzle tables. Call once at app startup when RBAC is enabled. */
+export const configure = (tables: {
+  permissions: unknown;
+  rolePermissions: unknown;
+  tenantRoles: unknown;
+  tenants: unknown;
+  userTenantRoles: unknown;
+}) => {
+  _permissions = tables.permissions;
+  _rolePermissions = tables.rolePermissions;
+  _tenantRoles = tables.tenantRoles;
+  _tenants = tables.tenants;
+  _userTenantRoles = tables.userTenantRoles;
+};
 
 let _userServiceName: string;
 // biome-ignore lint/suspicious/noExplicitAny: lookup returns the underlying drizzle instance
@@ -48,26 +72,29 @@ const setup = (userServiceName: string, lookup: (name: string) => any) => {
   _lookup = lookup;
 };
 
-/** Returns true when the RBAC service has been initialised. */
-const isConfigured = () => _lookup !== null;
+/** Returns true when configure() has been called with all required Drizzle table references. */
+export const isConfigured = () => _permissions !== null;
+
+/** Returns true when the RBAC service has been initialised (setup() called). */
+const isSetup = () => _lookup !== null;
 
 /**
  * Fetch the user's active tenant for embedding in the JWT.
  * Returns tenant_id, tenant_plan, and the coarse roles held in that tenant.
  */
-const getActiveTenant = async (userId: string | number, defaultTenantId?: string | number) => {
+const getActiveTenant = async (userId: string, defaultTenantId?: string | number) => {
   if (!_lookup) return null;
   try {
     const rows = await db()
       .select({
-        tenant_id: tenants.id,
-        tenant_plan: tenants.plan,
-        role_name: roles.name,
+        tenant_id: _tenants.id,
+        tenant_plan: _tenants.plan,
+        role_name: _tenantRoles.name,
       })
-      .from(userTenantRoles)
-      .innerJoin(tenants, eq(tenants.id, userTenantRoles.tenant_id))
-      .innerJoin(roles, eq(roles.id, userTenantRoles.role_id))
-      .where(and(eq(userTenantRoles.user_id, Number(userId)), eq(tenants.is_active, true)));
+      .from(_userTenantRoles)
+      .innerJoin(_tenants, eq(_tenants.id, _userTenantRoles.tenant_id))
+      .innerJoin(_tenantRoles, eq(_tenantRoles.id, _userTenantRoles.role_id))
+      .where(and(eq(_userTenantRoles.user_id, userId), eq(_tenants.is_active, true)));
 
     if (rows.length === 0) return null;
 
@@ -95,21 +122,21 @@ const getActiveTenant = async (userId: string | number, defaultTenantId?: string
 /**
  * Fetch all tenant memberships for a user with their roles and resolved permissions.
  */
-const getUserTenantsData = async (userId: string | number, defaultTenantId?: string | number) => {
+const getUserTenantsData = async (userId: string, defaultTenantId?: string | number) => {
   if (!_lookup) return null;
   try {
     const rows = await db()
       .select({
-        tenant_id: userTenantRoles.tenant_id,
-        role_name: roles.name,
-        permission_name: permissions.name,
+        tenant_id: _userTenantRoles.tenant_id,
+        role_name: _tenantRoles.name,
+        permission_name: _permissions.name,
       })
-      .from(userTenantRoles)
-      .innerJoin(roles, eq(roles.id, userTenantRoles.role_id))
-      .innerJoin(tenants, eq(tenants.id, userTenantRoles.tenant_id))
-      .leftJoin(rolePermissions, eq(rolePermissions.role_id, roles.id))
-      .leftJoin(permissions, eq(permissions.id, rolePermissions.permission_id))
-      .where(and(eq(userTenantRoles.user_id, Number(userId)), eq(tenants.is_active, true)));
+      .from(_userTenantRoles)
+      .innerJoin(_tenantRoles, eq(_tenantRoles.id, _userTenantRoles.role_id))
+      .innerJoin(_tenants, eq(_tenants.id, _userTenantRoles.tenant_id))
+      .leftJoin(_rolePermissions, eq(_rolePermissions.role_id, _tenantRoles.id))
+      .leftJoin(_permissions, eq(_permissions.id, _rolePermissions.permission_id))
+      .where(and(eq(_userTenantRoles.user_id, userId), eq(_tenants.is_active, true)));
 
     if (rows.length === 0) return null;
 
@@ -140,55 +167,44 @@ const getUserTenantsData = async (userId: string | number, defaultTenantId?: str
 };
 
 /** Assign a role to a user within a tenant (idempotent). */
-const assignRole = async (userId: number, tenantId: number, roleId: number) => {
+const assignRole = async (userId: string, tenantId: number, roleId: number) => {
   await db()
-    .insert(userTenantRoles)
+    .insert(_userTenantRoles)
     .values({ user_id: userId, tenant_id: tenantId, role_id: roleId })
     .onConflictDoNothing();
 };
 
 /** Revoke a role from a user within a tenant. */
-const revokeRole = async (userId: number, tenantId: number, roleId: number) => {
+const revokeRole = async (userId: string, tenantId: number, roleId: number) => {
   await db()
-    .delete(userTenantRoles)
+    .delete(_userTenantRoles)
     .where(
       and(
-        eq(userTenantRoles.user_id, userId),
-        eq(userTenantRoles.tenant_id, tenantId),
-        eq(userTenantRoles.role_id, roleId),
+        eq(_userTenantRoles.user_id, userId),
+        eq(_userTenantRoles.tenant_id, tenantId),
+        eq(_userTenantRoles.role_id, roleId),
       ),
     );
 };
 
 /** Grant a permission to a role (idempotent). */
 const grantPermission = async (roleId: number, permissionId: number) => {
-  await db().insert(rolePermissions).values({ role_id: roleId, permission_id: permissionId }).onConflictDoNothing();
+  await db().insert(_rolePermissions).values({ role_id: roleId, permission_id: permissionId }).onConflictDoNothing();
 };
 
 /** Revoke a permission from a role. */
 const revokePermission = async (roleId: number, permissionId: number) => {
   await db()
-    .delete(rolePermissions)
-    .where(and(eq(rolePermissions.role_id, roleId), eq(rolePermissions.permission_id, permissionId)));
+    .delete(_rolePermissions)
+    .where(and(eq(_rolePermissions.role_id, roleId), eq(_rolePermissions.permission_id, permissionId)));
 };
-
-/**
- * Route middleware — requires the user to hold at least one of the given roles.
- */
-const requireRole =
-  (...roles: string[]) =>
-  (req: Request, res: Response, next: NextFunction) => {
-    if (req.user?.roles?.some((r: string) => roles.includes(r))) return next();
-    return res.sendStatus(403);
-  };
 
 export {
   assignRole,
   getActiveTenant,
   getUserTenantsData,
   grantPermission,
-  isConfigured,
-  requireRole,
+  isSetup,
   revokePermission,
   revokeRole,
   setup,

@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "generate-crud.config.schema.json",
+  "title": "generate-crud configuration",
+  "description": "Controls which tables and fields are included or excluded by the generate:crud script (scripts/generate-crud.ts).\n\nPlace this file at the root of the app directory and reference it via $schema so VS Code provides IntelliSense.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference — used by editors for IntelliSense. Set to a relative path pointing to this file."
+    },
+    "exclude": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true,
+      "description": "Drizzle table variable names to skip entirely.\n\nNo Zod schema, no routes, and no controllers are generated for these tables. Use this for security-sensitive or internal tables where even a schema definition should not be auto-generated (e.g. FGA configuration, internal key stores).",
+      "examples": [["fgaConfig"]]
+    },
+    "schemaOnly": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true,
+      "description": "Drizzle table variable names for which only the Zod schema is generated — no Express routes or controllers.\n\nUseful for documenting a table's shape in OpenAPI (via generate-openapi.ts) without exposing public CRUD endpoints. Typical candidates: audit logs, hard-delete logs, and other append-only or system-managed tables.",
+      "examples": [["auditLog", "hardDeleteLog", "t4tAuditLogs"]]
+    },
+    "tables": {
+      "type": "object",
+      "description": "Per-table field-level exclusions.\n\nKeys are Drizzle table variable names (camelCase, matching the export name in the schema file). Each entry controls which columns are excluded from the generated body validation schema and/or from SELECT responses.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "excludeFromBody": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true,
+            "description": "Column names to remove from BodySchema (POST) and UpdateSchema (PATCH).\n\nUse this for server-managed fields that clients must never supply directly:\n- Credential fields: password, salt, gaKey\n- Token fields: refreshToken, smsOtpPin\n- Security state: revoked, retryCount, retryLimit, retryReset, smsVerified, smsLastSent\n- Any column whose value must only be set by business logic, not by user input",
+            "examples": [
+              [
+                "password",
+                "salt",
+                "gaKey",
+                "refreshToken",
+                "smsOtpPin",
+                "smsVerified",
+                "smsLastSent",
+                "retryCount",
+                "retryLimit",
+                "retryReset",
+                "revoked"
+              ]
+            ]
+          },
+          "excludeFromResponse": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true,
+            "description": "Column names to omit from SELECT in generated controllers.\n\nWhen this list is non-empty the generator produces an explicit column list instead of SELECT * so the listed columns are never returned in API responses. Use this to prevent sensitive credentials or secrets from leaking through list/detail endpoints.\n\nNote: you should also exclude these fields from the body (excludeFromBody) to prevent clients from setting them on write.",
+            "examples": [["password", "salt", "gaKey", "refreshToken", "smsOtpPin"]]
+          }
+        }
+      }
+    }
+  }
+}

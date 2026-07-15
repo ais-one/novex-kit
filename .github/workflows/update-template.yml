@@ -7,7 +7,7 @@ name: Sync Upstream Template
 #   2. Adds the upstream template as a git remote and fetches it.
 #   3. Merges upstream into the working tree (--no-commit) — handles additions,
 #      modifications, and deletions. Conflict markers are left for the PR reviewer.
-#   4. Restores apps/, scripts/, local-*.yml workflows, and local-* actions from HEAD so local customisations are preserved.
+#   4. Restores apps/, db/, local-*.yml workflows, and local-* actions from HEAD so local customisations are preserved.
 #   5. If any files changed, opens a PR on branch chore/sync-upstream for review.
 #
 # Trigger: run manually via workflow_dispatch.
@@ -70,11 +70,11 @@ jobs:
           fetch-depth: 0
 
       # Merge upstream into the working tree without committing.
-      # apps/ and scripts/ are protected via .git/info/attributes (never tracked,
+      # apps/ and db/ are protected via .git/info/attributes (never tracked,
       # no restore needed) so git never touches those paths during the merge.
       # Conflicts outside protected folders are auto-resolved in favour of upstream
       # (-X theirs); the PR diff is the review mechanism.
-      - name: Merge upstream changes (exclude apps/ scripts/)
+      - name: Merge upstream changes (exclude apps/ db/)
         env:
           SYNC_BRANCH: chore/sync-upstream
           UPSTREAM_BRANCH: ${{ github.event.inputs.upstream_branch || 'main' }}
@@ -84,16 +84,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config merge.ours.driver true
-          printf 'apps/** merge=ours\nscripts/** merge=ours\n.github/workflows/local-*.yml merge=ours\n.github/actions/local-** merge=ours\n' >> .git/info/attributes
+          printf 'apps/** merge=ours\ndb/** merge=ours\n.github/workflows/local-*.yml merge=ours\n.github/actions/local-** merge=ours\n' >> .git/info/attributes
           git checkout -B "$SYNC_BRANCH"
           git merge upstream/"$UPSTREAM_BRANCH" --no-commit --no-ff --allow-unrelated-histories -X theirs || true
 
-      # Remove any files in protected folders (apps/, scripts/) that upstream added as new.
+      # Remove any files in protected folders (apps/, db/) that upstream added as new.
       # merge=ours only prevents conflicts on files that exist in both sides; purely new
       # upstream additions are staged as clean adds without invoking a merge driver.
       - name: Remove upstream-added files in protected folders
         run: |
-          git diff --cached --name-only --diff-filter=A -- 'apps/**' 'scripts/**' \
+          git diff --cached --name-only --diff-filter=A -- 'apps/**' 'db/**' \
           | xargs -r git rm -f --
 
       # Explicitly remove files that were deleted in upstream but still exist in HEAD,
@@ -104,8 +104,8 @@ jobs:
           UPSTREAM_BRANCH: ${{ github.event.inputs.upstream_branch || 'main' }}
         run: |
           comm -23 \
-            <(git ls-tree -r --name-only HEAD | grep -v -E '^(apps|scripts)/|^\.github/(workflows/local-|actions/local-)' | sort) \
-            <(git ls-tree -r --name-only upstream/"$UPSTREAM_BRANCH" | grep -v -E '^(apps|scripts)/|^\.github/(workflows/local-|actions/local-)' | sort) \
+            <(git ls-tree -r --name-only HEAD | grep -v -E '^(apps|db)/|^\.github/(workflows/local-|actions/local-)' | sort) \
+            <(git ls-tree -r --name-only upstream/"$UPSTREAM_BRANCH" | grep -v -E '^(apps|db)/|^\.github/(workflows/local-|actions/local-)' | sort) \
           | xargs -r git rm -f --
 
       # # Alternative: file-copy approach (does not handle upstream deletions natively)
@@ -114,10 +114,10 @@ jobs:
       # #   folder       — git checkout upstream/main -- folder/   (no wildcards)
       # #   *.ext        — git checkout upstream/main -- 'folder/*.ext'
       # #   recursive    — git checkout upstream/main -- 'folder/**/*.ext'
-      # - name: Apply upstream changes (exclude apps/ scripts/)
+      # - name: Apply upstream changes (exclude apps/ db/)
       #   run: |
       #     git checkout upstream/${{ github.event.inputs.upstream_branch || 'main' }} -- .
-      #     git checkout HEAD -- apps/ scripts/
+      #     git checkout HEAD -- apps/ db/
       #
       # - name: Remove workflow/action files deleted upstream
       #   run: |

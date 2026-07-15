@@ -1,5 +1,10 @@
+import path from 'node:path';
 import { loadEnvFile } from 'node:process';
+import { fileURLToPath } from 'node:url';
 import vue from '@vitejs/plugin-vue';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(__dirname, '../..');
 
 export default ({ command, mode }) => {
   // command = serve, build
@@ -41,6 +46,9 @@ export default ({ command, mode }) => {
     resolve: {
       alias: {
         // https://github.com/vitejs/vite/issues/279#issuecomment-636110354
+        '@common/vue': path.resolve(root, 'common/compiled/vue'),
+        '@common/iso': path.resolve(root, 'common/vanilla/iso'),
+        '@common/web': path.resolve(root, 'common/vanilla/web'),
       },
     },
     server: {

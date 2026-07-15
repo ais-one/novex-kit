@@ -11,16 +11,16 @@
 <body>
   <h1>Basic Express <a href="index.html">Back</a></h1>
   <ul>
-    <li><a href="#" onclick="testAPI('/api/healthcheck')">Express Server Health Check</a></li>
-    <li><a href="#" onclick="testAPI('/api/sample-api/healthcheck')">App Sample Health Check</a></li>
-    <li><a href="#" onclick="testCors()">Test XHR CORS</a></li>
-    <li><a href="#" onclick="testAPI('/api/sample-api/check-db?conn=knex1&sql=SELECT 1')">Test DB Connection</a></li>
-    <li><a href="#" onclick="testAPI('/api/sample-api/tests/outbound?url=https://httpbin.org/get')">Test outbound unblocked</a></li>
-    <li><a href="#" onclick="testStream('/api/sample-api/tests/stream')">Test return stream</a></li>
-    <li><a href="#" onclick="testAPI('/api/sample-api/tests/error')">Handled Exception - /api/error - caught by middleware</a></li>
-    <li><a href="#" onclick="testAPI('/api/sample-api/tests/error-not-found')">404 Not Found Error</a></li>
-    <li><a href="#" onclick="testAPI('/api/sample-api/tests/error-handled-rejection')">Handled Promise Rejection - /api/error-handled-rejection - caught by middleware</a></li>
-    <li><a href="#" onclick="testAPI('/api/sample-api/tests/error-unhandled-rejection')">Unhandled Promise Rejection - /api/error-unhandled-rejection - caught by on.process - will crash the server</a></li>
+    <li><button type="button" onclick="testAPI('/api/healthcheck')">Express Server Health Check</button></li>
+    <li><button type="button" onclick="testAPI('/api/sample-api/healthcheck')">App Sample Health Check</button></li>
+    <li><button type="button" onclick="testCors()">Test XHR CORS</button></li>
+    <li><button type="button" onclick="testAPI('/api/sample-api/check-db?conn=knex1&sql=SELECT 1')">Test DB Connection</button></li>
+    <li><button type="button" onclick="testAPI('/api/sample-api/tests/outbound?url=https://httpbin.org/get')">Test outbound unblocked</button></li>
+    <li><button type="button" onclick="testStream('/api/sample-api/tests/stream')">Test return stream</button></li>
+    <li><button type="button" onclick="testAPI('/api/sample-api/tests/error')">Handled Exception - /api/error - caught by middleware</button></li>
+    <li><button type="button" onclick="testAPI('/api/sample-api/tests/error-not-found')">404 Not Found Error</button></li>
+    <li><button type="button" onclick="testAPI('/api/sample-api/tests/error-handled-rejection')">Handled Promise Rejection - /api/error-handled-rejection - caught by middleware</button></li>
+    <li><button type="button" onclick="testAPI('/api/sample-api/tests/error-unhandled-rejection')">Unhandled Promise Rejection - /api/error-unhandled-rejection - caught by on.process - will crash the server</button></li>
   </ul>
   <p>
   <strong>NOTE:</strong> To test uncaught exception, need to uncomment "// openMissingFile()" in router/api.js

@@ -1,47 +1,6 @@
-.trigger {
-  font-size: 18px;
-  line-height: 64px;
-  padding: 0 24px;
-  cursor: pointer;
-  transition: color 0.3s;
-}
-
-.trigger:hover {
-  color: #1890ff;
-}
-
-.site-layout .site-layout-background {
-  background: #fff;
-}
-
-.ant-layout-sider-children {
-  background-color: blue;
-}
-
-.ant-layout-sider-children .sider-logo {
-  height: 32px;
-  background: rgba(255, 255, 255, 0.3);
-  margin: 16px;
-  background-image: url('https://via.placeholder.com/168x32.png?text=A+Logo');
-}
-
-.ant-layout-sider-children .sider-menu {
-  overflow-y: auto;
-  height: calc(100vh - 64px);
-}
-
-.ant-menu {
-  background-color: var(--blue-something);
-}
-
-.ant-menu-item {
-  background-color: var(--blue-something);
-}
-
-/*
-.ant-menu { background-color: gray; }
-.ant-menu-dark.ant-menu-inline .ant-menu-sub.ant-menu-inline { background-color: red; }
-.ant-menu-item, .ant-menu-item:hover { background-color: var(--blue-something); }
-.ant-menu-item.ant-menu-item-active, .ant-menu-item.ant-menu-item-active:hover { background-color: orange; }
-.ant-menu-item:not(.ant-menu-item-selected), .ant-menu-item:not(.ant-menu-item-selected):hover { background-color: pink; }
+/* Secure layout styles have been moved to scoped styles in:
+   - layouts/Secure.vue
+   - layouts/components/AppSidebar.vue
+   - layouts/components/AppHeader.vue
+   - layouts/components/AppFooter.vue
 */

@@ -69,5 +69,8 @@ export function createResponse() {
     cookie(_name: string, _value: string, _opts?: unknown) {
       return this;
     },
+    clearCookie(_name: string, _opts?: unknown) {
+      return this;
+    },
   };
 }

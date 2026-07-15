@@ -58,6 +58,21 @@ content-type: application/json
   "bye": "everybody"
 }
 
+### Spawn python process (detached) — expects {} back
+# Requires python3 at PYTHON_BIN path (default: /usr/bin/python3)
+# On Windows set PYTHON_BIN=C:\Python312\python.exe in .env.local
+GET http://127.0.0.1:3000/api/sample-api/tests/python
+
+### Download a file — normal case
+# Place a file in the upload folder first, then request it by name only
+# Expected: file streams back as application/pdf
+GET http://127.0.0.1:3000/api/sample-api/tests/download?filename=test.pdf
+
+### Download — path traversal attempt (should NOT serve /etc/passwd)
+# path.basename strips ../../ so this looks for 'passwd' inside the upload folder
+# Expected: file-not-found error, NOT the contents of /etc/passwd
+GET http://127.0.0.1:3000/api/sample-api/tests/download?filename=../../etc/passwd
+
 ### use data from file
 # POST http://127.0.0.1:3000/api/test-xml
 # content-type: application/xml

@@ -27,19 +27,18 @@
     "start": "node --watch --watch-preserve-output --trace-warnings src/index.ts",
     "test:unit": "node --test-reporter=spec --experimental-test-coverage --experimental-test-module-mocks --test --test-only ./__tests__/unit/*.test.ts",
     "test:integration": "node --test-reporter=spec --test --test-only --test-isolation=process --test-concurrency=1 ./__tests__/integration/*.test.ts",
-    "test:integration:oidc": "node --test-reporter=spec --test --test-only ./__tests__/integration/oidc.routes.test.ts",
-    "test:integration:saml": "node --test-reporter=spec --test --test-only ./__tests__/integration/saml.routes.test.ts",
-    "test:schema": "node ../../scripts/test-schemas.ts ./schemas",
-    "test": "npm run test:unit && npm run test:integration && npm run test:schema",
+    "test": "npm run test:unit && npm run test:integration",
     "test:e2e": "start-server-and-test start http://localhost:8080 test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@common/iso": "file:../../common/vanilla/iso",
     "@common/node": "file:../../common/compiled/node",
+    "@db/sample": "file:../../db/sample",
+    "@db/audit": "file:../../db/audit",
     "@json2csv/plainjs": "^7.0.6",
-    "csv-parse": "^6.2.1",
+    "csv-parse": "^7.0.1",
     "fido2-lib": "^3.5.9",
-    "pdfkit": "^0.18.0"
+    "pdfkit": "^0.19.1"
   }
 }
