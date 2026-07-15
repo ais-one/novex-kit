@@ -16,7 +16,7 @@ jobs:
     environment: production   # requires manual approval gate in GH
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Authenticate to Alibaba Cloud via OIDC — no long-lived keys
       - name: Configure Alibaba Cloud credentials (OIDC)

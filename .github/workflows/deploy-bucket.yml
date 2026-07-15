@@ -62,7 +62,7 @@ jobs:
           echo "app: ${{ github.event.inputs.app }}"
           echo "bucket: ${{ github.event.inputs.bucket }}"
       - name: Checkout ${{ github.event.inputs.tag }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag }}
       - name: Set up workspace
@@ -177,7 +177,7 @@ jobs:
       contents: read
       packages: write 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # Setup .npmrc file to publish to GitHub Packages
       - uses: ./.github/actions/setup-node-npm-install
         with:
