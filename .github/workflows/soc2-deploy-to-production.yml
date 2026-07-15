@@ -20,14 +20,14 @@ jobs:
 
       # Authenticate to Alibaba Cloud via OIDC — no long-lived keys
       - name: Configure Alibaba Cloud credentials (OIDC)
-        uses: aliyun/configure-aliyun-credentials-action@v1
+        uses: aliyun/configure-aliyun-credentials-action@1e5248c8d5d93a8781ac344a68e19a43341e79e6 # v1
         with:
           role-to-assume: acs:ram::${{ secrets.ALI_ACCOUNT_ID }}:role/github-deployer
           oidc-provider-arn: ${{ secrets.ALI_OIDC_PROVIDER_ARN }}
 
       # Inject app secrets from Doppler — never stored in GitHub
       - name: Fetch secrets from Doppler
-        uses: dopplerhq/secrets-fetch-action@v1.2.0
+        uses: dopplerhq/secrets-fetch-action@bc453b9c7614b89e02c6de38c8f04746879fffa4 # v1.2.0
         with:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
           inject-env-vars: true
