@@ -1,6 +1,6 @@
-import { Kafka } from '@js-ak/kafkajs-mock';
+import { kafkaJs } from '@js-ak/kafkajs-mock';
 
-const kafka = new Kafka({ clientId: 'my-app', brokers: ['localhost:9092'] });
+const kafka = new kafkaJs.Kafka({ clientId: 'my-app', brokers: ['localhost:9092'] });
 
 const producer = kafka.producer();
 await producer.connect();

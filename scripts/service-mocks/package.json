@@ -1,8 +1,6 @@
 {
   "name": "@tools/service-mocks",
-  "version": "1.0.0",
   "description": "Mock kafka, redis, and oidc-provider services, and saml-idp for local development and testing.",
-  "main": "index.js",
   "type": "module",
   "private": true,
   "scripts": {

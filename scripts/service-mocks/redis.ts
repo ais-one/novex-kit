@@ -1,4 +1,5 @@
-const Redis = require('ioredis-mock');
+import Redis from 'ioredis-mock';
+
 const redis = new Redis();
 
 await redis.set('foo', 'bar');
