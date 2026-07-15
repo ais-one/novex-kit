@@ -8,7 +8,7 @@ import { validate } from '@common/node/errors/validate';
 import express from 'express';
 // Imports from the sidecar controller so developer overrides are picked up automatically.
 import awardController from '../controller.ts';
-import { AwardBodySchema, AwardParamsSchema, AwardQuerySchema, AwardUpdateSchema } from './schema.js';
+import { AwardBodySchema, AwardParamsSchema, AwardQuerySchema, AwardUpdateSchema } from './schema.ts';
 
 export default express
   .Router()

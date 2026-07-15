@@ -1,4 +1,4 @@
-// shared/schemas/notification.schema.js
+// shared/schemas/notification.schema.ts
 // Zod v4 — uses native .meta() for OpenAPI metadata. No monkey-patching required.
 
 import { z } from 'zod';

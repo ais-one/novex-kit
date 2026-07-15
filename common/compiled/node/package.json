@@ -1,21 +1,6 @@
 {
   "name": "@common/node",
-  "version": "0.0.2",
-  "author": "Aaron Gong",
-  "license": "MIT",
   "description": "Shareable Node Runtime JS library using ES modules",
-  "keywords": [
-    "javscript",
-    "module"
-  ],
-  "homepage": "https://github.com/ais-one/novex-kit#readme",
-  "bugs": {
-    "url": "https://github.com/ais-one/novex-kit/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ais-one/novex-kit.git"
-  },
   "type": "module",
   "exports": {
     "./auth": "./auth/index.ts",

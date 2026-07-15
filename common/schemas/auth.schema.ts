@@ -1,4 +1,4 @@
-// shared/schemas/auth.schema.js
+// shared/schemas/auth.schema.ts
 // Single source of truth for auth-service shapes.
 // Drives: runtime validation (validate middleware) + OpenAPI spec generation.
 // Zod v4 — uses native .meta() for OpenAPI metadata. No monkey-patching required.

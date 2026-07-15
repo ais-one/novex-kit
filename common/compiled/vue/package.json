@@ -1,9 +1,6 @@
 {
   "name": "@common/vue",
-  "version": "1.0.0",
-  "description": "",
-  "license": "ISC",
-  "author": "",
+  "description": "Common VueJS packages",
   "type": "module",
   "main": "index.js",
   "dependencies": {
@@ -15,8 +12,5 @@
     "pinia": "^3.0.4",
     "vue": "^3.3.8",
     "vue-router": "^5.1.0"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 0"
   }
 }

@@ -12,7 +12,7 @@ export default express
   // Example A — new endpoint (add named export to controller.ts first):
   // .get('/search', authUser, validate('query', SubjectSearchSchema), search)
   //
-  // Example B — override a route's input schema (export updated schema from schema.js first):
+  // Example B — override a route's input schema (export updated schema from schema.ts first):
   // .post('/', authUser, validate('body', SubjectBodySchema), subjectController.create)
   //
   // NOTE: to override just the handler logic (not the schema), only controller.ts is needed.

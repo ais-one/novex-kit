@@ -13,7 +13,7 @@ import {
   PermissionsParamsSchema,
   PermissionsQuerySchema,
   PermissionsUpdateSchema,
-} from './schema.js';
+} from './schema.ts';
 
 export default express
   .Router()

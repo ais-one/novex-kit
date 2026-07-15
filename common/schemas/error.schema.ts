@@ -1,4 +1,4 @@
-// shared/schemas/error.schema.js
+// shared/schemas/error.schema.ts
 // Zod v4 — uses native .meta() for OpenAPI metadata. No monkey-patching.
 
 import { z } from 'zod';

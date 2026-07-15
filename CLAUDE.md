@@ -18,7 +18,7 @@ A monorepo template for building full-stack JavaScript applications with Node.js
 apps/                # backend and frontend apps (npm workspace)
   sample-api/        # sample backend app — copy and rename, do not develop here directly
   base-iam/          # sample IAM service — auth, RBAC/FGA, user management (SAML/OIDC)
-  cron/              # HTTP-triggered cron microservice (no internal scheduler; hit its routes from an external scheduler)
+  cron/              # HTTP-triggered cron microservice — plain Express app (its own preRoute/postRoute), no internal scheduler; an external scheduler hits routes like `POST /cron/process-outbox`. Auth is a separate bearer-token scheme (`CRON_API_KEY`), not the main JWT/RBAC/FGA system
   sample-mcp/        # MCP server example
   sample-a2a/        # agent-to-agent sample — supervisor (Claude) + specialist (OpenAI RAG) over MCP
   sample-rag/        # RAG sample — document ingestion + retrieval via MCP tools + OpenAI generation
@@ -32,7 +32,7 @@ common/              # shared reusable code (npm workspaces)
   vanilla/           # plain JS modules, no build step
     iso/             # isomorphic utilities, runs in Node and browser (@common/iso)
     web/             # browser-only utilities and web components
-  schemas/           # shared zod schemas (not a workspace — imported directly)
+  schemas/           # shared zod schemas — not an npm workspace (imported directly), but has its own package.json with docs:generate/validate/make-html scripts (run from within common/schemas/)
 db/                  # database schemas, migrations, seeds — separate npm workspaces, one per schema
   dev.db/            # PGlite data file for local dev (gitignored) — served by scripts/db-mocks
   sample/            # @db/sample — public schema: schema.ts, drizzle.config.ts, migrations, seeds (consumed by sample-api, cron)
@@ -40,15 +40,15 @@ db/                  # database schemas, migrations, seeds — separate npm work
   audit/             # @db/audit — audit schema: schema.ts, drizzle.config.ts, migrations (SOC2/HIPAA trail)
 docs/                # project documentation
 generated/           # gitignored scratch folder for local build/runtime artifacts — only .gitignore/README.md are tracked
-scripts/             # code/OpenAPI generation tooling, service mocks
-  generators/        # generate-crud.ts (Drizzle schema → Zod/routes/controllers) and generate-openapi.ts
+scripts/             # code/OpenAPI generation tooling, service mocks (npm workspace)
+  generators/        # @tools/generators — generate-crud.ts (Drizzle schema → Zod/routes/controllers) and generate-openapi.ts
   service-mocks/     # redis/kafka/SAML/OIDC mocks
   db-mocks/          # serve-db.ts — local PGlite socket server backing db/sample, db/iam, db/audit
 .github/             # GitHub Actions workflows and CONTRIBUTING.md
 .githooks/           # native git hooks (pre-commit, pre-push)
 ```
 
-`sample-mcp`, `sample-a2a`, and `sample-rag` are demo scripts (`npm run demo`, etc.), not long-running services — most have no real `test` script (stubbed to exit 0).
+`sample-mcp`, `sample-a2a`, and `sample-rag` are demo scripts (`npm run demo`, etc.), not long-running services — most have no real `test` script (stubbed to exit 0). `sample-mcp` is the MCP *server* (StreamableHTTP transport); `sample-a2a` and `sample-rag` are MCP *clients*, each with their own `mcp-client.ts` (duplicated, not shared). In `sample-a2a`, `supervisor.ts` and `specialist.ts` are two separate A2A protocol servers (ports 3100/3101, `/.well-known/agent.json` + `POST /` task endpoints) — the supervisor classifies and delegates to the specialist, which does the actual MCP-backed RAG query.
 
 ## Setup
 
@@ -72,21 +72,20 @@ cd apps/sample-vue-minimal && npm run dev
 
 ```bash
 # linting and formatting (biome)
-npm run check          # biome check with auto-fix (lint + format)
+npm run check          # biome check, no writes — safe to run in CI
+npm run check:write    # biome check --write (auto-fix lint + format)
 npm run ci             # biome ci (used in CI/CD)
 
 # testing
 npm run test:workspaces     # run tests in all workspaces
-
-# openapi docs
-npm run docs:generate        # generate merged openapi yaml
-npm run docs:validate        # validate openapi docs
 
 # workspace management
 npm ls -ws                              # list all workspaces
 npm i <pkg> --workspace=<path>          # install into a specific workspace
 npm outdated -ws                        # check outdated packages across all workspaces
 ```
+
+There is no root-level `docs:generate`/`docs:validate` anymore — OpenAPI doc generation is scoped to whichever package owns the schemas: `cd common/schemas && npm run docs:generate` for the shared cross-cutting schemas (output: `common/schemas/docs/openapi/openapi.merged.yaml`), or `npm run docs:generate` from within `db/<schema>/` for a schema's per-table CRUD docs (see below).
 
 ## Testing
 
@@ -154,11 +153,20 @@ Per-workspace `test` scripts run `test:unit`, `test:integration`, then `test:sch
 
 CRUD generation lives in `db/<schema>/` (`sample`, `iam`, `audit`), not in the consuming apps — apps import the generated routes/controllers via the `@db/<schema>` package rather than owning a copy. Each schema workspace follows a **generate once, own forever** pattern driven by its Drizzle schema:
 
-- `npm run crud:generate` (from `db/<schema>/`, via `scripts/generators/generate-crud.ts`) reads that schema's Drizzle file and, per table, emits `crud/<table>/generated/{schema.js,routes.ts,controller.ts}` (always overwritten) plus sidecar `crud/<table>/{schema.js,controller.ts,routes.ts}` (created once, then developer-owned — the generator never touches them again). Customize a table by editing the sidecar files, not the `generated/` ones.
+- `npm run crud:generate` (from `db/<schema>/`, via `scripts/generators/generate-crud.ts`) reads that schema's Drizzle file and, per table, emits `crud/<table>/generated/{schema.ts,routes.ts,controller.ts}` (always overwritten) plus sidecar `crud/<table>/{schema.ts,controller.ts,routes.ts}` (created once, then developer-owned — the generator never touches them again). Customize a table by editing the sidecar files, not the `generated/` ones.
 - Optional `generate-crud.config.json` next to `db/<schema>/package.json` controls per-table exclusions (`exclude`, `schemaOnly`, `excludeFromBody`, `excludeFromResponse`).
-- `npm run docs:generate` (from `db/<schema>/`, via `scripts/generators/generate-openapi.ts`) scans the sidecar `schema.js` files (Zod, not Drizzle) to build an OpenAPI 3.1 YAML — it automatically picks up schema overrides.
+- `npm run docs:generate` (from `db/<schema>/`, via `scripts/generators/generate-openapi.ts`) scans the sidecar `schema.ts` files (Zod, not Drizzle) to build an OpenAPI 3.1 YAML — it automatically picks up schema overrides. Each schema workspace has its own output file (`db/<schema>/openapi/openapi.yaml`) and its own `docs:validate` — there is no merged, repo-wide doc for `db/*`.
 - Consuming apps mount the generated routes directly, e.g. `apps/sample-api/src/router.ts` does `import categoriesRoute from '@db/sample/crud/categories/routes';` (no app-local copy, no `.ts` extension — the package's `exports` map appends it).
+- `common/schemas/` (standalone, hand-written schemas — not CRUD-generated) has its own separate `docs:generate`/`docs:validate`/`docs:make-html` scripts, run from within that folder, producing `common/schemas/docs/openapi/openapi.merged.yaml`.
 - Full details, flags, and override examples: `scripts/generators/README.md`.
+
+## Backend request lifecycle
+
+Each backend app builds its Express instance from `preRoute()` / `postRoute()` in `common/compiled/node/express/` — read both before adding global middleware or changing startup order:
+
+- `preRoute()` (called from the app's `app.ts`) wires, in order: `services.start(app, server)` → auth service setup (`authService.setup`, only if `JWT.TOKEN_SERVICE_NAME` and `JWT.USER_SERVICE_NAME` are configured) → `loggerMiddleware` → a WS-upgrade bypass → `/health` (mounted *before* auth — healthchecks are always unprotected) → helmet → cors → body-parser (routes matching `BODYPARSER_RAW_ROUTES` skip JSON parsing so raw bytes are preserved for webhook signature checks) → cookie-parser.
+- App-specific routes are mounted next (e.g. `apps/sample-api/src/router.ts`), then `postRoute(app, express)` adds static/history-fallback handling, `notFoundHandler`, and `errorHandler` last. **New routes must be registered before `postRoute()` runs** or they'll 404.
+- `authUser` is **not** global middleware — it's opt-in per route (imported from `@common/node/auth/jwt` and added to a specific route file). A new route is unauthenticated by default unless you add it explicitly.
 
 ## Database (local dev)
 
@@ -215,7 +223,7 @@ To create a new app:
 
 Read `docs/conventions.md` before making code changes.
 
-- **Formatter and linter**: `biome` — run `npm run check` to auto-fix
+- **Formatter and linter**: `biome` — `npm run check` reports only (no writes); `npm run check:write` auto-fixes
 - **No `console.*`** in backend — import and use `common/node/logger` as global `logger`
 - **No `console.*`** in frontend production — errors go to Sentry
 - **Config loading**: use `common/node/config` for app config
@@ -393,6 +401,8 @@ Route middleware available after `authUser`:
 | `requireFga(relation, object)` | `@common/node/auth/openfga.js` | OpenFGA tuple lookup |
 | `req.rbac.hasRole(...roles)` | attached by `authUser` | flat JWT `roles` array |
 | `req.fga.check(relation, object)` | attached by `authUser` | ad-hoc FGA check inside a handler |
+
+**Wiring detail:** the RBAC → FGA → legacy fallback chain runs once, at **token creation** (`createToken`), not on every request — a request only ever checks the flattened `roles` array already baked into the JWT. This means RBAC/FGA config changes don't take effect for a user until their token is refreshed. `authUser` itself does the JWT verify step and populates `req.user`, `req.rbac`, and `req.fga`; RBAC/FGA setup is invoked conditionally from inside `authService.setup`, which only runs if `JWT.TOKEN_SERVICE_NAME`/`USER_SERVICE_NAME` are configured (see Backend request lifecycle above).
 
 ## Key documentation
 

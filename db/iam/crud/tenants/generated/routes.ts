@@ -8,7 +8,7 @@ import { validate } from '@common/node/errors/validate';
 import express from 'express';
 // Imports from the sidecar controller so developer overrides are picked up automatically.
 import tenantsController from '../controller.ts';
-import { TenantsBodySchema, TenantsParamsSchema, TenantsQuerySchema, TenantsUpdateSchema } from './schema.js';
+import { TenantsBodySchema, TenantsParamsSchema, TenantsQuerySchema, TenantsUpdateSchema } from './schema.ts';
 
 export default express
   .Router()

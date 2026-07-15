@@ -17,10 +17,10 @@
 //   computed automatically from --schema relative to the generated controller location.
 //
 // Output layout (relative to --app):
-//   crud/<table>/generated/schema.js      ← ALWAYS overwritten (Zod schemas)
+//   crud/<table>/generated/schema.ts      ← ALWAYS overwritten (Zod schemas)
 //   crud/<table>/generated/routes.ts      ← ALWAYS overwritten (Express routes)
 //   crud/<table>/generated/controller.ts  ← ALWAYS overwritten (CRUD handlers)
-//   crud/<table>/schema.js                ← created ONCE  (your sidecar)
+//   crud/<table>/schema.ts                ← created ONCE  (your sidecar)
 //   crud/<table>/controller.ts            ← created ONCE  (your sidecar)
 //   crud/<table>/routes.ts                ← created ONCE  (your sidecar)
 
@@ -360,7 +360,7 @@ const AUTO_HEADER = (varName: string) => `\
 `;
 
 /**
- * Generates the content of a `schemas/generated/<table>.schema.js` file.
+ * Generates the content of a `schemas/generated/<table>.schema.ts` file.
  *
  * The file exports four Zod schemas registered with `.meta({ id })` so that
  * `generate-openapi.ts` can reference them as named OpenAPI components:
@@ -449,7 +449,7 @@ import {
   ${pascalName}ParamsSchema,
   ${pascalName}QuerySchema,
   ${pascalName}UpdateSchema,
-} from './schema.js';
+} from './schema.ts';
 // Imports from the sidecar controller so developer overrides are picked up automatically.
 import ${varName}Controller from '../controller.ts';
 
@@ -569,7 +569,7 @@ const SIDECAR_HEADER = `\
 `;
 
 /**
- * Generates the content of a sidecar schema file (`schemas/<table>.schema.js`).
+ * Generates the content of a sidecar schema file (`schemas/<table>.schema.ts`).
  *
  * The sidecar is created once the first time `generate:crud` runs for the table.
  * It re-exports everything from the corresponding generated schema file so that
@@ -584,7 +584,7 @@ const SIDECAR_HEADER = `\
 function generateSidecarSchema(info: TableInfo): string {
   const { varName, kebabName, pascalName } = info;
   return `${SIDECAR_HEADER}// Re-export everything from generated — add custom schemas below.
-export * from './generated/schema.js';
+export * from './generated/schema.ts';
 
 // Example: add a custom search schema
 // import { z } from 'zod';
@@ -647,7 +647,7 @@ export default express
   // Example A — new endpoint (add named export to controller.ts first):
   // .get('/search', authUser, validate('query', ${pascalName}SearchSchema), search)
   //
-  // Example B — override a route's input schema (export updated schema from schema.js first):
+  // Example B — override a route's input schema (export updated schema from schema.ts first):
   // .post('/', authUser, validate('body', ${pascalName}BodySchema), ${varName}Controller.create)
   //
   // NOTE: to override just the handler logic (not the schema), only controller.ts is needed.
@@ -787,7 +787,7 @@ for (const [varName, exported] of Object.entries(schemaExports)) {
   const tableGenDir = resolve(tableDir, 'generated');
 
   // ── Always generate the Zod schema file ───────────────────────────────────
-  writeFile(resolve(tableGenDir, 'schema.js'), generateSchemaFile(info));
+  writeFile(resolve(tableGenDir, 'schema.ts'), generateSchemaFile(info));
 
   // Config: schemaOnly — skip routes, controllers, and sidecars
   if (config.schemaOnly?.includes(varName)) {
@@ -800,7 +800,7 @@ for (const [varName, exported] of Object.entries(schemaExports)) {
   writeFile(resolve(tableGenDir, 'controller.ts'), generateControllerFile(info));
 
   // ── Sidecar files — create once, then developer owns them ─────────────────
-  const sidecarSchemaPath = resolve(tableDir, 'schema.js');
+  const sidecarSchemaPath = resolve(tableDir, 'schema.ts');
   const sidecarControllerPath = resolve(tableDir, 'controller.ts');
   const sidecarRoutesPath = resolve(tableDir, 'routes.ts');
 
@@ -829,7 +829,7 @@ for (const name of generated) {
     ? ` [response: -${tCfg.excludeFromResponse.length} fields]`
     : '';
   console.log(`  ${name}${bodyNote}${responseNote}`);
-  console.log(`    crud/${kebab}/generated/schema.js      (overwritten)`);
+  console.log(`    crud/${kebab}/generated/schema.ts      (overwritten)`);
   console.log(`    crud/${kebab}/generated/routes.ts      (overwritten)`);
   console.log(`    crud/${kebab}/generated/controller.ts  (overwritten)`);
 }
@@ -839,7 +839,7 @@ if (schemaOnlyGenerated.length) {
   for (const name of schemaOnlyGenerated) {
     const kebab = toKebabCase(name);
     console.log(`  ${name}`);
-    console.log(`    crud/${kebab}/generated/schema.js    (overwritten)`);
+    console.log(`    crud/${kebab}/generated/schema.ts    (overwritten)`);
   }
 }
 
@@ -852,7 +852,7 @@ if (sidecarsCreated.length) {
   console.log(`\nSidecars created (once — yours to edit):`);
   for (const name of sidecarsCreated) {
     const kebab = toKebabCase(name);
-    console.log(`  crud/${kebab}/schema.js`);
+    console.log(`  crud/${kebab}/schema.ts`);
     console.log(`  crud/${kebab}/controller.ts`);
     console.log(`  crud/${kebab}/routes.ts`);
   }

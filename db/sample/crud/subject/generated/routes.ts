@@ -8,7 +8,7 @@ import { validate } from '@common/node/errors/validate';
 import express from 'express';
 // Imports from the sidecar controller so developer overrides are picked up automatically.
 import subjectController from '../controller.ts';
-import { SubjectBodySchema, SubjectParamsSchema, SubjectQuerySchema, SubjectUpdateSchema } from './schema.js';
+import { SubjectBodySchema, SubjectParamsSchema, SubjectQuerySchema, SubjectUpdateSchema } from './schema.ts';
 
 export default express
   .Router()

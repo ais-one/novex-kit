@@ -4,11 +4,11 @@
 // Generates an OpenAPI 3.1 YAML document from Zod v4 schemas.
 //
 // Schema discovery (new per-table layout):
-//   --src <dir>        Scans src/<table>/schema.js (sidecar) and src/<table>/generated/schema.js
+//   --src <dir>        Scans src/<table>/schema.ts (sidecar) and src/<table>/generated/schema.ts
 //                      A table with a sidecar gets full CRUD paths.
-//                      A table with only generated/schema.js (schemaOnly) gets components only.
-//   --schemas <dir>    Optional. Also scans <dir>/*.schema.js for standalone hand-written schemas
-//                      (e.g. schemas/categories.schema.js). These always get CRUD paths if exports present.
+//                      A table with only generated/schema.ts (schemaOnly) gets components only.
+//   --schemas <dir>    Optional. Also scans <dir>/*.schema.ts for standalone hand-written schemas
+//                      (e.g. schemas/categories.schema.ts). These always get CRUD paths if exports present.
 //
 // Usage — from an app directory:
 //   node ../../scripts/generators/generate-openapi.ts \
@@ -55,7 +55,7 @@ if ((!args.src && !args.schemas) || !args.out) {
 Usage: node scripts/generators/generate-openapi.ts \\
   --out        <file>    Output YAML file path (relative to cwd)
   [--src       <dir>]    src/ directory containing per-table subfolders (relative to cwd)
-  [--schemas   <dir>]    Scan this directory for standalone *.schema.js files
+  [--schemas   <dir>]    Scan this directory for standalone *.schema.ts files
                          At least one of --src / --schemas is required.
   [--prefix    <prefix>] URL prefix for all CRUD route paths (e.g. /api/sample-api)
   [--title     <title>]  OpenAPI info.title (default: API)
@@ -93,14 +93,14 @@ function pascalToWords(pascal: string): string {
 const filesToProcess: { kebab: string; filePath: string; isSidecar: boolean }[] = [];
 const seenKebabs = new Set<string>();
 
-// 1. Per-table layout: src/<table>/schema.js (sidecar) and src/<table>/generated/schema.js (generated-only)
+// 1. Per-table layout: src/<table>/schema.ts (sidecar) and src/<table>/generated/schema.ts (generated-only)
 if (srcDir && existsSync(srcDir)) {
   for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const kebab = entry.name;
     const tableDir = resolve(srcDir, kebab);
-    const sidecarPath = resolve(tableDir, 'schema.js');
-    const generatedPath = resolve(tableDir, 'generated', 'schema.js');
+    const sidecarPath = resolve(tableDir, 'schema.ts');
+    const generatedPath = resolve(tableDir, 'generated', 'schema.ts');
 
     if (existsSync(sidecarPath)) {
       // Has a sidecar — full CRUD table
@@ -114,12 +114,12 @@ if (srcDir && existsSync(srcDir)) {
   }
 }
 
-// 2. Standalone hand-written schemas (e.g. schemas/categories.schema.js)
+// 2. Standalone hand-written schemas (e.g. schemas/categories.schema.ts)
 //    These have no generated counterpart — always treated as sidecars (CRUD paths if exports present).
 if (extraSchemasDir && existsSync(extraSchemasDir)) {
   for (const entry of readdirSync(extraSchemasDir, { withFileTypes: true })) {
-    if (!entry.isFile() || !entry.name.endsWith('.schema.js')) continue;
-    const kebab = entry.name.replace(/\.schema\.js$/, '');
+    if (!entry.isFile() || !entry.name.endsWith('.schema.ts')) continue;
+    const kebab = entry.name.replace(/\.schema\.ts$/, '');
     if (!seenKebabs.has(kebab)) {
       filesToProcess.push({ kebab, filePath: resolve(extraSchemasDir, entry.name), isSidecar: true });
       seenKebabs.add(kebab);
@@ -129,7 +129,7 @@ if (extraSchemasDir && existsSync(extraSchemasDir)) {
 
 if (filesToProcess.length === 0) {
   const scanned = [srcDir, extraSchemasDir].filter(Boolean).join(', ');
-  console.error(`No schema.js files found in ${scanned}`);
+  console.error(`No schema files found in ${scanned}`);
   process.exit(1);
 }
 
@@ -200,7 +200,7 @@ const componentOnlyTables: string[] = [];
 
 for (const { kebab, mod, isSidecar } of loaded) {
   // Use suffix-based export lookup so hand-written sidecars with non-kebab naming
-  // (e.g. CategoryBodySchema in categories.schema.js) are correctly detected.
+  // (e.g. CategoryBodySchema in categories.schema.ts) are correctly detected.
   const bodySchemaKey = Object.keys(mod).find(k => k.endsWith('BodySchema'));
   const updateSchemaKey = Object.keys(mod).find(k => k.endsWith('UpdateSchema'));
   const paramsSchemaKey = Object.keys(mod).find(k => k.endsWith('ParamsSchema'));

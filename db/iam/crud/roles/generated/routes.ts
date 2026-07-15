@@ -8,7 +8,7 @@ import { validate } from '@common/node/errors/validate';
 import express from 'express';
 // Imports from the sidecar controller so developer overrides are picked up automatically.
 import rolesController from '../controller.ts';
-import { RolesBodySchema, RolesParamsSchema, RolesQuerySchema, RolesUpdateSchema } from './schema.js';
+import { RolesBodySchema, RolesParamsSchema, RolesQuerySchema, RolesUpdateSchema } from './schema.ts';
 
 export default express
   .Router()

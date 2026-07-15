@@ -13,7 +13,7 @@ import {
   CategoriesParamsSchema,
   CategoriesQuerySchema,
   CategoriesUpdateSchema,
-} from './schema.js';
+} from './schema.ts';
 
 export default express
   .Router()

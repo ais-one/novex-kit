@@ -13,7 +13,7 @@ import {
   TenantRolesParamsSchema,
   TenantRolesQuerySchema,
   TenantRolesUpdateSchema,
-} from './schema.js';
+} from './schema.ts';
 
 export default express
   .Router()

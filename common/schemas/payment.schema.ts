@@ -1,4 +1,4 @@
-// shared/schemas/payment.schema.js
+// shared/schemas/payment.schema.ts
 // Zod v4 — uses native .meta() for OpenAPI metadata. No monkey-patching required.
 
 import { z } from 'zod';

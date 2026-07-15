@@ -98,14 +98,14 @@ For each table, the generator produces six files:
 
 | File | Owned by | Behaviour |
 |---|---|---|
-| `crud/<table>/generated/schema.js` | Generator | Always overwritten |
+| `crud/<table>/generated/schema.ts` | Generator | Always overwritten |
 | `crud/<table>/generated/routes.ts` | Generator | Always overwritten |
 | `crud/<table>/generated/controller.ts` | Generator | Always overwritten |
-| `crud/<table>/schema.js` | Developer | Created once, never overwritten |
+| `crud/<table>/schema.ts` | Developer | Created once, never overwritten |
 | `crud/<table>/controller.ts` | Developer | Created once, never overwritten |
 | `crud/<table>/routes.ts` | Developer | Created once, never overwritten |
 
-The three sidecar files (`schema.js`, `controller.ts`, `routes.ts`) are the developer's
+The three sidecar files (`schema.ts`, `controller.ts`, `routes.ts`) are the developer's
 entry points for customisation. The generator creates them with starter content on the
 first run and skips them on every subsequent run.
 
@@ -169,7 +169,7 @@ import { authUser } from '@common/node/auth/jwt';
 import { validate } from '@common/node/errors/validate';
 import generatedRoutes from './generated/routes.ts';
 import { search } from './controller.ts';    // named export, not the default
-import { AwardSearchSchema } from './schema.js';
+import { AwardSearchSchema } from './schema.ts';
 
 export default express
   .Router()
@@ -193,17 +193,17 @@ the full router for that table.
 
 **Adding a custom validation schema**
 
-Schemas for custom endpoints go in the sidecar `schema.js`. There are two cases:
+Schemas for custom endpoints go in the sidecar `schema.ts`. There are two cases:
 
 **Case A — adding a brand-new schema** (e.g. for a `/search` endpoint).
 Use `export *` to keep everything from generated, then add your new export alongside it.
 There is no name conflict because the new export name does not exist in generated.
 
-```js
-// crud/award/schema.js
+```ts
+// crud/award/schema.ts
 import { z } from 'zod';
 
-export * from './generated/schema.js';    // keep all generated schemas
+export * from './generated/schema.ts';    // keep all generated schemas
 
 export const AwardSearchSchema = z
   .object({ q: z.string().min(1) })
@@ -215,10 +215,10 @@ You cannot use `export *` and declare the same name again — that is a duplicat
 Instead, re-export everything from generated individually except the one you are replacing,
 then declare your own version:
 
-```js
-// crud/award/schema.js
+```ts
+// crud/award/schema.ts
 import { z } from 'zod';
-import { AwardBodySchema as GeneratedBodySchema } from './generated/schema.js';
+import { AwardBodySchema as GeneratedBodySchema } from './generated/schema.ts';
 
 // Re-export everything from generated except AwardBodySchema (overridden below)
 export {
@@ -226,7 +226,7 @@ export {
   AwardQuerySchema,
   AwardUpdateSchema,
   AwardResponseSchema,
-} from './generated/schema.js';
+} from './generated/schema.ts';
 
 // Extend the generated body schema with your extra field
 export const AwardBodySchema = GeneratedBodySchema.extend({
@@ -234,7 +234,7 @@ export const AwardBodySchema = GeneratedBodySchema.extend({
 });
 ```
 
-The OpenAPI generator reads the sidecar `schema.js`, so it will pick up your overridden
+The OpenAPI generator reads the sidecar `schema.ts`, so it will pick up your overridden
 `AwardBodySchema` and generate accurate documentation automatically.
 
 ---
@@ -265,7 +265,7 @@ node ../../scripts/generators/generate-openapi.ts \
 |---|---|---|
 | `--out` | yes | Output YAML file path |
 | `--src` | at least one of `--src` / `--schemas` | `src/` (or `crud/`) directory containing per-table subfolders |
-| `--schemas` | at least one of `--src` / `--schemas` | Directory of standalone `*.schema.js` files (e.g. `common/schemas`) |
+| `--schemas` | at least one of `--src` / `--schemas` | Directory of standalone `*.schema.ts` files (e.g. `common/schemas`) |
 | `--prefix` | no | URL prefix prepended to all CRUD paths (e.g. `/api/sample-api`) |
 | `--title` | no | `info.title` in the OpenAPI document (default: `API`) |
 | `--version` | no | `info.version` in the OpenAPI document (default: `1.0.0`) |
@@ -274,7 +274,12 @@ node ../../scripts/generators/generate-openapi.ts \
 The `*ResponseSchema` export from each schema file is used as the GET response body shape.
 Tables without a `ResponseSchema` export fall back to a generic object schema.
 
-**Each schema generates its own OpenAPI doc.** The openapi generator scans `crud/<table>/schema.js`
-and `crud/<table>/generated/schema.js` — it reads Zod files, not Drizzle schemas. Since `sample`,
+**Each schema generates its own OpenAPI doc.** The openapi generator scans `crud/<table>/schema.ts`
+and `crud/<table>/generated/schema.ts` — it reads Zod files, not Drizzle schemas. Since `sample`,
 `iam`, and `audit` are separate `db/<schema>/` workspaces, each has its own `docs:generate` script
 and its own output file (`db/<schema>/openapi/openapi.yaml`) — run it once per schema.
+
+The standalone `--schemas` path has its own consumer too: `common/schemas/` (hand-written, cross-cutting
+schemas — not CRUD-generated) has its own `docs:generate`/`docs:validate`/`docs:make-html` scripts in
+`common/schemas/package.json`, run from within that folder, producing `common/schemas/docs/openapi/openapi.merged.yaml`.
+There is no root-level `docs:generate` anymore — each schema source generates and validates its own doc independently.
