@@ -2,10 +2,8 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import OpenAI from 'openai';
 
 interface Doc {
-  id: string;
-  title: string;
   content: string;
-  score: number;
+  filename: string;
 }
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -22,7 +20,7 @@ export async function ragQuery(mcp: Client, query: string, topK = 3): Promise<st
     return 'No relevant documents found in the knowledge base.';
   }
 
-  const context = docs.map((d, i) => `[${i + 1}] ${d.title}\n${d.content}`).join('\n\n');
+  const context = docs.map((d, i) => `[${i + 1}] ${d.filename}\n${d.content}`).join('\n\n');
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o-mini',

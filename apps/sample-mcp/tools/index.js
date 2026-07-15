@@ -7,7 +7,7 @@ const USER_REPORTS = {
   tg_456: [2, 3, 7],
 };
 
-export default function initTools(server, initialHeaders) {
+export default function initTools(server, initialHeaders, db) {
   server.tool('add', 'Add two numbers', { a: z.number(), b: z.number() }, async ({ a, b }) => ({
     content: [{ type: 'text', text: String(a + b) }],
   }));
@@ -41,7 +41,6 @@ export default function initTools(server, initialHeaders) {
       required: ['weightKg', 'heightM'],
     },
     async ({ weightKg, heightM }) => {
-      //   // Read token from initialization time
       const authHeader = initialHeaders.authorization || null;
       if (!authHeader) {
         return {
@@ -55,13 +54,11 @@ export default function initTools(server, initialHeaders) {
         };
       }
       const bmi = weightKg / (heightM * heightM);
-      // console.log('bmi done - ', bmi)
       return {
         content: [
           {
             type: 'text',
             text: `BMI for ${heightM}m and ${weightKg}kg = ${bmi.toFixed(2)}`,
-            // ${authHeader.slice(0,10)}
           },
         ],
       };
@@ -133,8 +130,6 @@ export default function initTools(server, initialHeaders) {
     },
   );
 
-  initRagTools(server);
-
   // --- Register a "days-to-due-date" tool ---
   server.registerTool(
     'days-to-due-date',
@@ -159,7 +154,6 @@ export default function initTools(server, initialHeaders) {
       const diffInMs = dueDateObj.getTime() - calcDateObj.getTime();
       const diffInDays = Math.floor(diffInMs / 86400000); // 86400000 = ms in a day (1000 * 60 * 60 * 24)
 
-      // console.log('due date done - ', diffInDays)
       return {
         content: [
           {
@@ -173,4 +167,6 @@ export default function initTools(server, initialHeaders) {
       };
     },
   );
+
+  initRagTools(server, db);
 }

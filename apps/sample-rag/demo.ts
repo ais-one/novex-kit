@@ -5,8 +5,7 @@
  *   1. PostgreSQL with pgvector:
  *        docker run -p 5432:5432 -e POSTGRES_PASSWORD=postgres pgvector/pgvector:pg17
  *   2. Apply schema:
- *        psql $DATABASE_URL -f rag.sql
- *      (or let initDb() handle it automatically — see below)
+ *        npm run db:migrate --workspace=db/rag
  *
  * Run:
  *   DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres \
@@ -15,13 +14,16 @@
  *
  * S3 ingestion (optional — requires AWS credentials or LocalStack):
  *   AWS_REGION=us-east-1 \
- *   AWS_ENDPOINT_URL=http://localhost:4566 \   ← LocalStack
+ *   AWS_ENDPOINT_URL=http://localhost:4566 \   <- LocalStack
  *   node demo.ts --s3
  */
 
-import { initDb } from './db.ts';
+import '@common/node/logger';
+import '@common/node/config';
+import { ragQuery } from '@common/node/rag/rag-query';
+import OpenAI from 'openai';
+import { db } from './db.ts';
 import { ingestS3, ingestText } from './ingest.ts';
-import { ragQuery } from './rag.ts';
 
 const SAMPLE_DOCS = [
   {
@@ -78,12 +80,10 @@ const QUERIES = [
   'How does the document parsing pipeline handle PDFs and Word documents?',
 ];
 
-// ── Bootstrap ────────────────────────────────────────────────────────────────
-console.log('── Initialising database ────────────────────────────');
-await initDb();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ── Ingest: text strings (always) ────────────────────────────────────────────
-console.log('\n── Ingesting text documents ─────────────────────────');
+console.log('── Ingesting text documents ─────────────────────────');
 for (const doc of SAMPLE_DOCS) {
   await ingestText(doc.id, doc.title, doc.content);
 }
@@ -107,7 +107,7 @@ if (S3_BUCKET && S3_KEY) {
 console.log('\n── RAG Queries (hybrid pgvector search + OpenAI) ────');
 for (const query of QUERIES) {
   console.log(`\nQ: ${query}`);
-  const answer = await ragQuery(query);
+  const answer = await ragQuery(db, openai, query);
   console.log(`A: ${answer}`);
   console.log('─'.repeat(54));
 }

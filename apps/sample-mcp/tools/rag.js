@@ -1,13 +1,12 @@
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { searchHybrid } from '@common/node/rag/search';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import mammoth from 'mammoth';
 import OpenAI from 'openai';
-import pdfParse from 'pdf-parse';
-import pg from 'pg';
+import { PDFParse } from 'pdf-parse';
 import pgvector from 'pgvector/pg';
 import { z } from 'zod';
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const s3 = new S3Client({
   region: process.env.AWS_REGION ?? 'us-east-1',
@@ -39,8 +38,9 @@ async function embedChunks(text) {
  */
 async function extractText(buffer, filename) {
   if (filename.endsWith('.pdf')) {
-    const data = await pdfParse(buffer);
-    return data.text;
+    const pdf = new PDFParse(new Uint8Array(buffer));
+    const result = await pdf.getText();
+    return result.text;
   }
   if (filename.endsWith('.docx')) {
     const { value } = await mammoth.extractRawText({ buffer });
@@ -54,8 +54,9 @@ async function extractText(buffer, filename) {
  * @param {string} filename
  * @param {string[]} chunks
  * @param {number[][]} embeddings
+ * @param {import('pg').Pool} pool
  */
-async function storeChunks(docId, filename, chunks, embeddings) {
+async function storeChunks(docId, filename, chunks, embeddings, pool) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -81,7 +82,9 @@ async function storeChunks(docId, filename, chunks, embeddings) {
 }
 
 /** @param {import('@modelcontextprotocol/sdk/server/mcp.js').McpServer} server */
-export default function initRagTools(server) {
+export default function initRagTools(server, db) {
+  const pool = db ? db.$client : null;
+
   // ── rag_add_document ──────────────────────────────────────────────────────
   server.registerTool(
     'rag_add_document',
@@ -97,7 +100,7 @@ export default function initRagTools(server) {
     async ({ id, title, content }) => {
       const chunks = await splitter.splitText(content);
       const embeddings = await embedChunks(chunks);
-      await storeChunks(id, title, chunks, embeddings);
+      await storeChunks(id, title, chunks, embeddings, pool);
       return {
         content: [{ type: 'text', text: `Document "${id}" ingested (${chunks.length} chunks)` }],
       };
@@ -134,7 +137,7 @@ export default function initRagTools(server) {
       for (let i = 0; i < chunks.length; i += BATCH) {
         const batch = chunks.slice(i, i + BATCH);
         const embeddings = await embedChunks(batch);
-        await storeChunks(key, filename, batch, embeddings);
+        await storeChunks(key, filename, batch, embeddings, pool);
       }
 
       return {
@@ -155,34 +158,7 @@ export default function initRagTools(server) {
       },
     },
     async ({ query, top_k }) => {
-      const [embedding] = await embedChunks(query);
-      const { rows } = await pool.query(
-        `WITH vector_search AS (
-           SELECT c.id, c.content, d.filename,
-                  ROW_NUMBER() OVER (ORDER BY c.embedding <=> $1) AS rank
-           FROM chunks c JOIN documents d ON c.document_id = d.id
-           LIMIT 20
-         ),
-         fts_search AS (
-           SELECT c.id, c.content, d.filename,
-                  ROW_NUMBER() OVER (
-                    ORDER BY ts_rank(to_tsvector('english', c.content),
-                                     plainto_tsquery('english', $2)) DESC
-                  ) AS rank
-           FROM chunks c JOIN documents d ON c.document_id = d.id
-           WHERE to_tsvector('english', c.content) @@ plainto_tsquery('english', $2)
-           LIMIT 20
-         )
-         SELECT
-           COALESCE(v.content, f.content) AS content,
-           COALESCE(v.filename, f.filename) AS filename,
-           (COALESCE(1.0/(60+v.rank), 0) + COALESCE(1.0/(60+f.rank), 0)) AS score
-         FROM vector_search v
-         FULL OUTER JOIN fts_search f ON v.id = f.id
-         ORDER BY score DESC
-         LIMIT $3`,
-        [pgvector.toSql(embedding), query, top_k],
-      );
+      const rows = await searchHybrid(db, openai, query, top_k);
       return { content: [{ type: 'text', text: JSON.stringify(rows) }] };
     },
   );

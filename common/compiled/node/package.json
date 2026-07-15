@@ -32,6 +32,8 @@
     "drizzle-orm": "^0.45.2",
     "drizzle-zod": "^0.8.3",
     "express": "^5.2.1",
+    "openai": "^6.46.0",
+    "pgvector": "^0.3.0",
     "helmet": "^8.3.0",
     "ioredis": "^5.11.1",
     "js-yaml": "^5.2.1",

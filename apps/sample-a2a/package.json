@@ -16,8 +16,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "express": "^5.2.1",
-    "openai": "^6.46.0"
+    "@common/node": "file:../../common/compiled/node",
+    "@modelcontextprotocol/sdk": "^1.29.0"
   }
 }

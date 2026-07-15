@@ -12,15 +12,19 @@
  *
  * Environment:
  *   SUPERVISOR_PORT   default 3100
- *   SPECIALIST_URL    default http://localhost:3101
+ *   SPECIALIST_URL    default http://localhost:3202
  *   ANTHROPIC_API_KEY required
  *
  * Start:
  *   ANTHROPIC_API_KEY=sk-ant-...  node supervisor.ts
  */
 
+import '@common/node/logger';
+import '@common/node/config';
+
 import Anthropic from '@anthropic-ai/sdk';
-import express, { type Request, type Response } from 'express';
+import preRoute from '@common/node/express/preRoute';
+import type { Request, Response } from 'express';
 import { sendTask } from './a2a-client.ts';
 
 interface TaskMessage {
@@ -41,7 +45,7 @@ interface JsonRpcRequest {
 }
 
 const PORT = Number(process.env.SUPERVISOR_PORT) || 3100;
-const SPECIALIST_URL = process.env.SPECIALIST_URL ?? 'http://localhost:3101';
+const SPECIALIST_URL = process.env.SPECIALIST_URL ?? 'http://localhost:3202';
 
 const AGENT_CARD = {
   name: 'Supervisor Agent',
@@ -61,8 +65,7 @@ const AGENT_CARD = {
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const app = express();
-app.use(express.json());
+const { app, server } = preRoute();
 
 app.get('/.well-known/agent.json', (_req: Request, res: Response) => {
   res.json(AGENT_CARD);
@@ -89,14 +92,14 @@ app.post('/', async (req: Request, res: Response) => {
     });
 
     const classification = (classifyRes.content[0] as { text: string }).text.trim().toLowerCase();
-    console.log(`[supervisor] query="${userQuery}" → ${classification}`);
+    logger.info(`supervisor query="${userQuery}" classification=${classification}`);
 
     // Step 2 — delegate to specialist when it's a knowledge-base question
     let specialistAnswer = '';
     if (classification.includes('document')) {
-      console.log(`[supervisor] delegating to specialist at ${SPECIALIST_URL}`);
+      logger.info(`supervisor delegating to specialist at ${SPECIALIST_URL}`);
       specialistAnswer = await sendTask(SPECIALIST_URL, userQuery);
-      console.log(`[supervisor] specialist replied: ${specialistAnswer.slice(0, 80)}...`);
+      logger.info(`supervisor specialist replied: ${specialistAnswer.slice(0, 80)}...`);
     }
 
     // Step 3 — synthesize the final answer with Claude
@@ -130,6 +133,4 @@ app.post('/', async (req: Request, res: Response) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`[supervisor] Running at http://localhost:${PORT}`);
-});
+server.listen(PORT, () => logger.info(`supervisor running on ${PORT}`));

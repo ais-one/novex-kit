@@ -1,19 +1,9 @@
-import OpenAI from 'openai';
-import { ingestS3, ingestText } from './ingest.ts';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type OpenAI from 'openai';
 import { searchHybrid } from './search.ts';
 
-export { ingestS3, ingestText };
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-export async function ingestDocuments(docs: { id: string; title: string; content: string }[]): Promise<void> {
-  for (const doc of docs) {
-    await ingestText(doc.id, doc.title, doc.content);
-  }
-}
-
-export async function ragQuery(query: string, topK = 5): Promise<string> {
-  const chunks = await searchHybrid(query, topK);
+export async function ragQuery(db: NodePgDatabase, openai: OpenAI, query: string, topK = 5): Promise<string> {
+  const chunks = await searchHybrid(db, openai, query, topK);
 
   if (!chunks.length) {
     return 'No relevant documents found in the knowledge base.';

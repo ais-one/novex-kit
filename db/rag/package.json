@@ -1,0 +1,23 @@
+{
+  "name": "@db/rag",
+  "version": "1.0.0",
+  "description": "RAG database schema, migration, and seeds",
+  "main": "schema.ts",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./*": "./*.ts",
+    "./**/*": "./**/*.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@common/node": "file:../../common/compiled/node"
+  }
+}

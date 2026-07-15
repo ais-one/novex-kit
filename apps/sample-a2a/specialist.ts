@@ -7,14 +7,18 @@
  *
  * Environment:
  *   SPECIALIST_PORT   default 3101
- *   MCP_SERVER_URL    default http://localhost:3000/mcp
+ *   MCP_SERVER_URL    default http://localhost:3200/mcp
  *   OPENAI_API_KEY    required
  *
  * Start:
  *   OPENAI_API_KEY=sk-...  node specialist.ts
  */
 
-import express, { type Request, type Response } from 'express';
+import '@common/node/logger';
+import '@common/node/config';
+
+import preRoute from '@common/node/express/preRoute';
+import type { Request, Response } from 'express';
 import { connectMcp } from './mcp-client.ts';
 import { ragQuery } from './rag.ts';
 
@@ -36,7 +40,7 @@ interface JsonRpcRequest {
 }
 
 const PORT = Number(process.env.SPECIALIST_PORT) || 3101;
-const MCP_URL = process.env.MCP_SERVER_URL ?? 'http://localhost:3000/mcp';
+const MCP_URL = process.env.MCP_SERVER_URL ?? 'http://localhost:3200/mcp';
 
 const AGENT_CARD = {
   name: 'Document Q&A Specialist',
@@ -55,10 +59,9 @@ const AGENT_CARD = {
 };
 
 const mcp = await connectMcp(MCP_URL);
-console.log(`[specialist] Connected to MCP at ${MCP_URL}`);
+logger.info(`specialist connected to MCP at ${MCP_URL}`);
 
-const app = express();
-app.use(express.json());
+const { app, server } = preRoute();
 
 app.get('/.well-known/agent.json', (_req: Request, res: Response) => {
   res.json(AGENT_CARD);
@@ -89,6 +92,4 @@ app.post('/', async (req: Request, res: Response) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`[specialist] Running at http://localhost:${PORT}`);
-});
+server.listen(PORT, () => logger.info(`specialist running on ${PORT}`));

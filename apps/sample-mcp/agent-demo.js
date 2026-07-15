@@ -23,7 +23,7 @@ The one thing to wire up for real Telegram integration: extract ctx.from.id as t
 
 import { clearSession, handleMessage } from './agent.js';
 
-const MCP_SERVER_URL = process.env.MCP_SERVER_URL || 'http://localhost:3000/mcp';
+const MCP_SERVER_URL = process.env.MCP_SERVER_URL || 'http://localhost:3200/mcp';
 
 // Simulates telegram_id extracted from the incoming Telegram message header.
 const TELEGRAM_ID = 'tg_123';

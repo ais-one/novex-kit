@@ -1,17 +1,13 @@
-import OpenAI from 'openai';
-import pgvector from 'pgvector/pg';
-import { pool } from './db.ts';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type OpenAI from 'openai';
+import type { Pool } from 'pg';
+import type { SearchResult } from './types.ts';
 
-export interface SearchResult {
-  content: string;
-  filename: string;
-  docId: string;
-  similarity: number;
+function getPool(db: NodePgDatabase): Pool {
+  return (db as NodePgDatabase & { $client: Pool }).$client;
 }
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-async function embedQuery(query: string): Promise<number[]> {
+async function embedQuery(openai: OpenAI, query: string): Promise<number[]> {
   const response = await openai.embeddings.create({
     model: 'text-embedding-3-small',
     input: query,
@@ -19,9 +15,15 @@ async function embedQuery(query: string): Promise<number[]> {
   return response.data[0].embedding;
 }
 
-export async function searchVector(query: string, topK = 5): Promise<SearchResult[]> {
-  const embedding = await embedQuery(query);
-  const { rows } = await pool.query(
+export async function searchVector(
+  db: NodePgDatabase,
+  openai: OpenAI,
+  query: string,
+  topK = 5,
+): Promise<SearchResult[]> {
+  const pgvector = await import('pgvector/pg');
+  const embedding = await embedQuery(openai, query);
+  const { rows } = await getPool(db).query(
     `SELECT c.content, d.filename, d.id AS doc_id,
             1 - (c.embedding <=> $1) AS similarity
      FROM chunks c
@@ -33,11 +35,15 @@ export async function searchVector(query: string, topK = 5): Promise<SearchResul
   return rows.map(r => ({ content: r.content, filename: r.filename, docId: r.doc_id, similarity: r.similarity }));
 }
 
-// Hybrid search: vector + full-text via Reciprocal Rank Fusion.
-// Outperforms pure vector search for queries with specific keywords.
-export async function searchHybrid(query: string, topK = 5): Promise<SearchResult[]> {
-  const embedding = await embedQuery(query);
-  const { rows } = await pool.query(
+export async function searchHybrid(
+  db: NodePgDatabase,
+  openai: OpenAI,
+  query: string,
+  topK = 5,
+): Promise<SearchResult[]> {
+  const pgvector = await import('pgvector/pg');
+  const embedding = await embedQuery(openai, query);
+  const { rows } = await getPool(db).query(
     `WITH vector_search AS (
        SELECT c.id, c.content, d.filename, d.id AS doc_id,
               ROW_NUMBER() OVER (ORDER BY c.embedding <=> $1) AS rank

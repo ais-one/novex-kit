@@ -5,9 +5,7 @@
  *   MCP server running:  cd apps/sample-mcp && API_PORT=3000 npm run start
  *
  * Run:
- *   MCP_SERVER_URL=http://localhost:3000/mcp \
- *   OPENAI_API_KEY=sk-... \
- *   ANTHROPIC_API_KEY=sk-ant-... \
+ *   Copy .env.example to .env and set your values, then:
  *   node demo.ts
  *
  * What happens:
@@ -16,6 +14,8 @@
  *   3. Starts the supervisor agent  (port 3100) — routing + synthesis via Claude
  *   4. Sends 3 queries through the supervisor and prints answers
  */
+
+import '@common/node/config';
 
 import { type ChildProcess, spawn } from 'node:child_process';
 import { getAgentCard, sendTask } from './a2a-client.ts';
@@ -27,9 +27,9 @@ interface SampleDoc {
   content: string;
 }
 
-const MCP_URL = process.env.MCP_SERVER_URL ?? 'http://localhost:3000/mcp';
-const SPECIALIST_URL = 'http://localhost:3101';
-const SUPERVISOR_URL = 'http://localhost:3100';
+const MCP_URL = process.env.MCP_SERVER_URL ?? 'http://localhost:3200/mcp';
+const SPECIALIST_URL = 'http://localhost:3202';
+const SUPERVISOR_URL = 'http://localhost:3201';
 
 const SAMPLE_DOCS: SampleDoc[] = [
   {
