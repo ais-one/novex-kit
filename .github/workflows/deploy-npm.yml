@@ -45,7 +45,7 @@ jobs:
       matrix:
         node: [ '24' ] # lts?
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag }}
       - uses: ./.github/actions/setup-node-npm-install

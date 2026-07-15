@@ -17,7 +17,7 @@ jobs:
     name: Gitleaks secret scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0       # full history needed for diff scan
       - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
@@ -33,7 +33,7 @@ jobs:
       matrix:
         language: [ javascript-typescript, python ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
@@ -48,7 +48,7 @@ jobs:
     name: Dependency vulnerability scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Audit npm packages
         run: npm audit --audit-level=high
         # Fails if any high or critical CVE found in npm deps
@@ -64,7 +64,7 @@ jobs:
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: semgrep ci --config auto --severity ERROR
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
