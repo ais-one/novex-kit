@@ -1,30 +1,30 @@
 /**
- * Supervisor Agent — routes queries to the specialist via A2A, synthesizes with Claude.
+ * Supervisor Agent — routes queries to the specialist via A2A, synthesizes with OpenAI.
  *
  * Exposes an A2A-compliant HTTP server:
  *   GET  /.well-known/agent.json  → AgentCard
  *   POST /                        → JSON-RPC 2.0 tasks/send
  *
  * Flow per query:
- *   1. Classify query with Claude (document-qa vs. general)
+ *   1. Classify query with OpenAI (document-qa vs. general)
  *   2. Delegate to specialist agent via A2A tasks/send
- *   3. Synthesize final response with Claude
+ *   3. Synthesize final response with OpenAI
  *
  * Environment:
- *   SUPERVISOR_PORT   default 3100
+ *   SUPERVISOR_PORT   default 3201
  *   SPECIALIST_URL    default http://localhost:3202
- *   ANTHROPIC_API_KEY required
+ *   OPENAI_API_KEY    required
  *
  * Start:
- *   ANTHROPIC_API_KEY=sk-ant-...  node supervisor.ts
+ *   npm run supervisor
  */
 
 import '@common/node/logger';
 import '@common/node/config';
 
-import Anthropic from '@anthropic-ai/sdk';
 import preRoute from '@common/node/express/preRoute';
 import type { Request, Response } from 'express';
+import OpenAI from 'openai';
 import { sendTask } from './a2a-client.ts';
 
 interface TaskMessage {
@@ -44,12 +44,12 @@ interface JsonRpcRequest {
   params: TaskSendParams;
 }
 
-const PORT = Number(process.env.SUPERVISOR_PORT) || 3100;
+const PORT = Number(process.env.SUPERVISOR_PORT) || 3201;
 const SPECIALIST_URL = process.env.SPECIALIST_URL ?? 'http://localhost:3202';
 
 const AGENT_CARD = {
   name: 'Supervisor Agent',
-  description: 'Routes user queries to specialist agents and synthesizes responses using Claude',
+  description: 'Routes user queries to specialist agents and synthesizes responses using OpenAI',
   url: `http://localhost:${PORT}`,
   version: '1.0.0',
   capabilities: { streaming: false },
@@ -63,7 +63,7 @@ const AGENT_CARD = {
   ],
 };
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const { app, server } = preRoute();
 
@@ -78,8 +78,8 @@ app.post('/', async (req: Request, res: Response) => {
 
   try {
     // Step 1 — classify the query
-    const classifyRes = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+    const classifyRes = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
       max_tokens: 20,
       messages: [
         {
@@ -91,7 +91,7 @@ app.post('/', async (req: Request, res: Response) => {
       ],
     });
 
-    const classification = (classifyRes.content[0] as { text: string }).text.trim().toLowerCase();
+    const classification = (classifyRes.choices[0].message.content ?? '').trim().toLowerCase();
     logger.info(`supervisor query="${userQuery}" classification=${classification}`);
 
     // Step 2 — delegate to specialist when it's a knowledge-base question
@@ -102,18 +102,18 @@ app.post('/', async (req: Request, res: Response) => {
       logger.info(`supervisor specialist replied: ${specialistAnswer.slice(0, 80)}...`);
     }
 
-    // Step 3 — synthesize the final answer with Claude
+    // Step 3 — synthesize the final answer
     const synthesisPrompt = specialistAnswer
       ? `A specialist agent researched the question and found:\n"${specialistAnswer}"\n\nPolish this into a clear, helpful answer for: "${userQuery}"`
       : `Answer this question concisely and helpfully: "${userQuery}"`;
 
-    const finalRes = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+    const finalRes = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
       max_tokens: 512,
       messages: [{ role: 'user', content: synthesisPrompt }],
     });
 
-    const answer = (finalRes.content[0] as { text: string }).text;
+    const answer = finalRes.choices[0].message.content ?? '';
 
     res.json({
       jsonrpc: '2.0',
