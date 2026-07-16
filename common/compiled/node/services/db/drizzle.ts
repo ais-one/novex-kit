@@ -25,18 +25,6 @@ export default class StoreDrizzle {
       this._db = drizzle(pool);
       this._db.$client.on('error', (err: Error) => logger.error(`pg pool error(${this.name}): ${err.message}`));
       await this._db.$client.query('SELECT 1');
-      try {
-        const pgvector = await import('pgvector/pg');
-        const client = await pool.connect();
-        try {
-          await pgvector.registerTypes(client);
-        } finally {
-          client.release();
-        }
-        logger.info(`pgvector registered(${this.name})`);
-      } catch {
-        // pgvector not required — silent skip for apps that don't use vector columns
-      }
       logger.info(`drizzle CONNECTED(${this.name})`);
     } catch (e) {
       logger.error(`drizzle ERROR(${this.name}): ${String(e)}`);

@@ -18,6 +18,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@common/node": "file:../../common/compiled/node"
+    "@common/node": "file:../../common/compiled/node",
+    "pgvector": "^0.3.0"
   }
 }
