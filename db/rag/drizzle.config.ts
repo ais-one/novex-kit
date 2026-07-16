@@ -1,0 +1,11 @@
+import { defineConfig } from 'drizzle-kit';
+
+export default defineConfig({
+  dialect: 'postgresql',
+  schema: './schema.ts',
+  out: './drizzle',
+  schemaFilter: ['public'],
+  dbCredentials: {
+    url: process.env.DATABASE_URL ?? 'postgresql://localhost:55432/db_express',
+  },
+});
