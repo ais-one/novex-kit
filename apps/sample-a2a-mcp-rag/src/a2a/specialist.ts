@@ -1,25 +1,9 @@
-/**
- * Specialist Agent — document Q&A via MCP RAG pipeline (OpenAI generation).
- *
- * Exposes an A2A-compliant HTTP server:
- *   GET  /.well-known/agent.json  → AgentCard
- *   POST /                        → JSON-RPC 2.0 tasks/send
- *
- * Environment:
- *   SPECIALIST_PORT   default 3101
- *   MCP_SERVER_URL    default http://localhost:3200/mcp
- *   OPENAI_API_KEY    required
- *
- * Start:
- *   OPENAI_API_KEY=sk-...  node specialist.ts
- */
-
 import '@common/node/logger';
 import '@common/node/config';
 
 import preRoute from '@common/node/express/preRoute';
 import type { Request, Response } from 'express';
-import { connectMcp } from './mcp-client.ts';
+import { connectMcp } from '../lib/mcp-client.ts';
 import { ragQuery } from './rag.ts';
 
 interface TaskMessage {
@@ -39,7 +23,7 @@ interface JsonRpcRequest {
   params: TaskSendParams;
 }
 
-const PORT = Number(process.env.SPECIALIST_PORT) || 3101;
+const PORT = Number(process.env.SPECIALIST_PORT) || 3202;
 const MCP_URL = process.env.MCP_SERVER_URL ?? 'http://localhost:3200/mcp';
 
 const AGENT_CARD = {

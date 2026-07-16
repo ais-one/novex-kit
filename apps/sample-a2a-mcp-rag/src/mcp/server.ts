@@ -8,17 +8,17 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 
-import initPrompts from './prompts/index.js';
-import initResources from './resources/index.js';
-import initTools from './tools/index.js';
+import initPrompts from './prompts.ts';
+import initResources from './resources.ts';
+import initTools from './tools.ts';
 
 const { app, server } = preRoute();
 
 // Store active transports keyed by session ID
-const transports = new Map();
+const transports = new Map<string, StreamableHTTPServerTransport>();
 
 // Factory: create a fresh McpServer with all tools registered
-function createMcpServer(initialHeaders) {
+function createMcpServer(initialHeaders: Record<string, string | string[] | undefined>) {
   const mcp = new McpServer({
     name: 'my-remote-server',
     version: '1.0.0',
@@ -35,8 +35,8 @@ function createMcpServer(initialHeaders) {
 
 // POST /mcp — handle all client messages
 app.post('/mcp', async (req, res) => {
-  const sessionId = req.headers['mcp-session-id'];
-  let transport;
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+  let transport: StreamableHTTPServerTransport | undefined;
 
   if (sessionId && transports.has(sessionId)) {
     // Reuse existing session
@@ -46,18 +46,21 @@ app.post('/mcp', async (req, res) => {
     transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: id => {
-        transports.set(id, transport);
+        // biome-ignore lint/style/noNonNullAssertion: transport was assigned above
+        transports.set(id, transport!);
         logger.info(`[session] created: ${id}`);
       },
     });
 
     transport.onclose = () => {
-      const id = transport.sessionId;
-      transports.delete(id);
+      // biome-ignore lint/style/noNonNullAssertion: transport assigned above, sessionId always set by SDK
+      const id = transport!.sessionId;
+      // biome-ignore lint/style/noNonNullAssertion: id is always set by sessionIdGenerator
+      transports.delete(id!);
       logger.info(`[session] closed: ${id}`);
     };
 
-    const initialHeaders = { ...req.headers }; // for auth or other context in tools
+    const initialHeaders = { ...req.headers } as Record<string, string | string[] | undefined>;
     const mcp = createMcpServer(initialHeaders);
     await mcp.connect(transport);
   } else {
@@ -70,8 +73,8 @@ app.post('/mcp', async (req, res) => {
 
 // GET /mcp — open SSE stream for server-to-client notifications
 app.get('/mcp', async (req, res) => {
-  const sessionId = req.headers['mcp-session-id'];
-  const transport = transports.get(sessionId);
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+  const transport = sessionId ? transports.get(sessionId) : undefined;
 
   if (!transport) {
     res.status(404).json({ jsonrpc: '2.0', error: { code: -32000, message: 'Session not found' }, id: null });
@@ -83,8 +86,8 @@ app.get('/mcp', async (req, res) => {
 
 // DELETE /mcp — terminate a session
 app.delete('/mcp', async (req, res) => {
-  const sessionId = req.headers['mcp-session-id'];
-  const transport = transports.get(sessionId);
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+  const transport = sessionId ? transports.get(sessionId) : undefined;
 
   if (!transport) {
     res.status(404).json({ error: 'Session not found' });

@@ -1,31 +1,10 @@
-/**
- * Supervisor Agent — routes queries to the specialist via A2A, synthesizes with OpenAI.
- *
- * Exposes an A2A-compliant HTTP server:
- *   GET  /.well-known/agent.json  → AgentCard
- *   POST /                        → JSON-RPC 2.0 tasks/send
- *
- * Flow per query:
- *   1. Classify query with OpenAI (document-qa vs. general)
- *   2. Delegate to specialist agent via A2A tasks/send
- *   3. Synthesize final response with OpenAI
- *
- * Environment:
- *   SUPERVISOR_PORT   default 3201
- *   SPECIALIST_URL    default http://localhost:3202
- *   OPENAI_API_KEY    required
- *
- * Start:
- *   npm run supervisor
- */
-
 import '@common/node/logger';
 import '@common/node/config';
 
 import preRoute from '@common/node/express/preRoute';
 import type { Request, Response } from 'express';
 import OpenAI from 'openai';
-import { sendTask } from './a2a-client.ts';
+import { sendTask } from './client.ts';
 
 interface TaskMessage {
   role: string;

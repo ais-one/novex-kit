@@ -1,11 +1,10 @@
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { searchHybrid } from '@common/node/rag/search';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import mammoth from 'mammoth';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import OpenAI from 'openai';
-import { PDFParse } from 'pdf-parse';
-import pgvector from 'pgvector/pg';
 import { z } from 'zod';
+import { searchHybrid } from '../lib/search.ts';
+import { embedChunks, extractText, storeChunks } from '../rag/ingest.ts';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const s3 = new S3Client({
@@ -19,70 +18,11 @@ const splitter = new RecursiveCharacterTextSplitter({
   separators: ['\n\n', '\n', '. ', ' ', ''],
 });
 
-// ── Shared helpers ────────────────────────────────────────────────────────────
-
-/**
- * @param {string} text
- * @returns {Promise<number[][]>}
- */
-async function embedChunks(text) {
-  const inputs = Array.isArray(text) ? text : [text];
-  const response = await openai.embeddings.create({ model: 'text-embedding-3-small', input: inputs });
-  return response.data.map(d => d.embedding);
-}
-
-/**
- * @param {Buffer} buffer
- * @param {string} filename
- * @returns {Promise<string>}
- */
-async function extractText(buffer, filename) {
-  if (filename.endsWith('.pdf')) {
-    const pdf = new PDFParse(new Uint8Array(buffer));
-    const result = await pdf.getText();
-    return result.text;
-  }
-  if (filename.endsWith('.docx')) {
-    const { value } = await mammoth.extractRawText({ buffer });
-    return value;
-  }
-  return buffer.toString('utf-8');
-}
-
-/**
- * @param {string} docId
- * @param {string} filename
- * @param {string[]} chunks
- * @param {number[][]} embeddings
- * @param {import('pg').Pool} pool
- */
-async function storeChunks(docId, filename, chunks, embeddings, pool) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query('INSERT INTO documents (id, filename) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [
-      docId,
-      filename,
-    ]);
-    for (let i = 0; i < chunks.length; i++) {
-      await client.query(`INSERT INTO chunks (document_id, content, embedding, chunk_index) VALUES ($1, $2, $3, $4)`, [
-        docId,
-        chunks[i],
-        pgvector.toSql(embeddings[i]),
-        i,
-      ]);
-    }
-    await client.query('COMMIT');
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
-}
-
-/** @param {import('@modelcontextprotocol/sdk/server/mcp.js').McpServer} server */
-export default function initRagTools(server, db) {
+export default function initRagTools(
+  server: McpServer,
+  // biome-ignore lint/suspicious/noExplicitAny: db comes from services.get() with dynamic type
+  db: any,
+) {
   const pool = db ? db.$client : null;
 
   // ── rag_add_document ──────────────────────────────────────────────────────
@@ -126,8 +66,8 @@ export default function initRagTools(server, db) {
       }
 
       const { Body } = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-      const parts = [];
-      for await (const chunk of Body) parts.push(chunk);
+      const parts: Buffer[] = [];
+      for await (const chunk of Body as AsyncIterable<Buffer>) parts.push(chunk);
       const buffer = Buffer.concat(parts);
 
       const text = await extractText(buffer, filename);

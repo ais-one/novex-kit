@@ -30,23 +30,27 @@ Rules:
 /**
  * In-memory session store: telegram_id → last OpenAI response ID.
  * Replace with Redis (with TTL) for production.
- * @type {Map<string, string>}
  */
-const sessions = new Map();
+const sessions = new Map<string, string>();
 
 /**
  * Handle one message turn for a Telegram user.
- *
- * @param {{ telegramId: string, userText: string, mcpServerUrl: string }} opts
- * @returns {Promise<string>} the bot reply
  */
-export async function handleMessage({ telegramId, userText, mcpServerUrl }) {
+export async function handleMessage({
+  telegramId,
+  userText,
+  mcpServerUrl,
+}: {
+  telegramId: string;
+  userText: string;
+  mcpServerUrl: string;
+}): Promise<string> {
   const previousResponseId = sessions.get(telegramId);
 
   // Embed telegram_id in the first message so the model can pass it to tools.
   const input = previousResponseId ? userText : `[telegram_id: ${telegramId}]\n${userText}`;
 
-  const params = {
+  const params: Record<string, unknown> = {
     model: 'gpt-4.1',
     instructions: SYSTEM_PROMPT,
     input,
@@ -65,7 +69,8 @@ export async function handleMessage({ telegramId, userText, mcpServerUrl }) {
     params.previous_response_id = previousResponseId;
   }
 
-  const response = await client.responses.create(params);
+  // biome-ignore lint/suspicious/noExplicitAny: OpenAI Responses API types are dynamic
+  const response = await client.responses.create(params as any);
 
   sessions.set(telegramId, response.id);
   return response.output_text;
@@ -73,9 +78,7 @@ export async function handleMessage({ telegramId, userText, mcpServerUrl }) {
 
 /**
  * Clear a user's session (call after the conversation completes or times out).
- *
- * @param {string} telegramId
  */
-export function clearSession(telegramId) {
+export function clearSession(telegramId: string) {
   sessions.delete(telegramId);
 }

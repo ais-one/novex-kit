@@ -1,21 +1,27 @@
 {
-  "name": "@novex-kit/sample-rag",
+  "name": "@novex-kit/sample-a2a-mcp-rag",
   "version": "0.0.1",
-  "description": "RAG sample — document retrieval via MCP tools + OpenAI generation",
+  "description": "Merged A2A + MCP + RAG sample — supervisor (OpenAI) + specialist (OpenAI RAG) + MCP server",
   "type": "module",
   "scripts": {
-    "demo": "node demo.ts",
+    "start:mcp": "node --watch --watch-preserve-output --trace-warnings src/mcp/server.ts",
+    "start:supervisor": "node src/a2a/supervisor.ts",
+    "start:specialist": "node src/a2a/specialist.ts",
+    "demo": "node demo/demo.ts",
+    "agent-demo": "node demo/agent-demo.ts",
     "lint": "biome check --config-path ../../biome-node.json",
+    "typecheck": "tsc --noEmit",
     "test:unit": "echo \"Error: no test specified\" && exit 0",
     "test:integration": "echo \"Error: no test specified\" && exit 0",
-    "test:schema": "echo \"Error: no test specified\" && exit 0",
     "test": "echo \"Error: no test specified\" && exit 0",
     "test:e2e": "exit 0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
     "@common/node": "file:../../common/compiled/node",
     "@db/rag": "file:../../db/rag",
     "@langchain/textsplitters": "^1.0.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "mammoth": "^1.12.0",
     "pdf-parse": "^2.4.5"
   }

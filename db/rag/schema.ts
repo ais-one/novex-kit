@@ -1,6 +1,6 @@
-import { vector } from '@common/node/rag/vector';
 import { relations } from 'drizzle-orm';
 import { integer, pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core';
+import { vector } from './vector.ts';
 
 export const documents = pgTable('documents', {
   id: text('id').primaryKey(),

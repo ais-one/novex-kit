@@ -1,13 +1,19 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import initRagTools from './rag.js';
+import initRagTools from './rag-tools.ts';
 
 // --- Mock data — replace with real DB queries keyed by telegram_id ---
-const USER_REPORTS = {
+const USER_REPORTS: Record<string, number[]> = {
   tg_123: [1, 2, 5, 7],
   tg_456: [2, 3, 7],
 };
 
-export default function initTools(server, initialHeaders, db) {
+export default function initTools(
+  server: McpServer,
+  initialHeaders: Record<string, string | string[] | undefined>,
+  // biome-ignore lint/suspicious/noExplicitAny: db comes from services.get() with dynamic type
+  db: any,
+) {
   server.tool('add', 'Add two numbers', { a: z.number(), b: z.number() }, async ({ a, b }) => ({
     content: [{ type: 'text', text: String(a + b) }],
   }));
@@ -17,10 +23,7 @@ export default function initTools(server, initialHeaders, db) {
     {
       title: 'Echo Tool',
       description: 'Echoes back the provided message',
-      inputSchema: {
-        message: z.string(),
-      },
-      required: ['message'],
+      inputSchema: { message: z.string() },
     },
     async ({ message }) => ({
       content: [{ type: 'text', text: `Tool echo: ${message}` }],
@@ -34,33 +37,19 @@ export default function initTools(server, initialHeaders, db) {
     {
       title: 'BMI Calculator',
       description: 'Calculate Body Mass Index',
-      inputSchema: {
-        weightKg: z.number(),
-        heightM: z.number(),
-      },
-      required: ['weightKg', 'heightM'],
+      inputSchema: { weightKg: z.number(), heightM: z.number() },
     },
     async ({ weightKg, heightM }) => {
       const authHeader = initialHeaders.authorization || null;
       if (!authHeader) {
         return {
           isError: true,
-          content: [
-            {
-              type: 'text',
-              text: 'Error: missing Authorization header',
-            },
-          ],
+          content: [{ type: 'text', text: 'Error: missing Authorization header' }],
         };
       }
       const bmi = weightKg / (heightM * heightM);
       return {
-        content: [
-          {
-            type: 'text',
-            text: `BMI for ${heightM}m and ${weightKg}kg = ${bmi.toFixed(2)}`,
-          },
-        ],
+        content: [{ type: 'text', text: `BMI for ${heightM}m and ${weightKg}kg = ${bmi.toFixed(2)}` }],
       };
     },
   );
@@ -140,10 +129,7 @@ export default function initTools(server, initialHeaders, db) {
         calcDate: z.string().date(),
         dueDate: z.string().date(),
       },
-      outputSchema: {
-        diffDays: z.number(),
-      },
-      required: ['calcDate', 'dueDate'],
+      outputSchema: { diffDays: z.number() },
     },
     async ({ calcDate, dueDate }) => {
       // Create Date objects representing the two dates
@@ -155,15 +141,8 @@ export default function initTools(server, initialHeaders, db) {
       const diffInDays = Math.floor(diffInMs / 86400000); // 86400000 = ms in a day (1000 * 60 * 60 * 24)
 
       return {
-        content: [
-          {
-            type: 'text',
-            text: `Days to due date = ${diffInDays}`,
-          },
-        ],
-        structuredContent: {
-          diffDays: diffInDays,
-        },
+        content: [{ type: 'text', text: `Days to due date = ${diffInDays}` }],
+        structuredContent: { diffDays: diffInDays },
       };
     },
   );

@@ -2,26 +2,17 @@
  * Simulates a 3-turn Telegram conversation with the report agent.
  *
  * Prerequisites:
- *   1. MCP server running:   npm run start   (in apps/sample-mcp)
+ *   1. MCP server running:   npm run start:mcp
  *   2. Public URL for the MCP server — OpenAI's servers must reach it.
- *      For local dev use a tunnel: npx ngrok http 3000
+ *      For local dev use a tunnel: npx ngrok http 3200
  *      Then set MCP_SERVER_URL=https://<your-tunnel>.ngrok.io/mcp
  *   3. OPENAI_API_KEY set in environment.
  *
  * Run:
- *   OPENAI_API_KEY=sk-... MCP_SERVER_URL=https://... node agent-demo.js
- *
-# Terminal 1 — start the MCP server
-cd apps/sample-mcp && npm run start
-# Terminal 2 — expose it (OpenAI must reach your server)
-npx ngrok http 3000
-# Terminal 3 — run the demo
-cd apps/sample-mcp
-OPENAI_API_KEY=sk-... MCP_SERVER_URL=https://<your-ngrok-id>.ngrok.io/mcp node agent-demo.js
-The one thing to wire up for real Telegram integration: extract ctx.from.id as the telegramId and call handleMessage() per message, storing the session across bot turns.
+ *   npm run agent-demo
  */
 
-import { clearSession, handleMessage } from './agent.js';
+import { clearSession, handleMessage } from './agent.ts';
 
 const MCP_SERVER_URL = process.env.MCP_SERVER_URL || 'http://localhost:3200/mcp';
 

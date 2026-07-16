@@ -1,25 +1,9 @@
-/**
- * A2A demo — spawns specialist + supervisor, seeds documents, queries via supervisor.
- *
- * Prerequisites:
- *   MCP server running:  cd apps/sample-mcp && API_PORT=3000 npm run start
- *
- * Run:
- *   Copy .env.example to .env and set your values, then:
- *   node demo.ts
- *
- * What happens:
- *   1. Seeds 4 documents into the MCP knowledge base
- *   2. Starts the specialist agent  (port 3101) — RAG via MCP + OpenAI
- *   3. Starts the supervisor agent  (port 3100) — routing + synthesis via Claude
- *   4. Sends 3 queries through the supervisor and prints answers
- */
-
 import '@common/node/config';
 
 import { type ChildProcess, spawn } from 'node:child_process';
-import { getAgentCard, sendTask } from './a2a-client.ts';
-import { connectMcp } from './mcp-client.ts';
+import path from 'node:path';
+import { getAgentCard, sendTask } from '../src/a2a/client.ts';
+import { connectMcp } from '../src/lib/mcp-client.ts';
 
 interface SampleDoc {
   id: string;
@@ -98,20 +82,22 @@ const sharedEnv: NodeJS.ProcessEnv = {
   ...process.env,
   MCP_SERVER_URL: MCP_URL,
   SPECIALIST_URL,
-  SPECIALIST_PORT: '3101',
-  SUPERVISOR_PORT: '3100',
+  SPECIALIST_PORT: '3202',
+  SUPERVISOR_PORT: '3201',
 };
+
+const appRoot = path.resolve(import.meta.dirname, '..');
 
 console.log('\n── Starting agents ───────────────────────────────────');
 
-const specialist: ChildProcess = spawn('node', ['specialist.ts'], {
-  cwd: import.meta.dirname,
+const specialist: ChildProcess = spawn('node', ['src/a2a/specialist.ts'], {
+  cwd: appRoot,
   env: sharedEnv,
   stdio: ['ignore', 'inherit', 'inherit'],
 });
 
-const supervisor: ChildProcess = spawn('node', ['supervisor.ts'], {
-  cwd: import.meta.dirname,
+const supervisor: ChildProcess = spawn('node', ['src/a2a/supervisor.ts'], {
+  cwd: appRoot,
   env: sharedEnv,
   stdio: ['ignore', 'inherit', 'inherit'],
 });
