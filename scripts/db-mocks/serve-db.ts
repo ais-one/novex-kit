@@ -1,5 +1,6 @@
 import { parseArgs } from 'node:util';
 import { PGlite } from '@electric-sql/pglite';
+import { vector } from '@electric-sql/pglite-pgvector';
 import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 
 // Usage: npm run serve -- --dbpath ../../db/dev.db
@@ -8,7 +9,11 @@ const dbPath = values.dbpath ?? '../../db/dev.db';
 
 // Single shared database — sample (public schema), iam (iam schema),
 // and audit (audit schema) all live in this one PGlite instance.
-const db = new PGlite(dbPath);
+
+// The vector extension enables pgvector support (vector(1536), HNSW indexes, <=> operator).
+const db = new PGlite(dbPath, {
+  extensions: { vector },
+});
 const server = new PGLiteSocketServer({
   db,
   port: 5432,
