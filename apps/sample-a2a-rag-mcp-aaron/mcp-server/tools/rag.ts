@@ -1,8 +1,9 @@
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import mammoth from 'mammoth';
 import OpenAI from 'openai';
-import pdfParse from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 import pg from 'pg';
 import pgvector from 'pgvector/pg';
 import { z } from 'zod';
@@ -22,25 +23,22 @@ const splitter = new RecursiveCharacterTextSplitter({
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-/**
- * @param {string} text
- * @returns {Promise<number[][]>}
- */
-async function embedChunks(text) {
+async function embedChunks(text: string | string[]): Promise<number[][]> {
   const inputs = Array.isArray(text) ? text : [text];
   const response = await openai.embeddings.create({ model: 'text-embedding-3-small', input: inputs });
   return response.data.map(d => d.embedding);
 }
 
-/**
- * @param {Buffer} buffer
- * @param {string} filename
- * @returns {Promise<string>}
- */
-async function extractText(buffer, filename) {
+async function extractText(buffer: Buffer, filename: string): Promise<string> {
   if (filename.endsWith('.pdf')) {
-    const data = await pdfParse(buffer);
-    return data.text;
+    const parser = new PDFParse({ data: buffer });
+    try {
+      const result = await parser.getText();
+      return result.text;
+    } finally {
+      // Cleanup errors shouldn't mask the parse error above.
+      await parser.destroy().catch(() => {});
+    }
   }
   if (filename.endsWith('.docx')) {
     const { value } = await mammoth.extractRawText({ buffer });
@@ -49,13 +47,7 @@ async function extractText(buffer, filename) {
   return buffer.toString('utf-8');
 }
 
-/**
- * @param {string} docId
- * @param {string} filename
- * @param {string[]} chunks
- * @param {number[][]} embeddings
- */
-async function storeChunks(docId, filename, chunks, embeddings) {
+async function storeChunks(docId: string, filename: string, chunks: string[], embeddings: number[][]): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -80,8 +72,7 @@ async function storeChunks(docId, filename, chunks, embeddings) {
   }
 }
 
-/** @param {import('@modelcontextprotocol/sdk/server/mcp.js').McpServer} server */
-export default function initRagTools(server) {
+export default function initRagTools(server: McpServer): void {
   // ── rag_add_document ──────────────────────────────────────────────────────
   server.registerTool(
     'rag_add_document',
@@ -99,7 +90,7 @@ export default function initRagTools(server) {
       const embeddings = await embedChunks(chunks);
       await storeChunks(id, title, chunks, embeddings);
       return {
-        content: [{ type: 'text', text: `Document "${id}" ingested (${chunks.length} chunks)` }],
+        content: [{ type: 'text' as const, text: `Document "${id}" ingested (${chunks.length} chunks)` }],
       };
     },
   );
@@ -119,12 +110,12 @@ export default function initRagTools(server) {
       const filename = key.split('/').pop() ?? key;
       const existing = await pool.query('SELECT id FROM documents WHERE id = $1', [key]);
       if (existing.rows.length > 0) {
-        return { content: [{ type: 'text', text: `Already ingested: ${key}` }] };
+        return { content: [{ type: 'text' as const, text: `Already ingested: ${key}` }] };
       }
 
       const { Body } = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-      const parts = [];
-      for await (const chunk of Body) parts.push(chunk);
+      const parts: Uint8Array[] = [];
+      for await (const chunk of Body as AsyncIterable<Uint8Array>) parts.push(chunk);
       const buffer = Buffer.concat(parts);
 
       const text = await extractText(buffer, filename);
@@ -138,7 +129,7 @@ export default function initRagTools(server) {
       }
 
       return {
-        content: [{ type: 'text', text: `Ingested s3://${bucket}/${key} (${chunks.length} chunks)` }],
+        content: [{ type: 'text' as const, text: `Ingested s3://${bucket}/${key} (${chunks.length} chunks)` }],
       };
     },
   );
@@ -183,7 +174,7 @@ export default function initRagTools(server) {
          LIMIT $3`,
         [pgvector.toSql(embedding), query, top_k],
       );
-      return { content: [{ type: 'text', text: JSON.stringify(rows) }] };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(rows) }] };
     },
   );
 
@@ -197,7 +188,7 @@ export default function initRagTools(server) {
     },
     async () => {
       const { rows } = await pool.query('SELECT id, filename, created_at FROM documents ORDER BY created_at DESC');
-      return { content: [{ type: 'text', text: JSON.stringify(rows) }] };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(rows) }] };
     },
   );
 }

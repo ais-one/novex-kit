@@ -1,4 +1,6 @@
-export default function initResources(server) {
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+
+export default function initResources(server: McpServer): void {
   server.resource('server-info', 'info://server', { mimeType: 'text/plain' }, async () => ({
     contents: [
       {

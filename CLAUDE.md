@@ -19,9 +19,7 @@ apps/                # backend and frontend apps (npm workspace)
   sample-api/        # sample backend app — copy and rename, do not develop here directly
   base-iam/          # sample IAM service — auth, RBAC/FGA, user management (SAML/OIDC)
   cron/              # HTTP-triggered cron microservice — plain Express app (its own preRoute/postRoute), no internal scheduler; an external scheduler hits routes like `POST /cron/process-outbox`. Auth is a separate bearer-token scheme (`CRON_API_KEY`), not the main JWT/RBAC/FGA system
-  sample-mcp/        # MCP server example
-  sample-a2a/        # agent-to-agent sample — supervisor (Claude) + specialist (OpenAI RAG) over MCP
-  sample-rag/        # RAG sample — document ingestion + retrieval via MCP tools + OpenAI generation
+  sample-a2a-rag-mcp/ # combined RAG + MCP + A2A demo — ingest/ (pgvector ingestion), mcp-server/ (MCP tool server), a2a/ (supervisor + specialist)
   sample-vue-full/   # full-featured sample Vue app (port 8081)
   sample-vue-minimal/ # minimal Vue app (port 8080)
   sample-common/     # internal shared backend code for apps/* workspaces (@apps/sample-common)
@@ -48,7 +46,7 @@ scripts/             # code/OpenAPI generation tooling, service mocks (npm works
 .githooks/           # native git hooks (pre-commit, pre-push)
 ```
 
-`sample-mcp`, `sample-a2a`, and `sample-rag` are demo scripts (`npm run demo`, etc.), not long-running services — most have no real `test` script (stubbed to exit 0). `sample-mcp` is the MCP *server* (StreamableHTTP transport); `sample-a2a` and `sample-rag` are MCP *clients*, each with their own `mcp-client.ts` (duplicated, not shared). In `sample-a2a`, `supervisor.ts` and `specialist.ts` are two separate A2A protocol servers (ports 3100/3101, `/.well-known/agent.json` + `POST /` task endpoints) — the supervisor classifies and delegates to the specialist, which does the actual MCP-backed RAG query.
+`sample-a2a-rag-mcp` combines what used to be three separate demo apps into one workspace — see `apps/sample-a2a-rag-mcp/README.md` for the full architecture. `ingest/` ingests documents into pgvector directly (batch/offline pipeline); `mcp-server/` is the MCP *server* (StreamableHTTP transport) exposing `rag_search`/`rag_add_document`/etc.; `a2a/` holds the MCP *client* (`mcp-client.ts`) plus `supervisor.ts` and `specialist.ts`, two separate A2A protocol servers (ports 3100/3101, `/.well-known/agent.json` + `POST /` task endpoints) — the supervisor classifies and delegates to the specialist, which does the actual MCP-backed RAG query. Most of its `npm run` scripts are demo entry points (`ingest:demo`, `a2a:demo`, etc.), not long-running services — it has no real `test` script (stubbed to exit 0).
 
 ## Setup
 

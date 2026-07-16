@@ -1,13 +1,14 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-export default function initPrompts(server) {
+export default function initPrompts(server: McpServer): void {
   server.prompt('review-code', { code: z.string() }, ({ code }) => {
     return {
       messages: [
         {
-          role: 'user',
+          role: 'user' as const,
           content: {
-            type: 'text',
+            type: 'text' as const,
             text: `Please review this code:\n\n${code}`,
           },
         },

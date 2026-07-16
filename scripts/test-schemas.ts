@@ -2,29 +2,13 @@ import { readdirSync, statSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+const SCHEMA_FILE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts']);
+
 function collectSchemaFiles(dirPath: string): string[] {
-  const entries = readdirSync(dirPath, { withFileTypes: true });
-  const files: string[] = [];
-
-  for (const entry of entries) {
-    const entryPath = resolve(dirPath, entry.name);
-
-    if (entry.isDirectory()) {
-      files.push(...collectSchemaFiles(entryPath));
-      continue;
-    }
-
-    if (!entry.isFile()) {
-      continue;
-    }
-
-    const extension = extname(entry.name);
-    if (extension === '.js' || extension === '.mjs' || extension === '.cjs' || extension === '.ts') {
-      files.push(entryPath);
-    }
-  }
-
-  return files.sort((a, b) => a.localeCompare(b));
+  return readdirSync(dirPath, { recursive: true, withFileTypes: true })
+    .filter(entry => entry.isFile() && SCHEMA_FILE_EXTENSIONS.has(extname(entry.name)))
+    .map(entry => resolve(entry.parentPath, entry.name))
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function isSchemaLike(value: unknown): boolean {

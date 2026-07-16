@@ -1,7 +1,7 @@
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import mammoth from 'mammoth';
 import OpenAI from 'openai';
-import pdfParse from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 import pgvector from 'pgvector/pg';
 import { pool } from './db.ts';
 import { fetchFromS3 } from './s3.ts';
@@ -16,8 +16,14 @@ const splitter = new RecursiveCharacterTextSplitter({
 
 async function extractText(buffer: Buffer, filename: string): Promise<string> {
   if (filename.endsWith('.pdf')) {
-    const data = await pdfParse(buffer);
-    return data.text;
+    const parser = new PDFParse({ data: buffer });
+    try {
+      const result = await parser.getText();
+      return result.text;
+    } finally {
+      // Cleanup errors shouldn't mask the parse error above.
+      await parser.destroy().catch(() => {});
+    }
   }
   if (filename.endsWith('.docx')) {
     const { value } = await mammoth.extractRawText({ buffer });

@@ -2,7 +2,7 @@
  * A2A demo — spawns specialist + supervisor, seeds documents, queries via supervisor.
  *
  * Prerequisites:
- *   MCP server running:  cd apps/sample-mcp && API_PORT=3000 npm run start
+ *   MCP server running:  cd apps/sample-a2a-rag-mcp && API_PORT=3000 npm run start
  *
  * Run:
  *   MCP_SERVER_URL=http://localhost:3000/mcp \

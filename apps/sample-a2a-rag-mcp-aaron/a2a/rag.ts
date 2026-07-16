@@ -29,7 +29,9 @@ export async function ragQuery(mcp: Client, query: string, topK = 3): Promise<st
     messages: [
       {
         role: 'system',
-        content: 'Answer the question using only the provided context. Be concise and factual.',
+        content:
+          'Answer the question using only the provided context. Be concise and factual. ' +
+          'Cite sources using [1], [2] etc. If the answer is not in the context, say so clearly.',
       },
       {
         role: 'user',

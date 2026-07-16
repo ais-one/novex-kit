@@ -1,9 +1,10 @@
+import { parseArgs } from 'node:util';
 import { PGlite } from '@electric-sql/pglite';
 import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 
 // Usage: npm run serve -- --dbpath ../../db/dev.db
-const dbpathFlagIndex = process.argv.indexOf('--dbpath');
-const dbPath = dbpathFlagIndex !== -1 ? process.argv[dbpathFlagIndex + 1] : '../../db/dev.db';
+const { values } = parseArgs({ args: process.argv.slice(2), options: { dbpath: { type: 'string' } } });
+const dbPath = values.dbpath ?? '../../db/dev.db';
 
 // Single shared database — sample (public schema), iam (iam schema),
 // and audit (audit schema) all live in this one PGlite instance.

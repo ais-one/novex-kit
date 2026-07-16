@@ -1,5 +1,8 @@
 /**
- * RAG demo — ingest documents then answer queries using pgvector + OpenAI.
+ * Ingestion demo — loads sample documents into the pgvector knowledge base.
+ *
+ * Retrieval happens through the MCP server's rag_search tool (see mcp-server/tools/rag.ts),
+ * exercised end-to-end by ../a2a/demo.ts — this script only covers ingestion.
  *
  * Prerequisites:
  *   1. PostgreSQL with pgvector:
@@ -11,17 +14,17 @@
  * Run:
  *   DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres \
  *   OPENAI_API_KEY=sk-... \
- *   node demo.ts
+ *   node ingest/demo.ts
  *
  * S3 ingestion (optional — requires AWS credentials or LocalStack):
  *   AWS_REGION=us-east-1 \
  *   AWS_ENDPOINT_URL=http://localhost:4566 \   ← LocalStack
- *   node demo.ts --s3
+ *   S3_BUCKET=my-bucket S3_KEY=docs/report.pdf \
+ *   node ingest/demo.ts
  */
 
 import { initDb } from './db.ts';
 import { ingestS3, ingestText } from './ingest.ts';
-import { ragQuery } from './rag.ts';
 
 const SAMPLE_DOCS = [
   {
@@ -71,13 +74,6 @@ const SAMPLE_DOCS = [
   },
 ];
 
-const QUERIES = [
-  'What is RAG and how does it reduce hallucination?',
-  'Which PostgreSQL index type should I use for fast vector search?',
-  'How does hybrid search work and when is it better than pure vector search?',
-  'How does the document parsing pipeline handle PDFs and Word documents?',
-];
-
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 console.log('── Initialising database ────────────────────────────');
 await initDb();
@@ -103,13 +99,7 @@ if (S3_BUCKET && S3_KEY) {
   await ingestS3(S3_BUCKET, S3_KEY);
 }
 
-// ── Query ────────────────────────────────────────────────────────────────────
-console.log('\n── RAG Queries (hybrid pgvector search + OpenAI) ────');
-for (const query of QUERIES) {
-  console.log(`\nQ: ${query}`);
-  const answer = await ragQuery(query);
-  console.log(`A: ${answer}`);
-  console.log('─'.repeat(54));
-}
+console.log('\nDone. Query the ingested documents through the MCP server (rag_search) —');
+console.log('see ../a2a/demo.ts for an end-to-end retrieval example.');
 
 process.exit(0);

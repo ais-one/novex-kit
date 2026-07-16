@@ -1,0 +1,33 @@
+{
+  "name": "@novex-kit/sample-a2a-rag-mcp",
+  "version": "0.0.1",
+  "description": "Combined demo — RAG ingestion + retrieval via MCP tools + A2A supervisor/specialist orchestration",
+  "type": "module",
+  "scripts": {
+    "lint": "biome check .",
+    "start": "node --watch --watch-preserve-output --trace-warnings mcp-server/index.ts",
+    "ingest:demo": "node ingest/demo.ts",
+    "a2a:specialist": "node a2a/specialist.ts",
+    "a2a:supervisor": "node a2a/supervisor.ts",
+    "a2a:demo": "node a2a/demo.ts",
+    "test:unit": "echo \"Error: no test specified\" && exit 0",
+    "test:integration": "echo \"Error: no test specified\" && exit 0",
+    "test:schema": "echo \"Error: no test specified\" && exit 0",
+    "test": "echo \"Error: no test specified\" && exit 0",
+    "test:e2e": "exit 0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
+    "@aws-sdk/client-s3": "^3.1086.0",
+    "@common/node": "file:../../common/compiled/node",
+    "@langchain/textsplitters": "^1.0.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "express": "^5.2.1",
+    "mammoth": "^1.12.0",
+    "openai": "^6.46.0",
+    "pdf-parse": "^2.4.5",
+    "pg": "^8.22.0",
+    "pgvector": "^0.3.0",
+    "zod": "^4.4.3"
+  }
+}
