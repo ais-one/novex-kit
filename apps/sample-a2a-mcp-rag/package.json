@@ -23,6 +23,7 @@
     "@langchain/textsplitters": "^1.0.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "mammoth": "^1.12.0",
-    "pdf-parse": "^2.4.5"
+    "pdf-parse": "^2.4.5",
+    "openai": "^6.46.0"
   }
 }
