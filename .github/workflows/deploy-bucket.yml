@@ -181,7 +181,7 @@ jobs:
       # Setup .npmrc file to publish to GitHub Packages
       - uses: ./.github/actions/setup-node-npm-install
         with:
-          node-version: '24.13.0'
+          node-version: '24.18.0'
           registry-url: 'https://npm.pkg.github.com'
           # Defaults to the user or organization that owns the workflow file
           scope: '@octocat'
