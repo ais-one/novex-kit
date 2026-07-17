@@ -50,6 +50,13 @@
       "when": 1782985123268,
       "tag": "0006_mighty_punisher",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784258760671,
+      "tag": "0007_public_agent_zero",
+      "breakpoints": true
     }
   ]
 }

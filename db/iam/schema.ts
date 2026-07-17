@@ -96,6 +96,7 @@ export const userMfaRecoveryCodes = iamSchema.table(
     user_id: uuid('user_id')
       .notNull()
       .references(() => iamUsers.id, { onDelete: 'cascade' }),
+    salt: varchar('salt', { length: 64 }).notNull(),
     code_hash: text('code_hash').notNull(),
     used_at: timestamp('used_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),

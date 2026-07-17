@@ -1,3 +1,4 @@
+import * as mfa from '@common/node/auth/controllers/mfa';
 import * as oauth from '@common/node/auth/controllers/oauth';
 import * as oidc from '@common/node/auth/controllers/oidc';
 import * as own from '@common/node/auth/controllers/own';
@@ -21,6 +22,14 @@ export const myauthRoute = express
     // TODO
     res.status(201).end();
   });
+
+export const mfaRoute = express
+  .Router()
+  .post('/totp/setup', auth.authUser, mfa.setup)
+  .post('/totp/activate', auth.authUser, mfa.activate)
+  .post('/totp/deactivate', auth.authUser, mfa.deactivate)
+  .get('/totp/status', auth.authUser, mfa.status)
+  .post('/recovery-codes/regenerate', auth.authUser, mfa.regenerate);
 
 export const oauthRoute = express.Router().get('/callback', oauth.callbackOAuth);
 

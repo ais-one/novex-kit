@@ -1,18 +1,19 @@
 // own authentication
+
+import { eq } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { verify } from 'otplib';
 
 import { createToken, getSecret, setTokensToHeader } from '../jwt.ts';
 import { matchScryptHash } from '../scrypt.ts';
-import { findUser, revokeRefreshToken } from '../store.ts';
+import { findUser, getDb, getMfaRecoveryCodesTable, revokeRefreshToken } from '../store.ts';
 
 const { COOKIE_HTTPONLY, JWT_ALG } = globalThis.__config.JWT;
 
 const LOGIN_FIELD = process.env.AUTH_USER_FIELD_LOGIN ?? '';
 const SALT_FIELD = process.env.AUTH_USER_FIELD_SALT ?? '';
 const PASSWORD_FIELD = process.env.AUTH_USER_FIELD_PASSWORD ?? '';
-const GAKEY_FIELD = process.env.AUTH_USER_FIELD_GAKEY ?? '';
 const ID_FIELD = process.env.AUTH_USER_FIELD_ID_FOR_JWT ?? '';
 const USE_OTP = process.env.USE_OTP;
 
@@ -82,7 +83,7 @@ const login = async (req: Request, res: Response): Promise<void> => {
       res.status(401).json({ message: 'Authorization Format Error' });
       return;
     }
-    if (USE_OTP) {
+    if (USE_OTP || user.mfa_active) {
       res.status(200).json({ otp: id });
       return;
     }
@@ -95,17 +96,40 @@ const login = async (req: Request, res: Response): Promise<void> => {
 };
 
 /**
- * Verify a TOTP pin after the initial login step returns `{ otp: id }`.
- * Uses otplib to verify against the user's stored Google Authenticator key.
+ * Verify a TOTP pin or recovery code after the initial login step returns `{ otp: id }`.
  * Mounted at: POST /auth/otp
  */
 const otp = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id, pin } = req.body as { id: string; pin: string };
+    const { id, pin, type } = req.body as { id: string; pin: string; type?: string };
     const user = await findUser({ id });
     if (user) {
-      const gaKey = user[GAKEY_FIELD] as string;
-      if (USE_OTP !== 'TEST' ? verify({ token: pin, secret: gaKey }) : String(pin) === '111111') {
+      const otpSecret = user.otp_secret as string | undefined;
+
+      if (type === 'recovery') {
+        const recoveryTable = getMfaRecoveryCodesTable();
+        if (!recoveryTable) {
+          res.status(400).json({ message: 'Recovery codes not available' });
+          return;
+        }
+        const codes = await getDb().select().from(recoveryTable).where(eq(recoveryTable.user_id, user.id));
+        for (const c of codes as Array<{ id: string; salt: string; code_hash: string; used_at: Date | null }>) {
+          if (c.used_at) continue;
+          if (await matchScryptHash(pin, c.salt, c.code_hash)) {
+            await getDb().update(recoveryTable).set({ used_at: new Date() }).where(eq(recoveryTable.id, c.id));
+            const tokens = await createToken(user);
+            setTokensToHeader(res, tokens);
+            res.status(200).json(tokens);
+            return;
+          }
+        }
+        res.status(401).json({ message: 'Invalid recovery code' });
+        return;
+      }
+
+      const valid =
+        USE_OTP !== 'TEST' ? (await verify({ token: pin, secret: otpSecret ?? '' })).valid : String(pin) === '111111';
+      if (valid) {
         const tokens = await createToken(user);
         setTokensToHeader(res, tokens);
         res.status(200).json(tokens);

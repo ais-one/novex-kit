@@ -117,14 +117,16 @@
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
               </div>
-              <h1>Check your email</h1>
-              <p>Enter the 6-digit verification code we sent you</p>
+              <h1>Enter your verification code</h1>
+              <p v-if="!recoveryMode">Enter the 6-digit code from your authenticator app</p>
+              <p v-else>Enter one of your recovery codes</p>
             </header>
 
             <div class="fields">
               <label class="field">
                 <span class="field-label">Verification code</span>
                 <a-input
+                  v-if="!recoveryMode"
                   data-cy="pin"
                   type="text"
                   placeholder="000000"
@@ -132,6 +134,14 @@
                   size="large"
                   class="otp-code-input"
                   maxlength="6"
+                />
+                <a-input
+                  v-else
+                  data-cy="recovery"
+                  type="text"
+                  placeholder="Enter recovery code"
+                  v-model:value="otp"
+                  size="large"
                 />
               </label>
             </div>
@@ -149,6 +159,14 @@
                 <svg class="btn-arrow" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M4 10h12M11 5l5 5-5 5"/>
                 </svg>
+              </a-button>
+              <a-button
+                block
+                size="small"
+                type="link"
+                @click="toggleRecovery"
+              >
+                {{ recoveryMode ? 'Use authenticator code instead' : 'Use a recovery code instead' }}
               </a-button>
             </div>
           </div>
@@ -191,6 +209,7 @@ const password = ref('test');
 const errorMessage = ref('');
 const mode = ref('login'); // login, otp
 const otp = ref('');
+const recoveryMode = ref(false);
 
 const forced = ref(false);
 let otpCount = 0;
@@ -202,6 +221,12 @@ const setToLogin = () => {
   mode.value = 'login';
   otp.value = '';
   otpCount = 0;
+  recoveryMode.value = false;
+};
+
+const toggleRecovery = () => {
+  recoveryMode.value = !recoveryMode.value;
+  otp.value = '';
 };
 
 onUnmounted(() => console.log('signIn unmounted'));
@@ -265,7 +290,11 @@ const otpLogin = async () => {
   errorMessage.value = '';
   try {
     auth.setOptions({ refreshUrl: VITE_REFRESH_URL });
-    const { data } = await auth.post('/api/auth/otp', { id: otpId, pin: otp.value });
+    const { data } = await auth.post('/api/auth/otp', {
+      id: otpId,
+      pin: otp.value,
+      ...(recoveryMode.value ? { type: 'recovery' } : {}),
+    });
     const user = parseJwt(data.access_token);
     http.setTokens({ access: data.access_token, refresh: data.refresh_token });
     auth.setTokens({ access: data.access_token, refresh: data.refresh_token });
@@ -278,9 +307,9 @@ const otpLogin = async () => {
       setToLogin();
     } else if (otpCount < 3) {
       otpCount++;
-      errorMessage.value = 'OTP Error';
+      errorMessage.value = recoveryMode.value ? 'Invalid recovery code' : 'Invalid verification code';
     } else {
-      errorMessage.value = 'OTP Tries Exceeded';
+      errorMessage.value = recoveryMode.value ? 'Recovery tries exceeded' : 'OTP Tries Exceeded';
       setToLogin();
     }
   }

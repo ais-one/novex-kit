@@ -10,9 +10,10 @@
  *   00000000-0000-0000-0000-000000000003  → "aaronjxz"
  */
 import { setScryptHash } from '@common/node/auth/scrypt';
+import { encryptWithPassword } from '@common/node/utils/aes';
 // biome-ignore lint/suspicious/noExplicitAny: schema type not needed for seed scripts
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { iamUsers } from '../schema.ts';
+import { iamUsers, userMfaTotp } from '../schema.ts';
 
 export const TEST_USER_IDS = {
   test: '00000000-0000-0000-0000-000000000001',
@@ -57,6 +58,21 @@ export async function seed(db: NodePgDatabase<any>): Promise<void> {
       status: 'active',
     },
   ]);
+
+  const MFA_KEY = process.env.MFA_ENCRYPTION_KEY;
+  if (MFA_KEY) {
+    // Demo MFA secret for "test" user — base32-encoded, matching QR code for testing.
+    // Plaintext secret: "JBSWY3DPEHPK3PXP"
+    const DEMO_TOTP_SECRET = 'JBSWY3DPEHPK3PXP';
+    await db.insert(userMfaTotp).values({
+      user_id: TEST_USER_IDS.test,
+      label: 'Demo Authenticator',
+      secret_encrypted: encryptWithPassword(DEMO_TOTP_SECRET, MFA_KEY),
+      is_active: true,
+      verified_at: new Date(),
+    });
+    console.log('IAM: seeded demo MFA enrollment for test user');
+  }
 
   console.log('IAM: seeded 3 test users');
 }

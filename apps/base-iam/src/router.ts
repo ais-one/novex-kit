@@ -16,6 +16,7 @@ export default ({ app }) => {
   app.use(
     '/api',
     router.use('/auth', auth.myauthRoute),
+    router.use('/auth/mfa', auth.mfaRoute),
     router.use('/oidc', auth.oidcRoute),
     router.use('/oauth', auth.oauthRoute),
     router.use('/saml', auth.samlRoute),

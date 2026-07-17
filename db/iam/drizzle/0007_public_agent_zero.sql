@@ -1,0 +1,1 @@
+ALTER TABLE "iam"."user_mfa_recovery_codes" ADD COLUMN "salt" varchar(64) NOT NULL;

@@ -1,11 +1,26 @@
 import { and, eq, type SQL, sql } from 'drizzle-orm';
 
+import { decryptWithPassword } from '../utils/aes.ts';
+
 // biome-ignore lint/suspicious/noExplicitAny: configurable table reference injected by the app
 let _users: any = null;
+// biome-ignore lint/suspicious/noExplicitAny: MFA table references injected by the app
+let _mfaTotp: any = null;
+let _mfaRecoveryCodes: any = null;
 
-/** Register the users Drizzle table. Call once at app startup before auth functions are used. */
-export const configure = ({ users }: { users: unknown }) => {
+/** Register the users and MFA Drizzle tables. Call once at app startup before auth functions are used. */
+export const configure = ({
+  users,
+  mfaTotp,
+  mfaRecoveryCodes,
+}: {
+  users: unknown;
+  mfaTotp?: unknown;
+  mfaRecoveryCodes?: unknown;
+}) => {
   _users = users;
+  if (mfaTotp) _mfaTotp = mfaTotp;
+  if (mfaRecoveryCodes) _mfaRecoveryCodes = mfaRecoveryCodes;
 };
 
 /** Returns true if configure() has been called with a table reference. */
@@ -39,6 +54,13 @@ export const setup = (tokenServiceName: string, userServiceName: string, lookup:
   _userServiceType = globalThis.__config?.SERVICES_CONFIG?.[userServiceName]?.type ?? 'drizzle';
   _lookup = lookup;
 };
+
+/** Returns the underlying Drizzle instance for MFA controllers to run their own queries. */
+export const getDb = () => db();
+/** Returns the configured `userMfaTotp` table reference. */
+export const getMfaTotpTable = () => _mfaTotp;
+/** Returns the configured `userMfaRecoveryCodes` table reference. */
+export const getMfaRecoveryCodesTable = () => _mfaRecoveryCodes;
 
 /** Persist or replace a user's refresh token. Uses upsert for drizzle, set for keyv. */
 export const setRefreshToken = async (id: string | number, refresh_token: string) => {
@@ -82,7 +104,34 @@ export const findUser = async (where: Record<string, unknown>) => {
       .from(_users)
       .where(and(...conditions))
       .limit(1);
-    return result[0] ?? null;
+    const user = (result[0] as Record<string, unknown> & { mfa_active?: boolean; otp_secret?: string }) ?? null;
+    if (!user) return null;
+
+    if (_mfaTotp) {
+      const mfaRows = await db()
+        .select()
+        .from(_mfaTotp)
+        .where(and(eq(_mfaTotp.user_id, user.id), eq(_mfaTotp.is_active, true)))
+        .limit(1);
+      if (mfaRows.length > 0) {
+        const MFA_KEY = process.env.MFA_ENCRYPTION_KEY;
+        if (MFA_KEY) {
+          try {
+            user.otp_secret = decryptWithPassword(mfaRows[0].secret_encrypted as string, MFA_KEY);
+          } catch {
+            user.otp_secret = (user.gaKey as string) ?? undefined;
+          }
+        } else {
+          user.otp_secret = (user.gaKey as string) ?? undefined;
+        }
+        user.mfa_active = true;
+      } else {
+        user.otp_secret = (user.gaKey as string) ?? undefined;
+        user.mfa_active = false;
+      }
+    }
+
+    return user;
   }
   return null;
 };

@@ -18,7 +18,8 @@
     "@fontsource/dm-sans": "^5.2.8",
     "@fontsource/fraunces": "^5.2.9",
     "chart.js": "^4.5.1",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "qrcode": "^1.5.4"
   },
   "msw": {
     "workerDirectory": "public"

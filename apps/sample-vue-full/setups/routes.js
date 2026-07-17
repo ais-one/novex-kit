@@ -90,6 +90,7 @@ export const SECURE_ROUTES = [
     component: async () => import('../views/TelegramBroadcast.vue'),
   },
   { path: '/comms-config', name: 'Comms Config', component: async () => import('../views/TenantCommsConfig.vue') },
+  { path: '/security', name: 'Security', component: async () => import('../views/SecuritySettings.vue') },
 
   { path: '/demo-view/fill', name: 'Fill No Param', component: async () => import('../views/Demo/Filler.vue') },
   {
