@@ -1,15 +1,5 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "strict": false,
-    "noImplicitAny": false,
-    "skipLibCheck": true,
-    "erasableSyntaxOnly": true
-  },
+  "extends": "../tsconfig.base.json",
   "include": ["**/*.ts", "**/*.d.ts"],
   "exclude": [
     "node_modules",

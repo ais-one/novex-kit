@@ -19,7 +19,8 @@ apps/                # backend and frontend apps (npm workspace)
   sample-api/        # sample backend app — copy and rename, do not develop here directly
   base-iam/          # sample IAM service — auth, RBAC/FGA, user management (SAML/OIDC)
   cron/              # HTTP-triggered cron microservice — plain Express app (its own preRoute/postRoute), no internal scheduler; an external scheduler hits routes like `POST /cron/process-outbox`. Auth is a separate bearer-token scheme (`CRON_API_KEY`), not the main JWT/RBAC/FGA system
-  sample-a2a-rag-mcp/ # combined RAG + MCP + A2A demo — ingest/ (pgvector ingestion), mcp-server/ (MCP tool server), a2a/ (supervisor + specialist)
+  sample-a2a-mcp-rag/ # current combined RAG + MCP + A2A demo — src/{a2a,mcp,rag,lib}/ + demo/, backed by @db/rag (Drizzle + pgvector)
+  sample-a2a-rag-mcp-aaron/ # earlier version of the same demo — ingest/mcp-server/a2a layout, raw SQL (no Drizzle); kept for reference, not actively developed
   sample-vue-full/   # full-featured sample Vue app (port 8081)
   sample-vue-minimal/ # minimal Vue app (port 8080)
   sample-common/     # internal shared backend code for apps/* workspaces (@apps/sample-common)
@@ -36,6 +37,7 @@ db/                  # database schemas, migrations, seeds — separate npm work
   sample/            # @db/sample — public schema: schema.ts, drizzle.config.ts, migrations, seeds (consumed by sample-api, cron)
   iam/               # @db/iam — iam schema: schema.ts, drizzle.config.ts, migrations, seeds (consumed by base-iam)
   audit/             # @db/audit — audit schema: schema.ts, drizzle.config.ts, migrations (SOC2/HIPAA trail)
+  rag/               # @db/rag — pgvector schema (documents, chunks + embedding column): schema.ts, drizzle.config.ts (consumed by sample-a2a-mcp-rag)
 docs/                # project documentation
 generated/           # gitignored scratch folder for local build/runtime artifacts — only .gitignore/README.md are tracked
 scripts/             # code/OpenAPI generation tooling, service mocks (npm workspace)
@@ -46,7 +48,7 @@ scripts/             # code/OpenAPI generation tooling, service mocks (npm works
 .githooks/           # native git hooks (pre-commit, pre-push)
 ```
 
-`sample-a2a-rag-mcp` combines what used to be three separate demo apps into one workspace — see `apps/sample-a2a-rag-mcp/README.md` for the full architecture. `ingest/` ingests documents into pgvector directly (batch/offline pipeline); `mcp-server/` is the MCP *server* (StreamableHTTP transport) exposing `rag_search`/`rag_add_document`/etc.; `a2a/` holds the MCP *client* (`mcp-client.ts`) plus `supervisor.ts` and `specialist.ts`, two separate A2A protocol servers (ports 3100/3101, `/.well-known/agent.json` + `POST /` task endpoints) — the supervisor classifies and delegates to the specialist, which does the actual MCP-backed RAG query. Most of its `npm run` scripts are demo entry points (`ingest:demo`, `a2a:demo`, etc.), not long-running services — it has no real `test` script (stubbed to exit 0).
+`sample-a2a-mcp-rag` is the current combined RAG + MCP + A2A demo (`sample-a2a-rag-mcp-aaron` is an earlier version of the same idea, kept for reference — same concept, `ingest`/`mcp-server`/`a2a` layout, raw SQL instead of Drizzle, not actively developed). In the active app: `src/rag/` ingests documents into pgvector via `@db/rag` (Drizzle); `src/mcp/server.ts` is the MCP *server* (StreamableHTTP transport, `npm run start:mcp`) exposing `rag_search`/`rag_add_document`/etc.; `src/a2a/` holds the MCP *client* (`src/lib/mcp-client.ts`) plus `supervisor.ts` and `specialist.ts`, two separate A2A protocol servers (`npm run start:supervisor`/`start:specialist`, `/.well-known/agent.json` + `POST /` task endpoints) — the supervisor classifies and delegates to the specialist, which does the actual MCP-backed RAG query. `demo/demo.ts` (`npm run demo`) seeds sample docs into an already-running MCP server, spawns the supervisor and specialist as child processes, sends sample queries through the supervisor, then tears both down. Most scripts here are demo entry points, not long-running services — it has no real `test` script (stubbed to exit 0).
 
 ## Setup
 
@@ -175,6 +177,7 @@ Each backend app builds its Express instance from `preRoute()` / `postRoute()` i
 | `public` | `apps/sample-api`, `apps/cron` | `db/sample/schema.ts` | `@db/sample/schema` |
 | `iam` | `apps/base-iam` | `db/iam/schema.ts` | `@db/iam/schema` |
 | `audit` | audit trail (SOC2/HIPAA) | `db/audit/schema.ts` | `@db/audit/schema` |
+| `rag` | `apps/sample-a2a-mcp-rag` | `db/rag/schema.ts` | `@db/rag/schema` |
 
 The PGlite socket server itself (`scripts/db-mocks/serve-db.ts`, `npm run serve`, port 5432) lives outside `db/`, alongside the other local service mocks (redis, kafka, SAML/OIDC) — it's dev-infra tooling, not schema/migrations. It reads and writes `db/dev.db` (gitignored).
 

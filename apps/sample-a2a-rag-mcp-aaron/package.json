@@ -1,5 +1,5 @@
 {
-  "name": "@novex-kit/sample-a2a-rag-mcp",
+  "name": "@novex-kit/sample-a2a-rag-mcp-aaron",
   "version": "0.0.1",
   "description": "Combined demo — RAG ingestion + retrieval via MCP tools + A2A supervisor/specialist orchestration",
   "type": "module",

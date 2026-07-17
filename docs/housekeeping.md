@@ -33,6 +33,15 @@ Runs `npm outdated -ws --json` across all workspaces, splits results into a **sa
 - Batch-confirms the safe bucket in one question, then runs a real `npm install` (not `--dry-run` — that has been observed to rewrite `package-lock.json` for real in this environment) and the test suite.
 - Walks the breaking-review bucket one package at a time — checking peer-dependency deltas via `npm view`, fetching real changelogs/release notes, and where practical trial-installing to catch `ERESOLVE` conflicts — before asking whether to proceed with each one.
 
+### `/housekeeping-check-tsconfig`
+
+Audits every `tsconfig.json` in the repo against the TypeScript version that actually resolves for its workspace (a workspace's own `typescript` devDependency, if declared, takes precedence over the repo root's):
+
+- Resolves the real installed `typescript` package per workspace and reads its `ScriptTarget` enum (from `lib/typescript.d.ts`) to determine the newest `target`/`lib` that compiler actually supports — never a remembered feature set, since new targets (`ES2023`, `ES2024`, `ES2025`, ...) ship across TypeScript releases.
+- Follows `"extends"` chains (e.g. `db/sample/tsconfig.json` → `db/tsconfig.base.json`) to compute each file's effective `target` before comparing.
+- Reports two tables — a tsconfig audit (current vs. newest-supported target, in sync / behind / ahead-invalid) and a `typescript` devDependency drift list (workspaces overriding root's pinned version).
+- **Read-only**: unlike the other two commands, it never edits anything or asks for approval to apply a change — it stops at the report and leaves the decision to the user.
+
 Both commands follow the same hard rule: every version, SHA, and breaking-change claim must come from a live lookup made during that run, not training knowledge. Package versions and their breaking changes can be hours old — recalling what a major version "usually" changes is not a substitute for checking.
 
 ## GitHub Actions: commit-SHA pinning convention
