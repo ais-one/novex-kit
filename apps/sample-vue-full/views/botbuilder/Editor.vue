@@ -49,13 +49,35 @@
           <a-tag :color="nodeColor(selectedNode.type)">Type: {{ selectedNode.type }}</a-tag>
           <a-button size="small" danger @click="deleteSelected">Delete</a-button>
         </div>
+        <!-- Common: Label + Description -->
+        <a-form layout="vertical" style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0">
+          <a-form-item label="Label" :validate-status="labelError ? 'error' : ''" :help="labelError">
+            <a-input v-model:value="nodeConfig.label" size="small" placeholder="kebab-case, e.g. refund-flow" @change="validateLabel" />
+          </a-form-item>
+          <a-form-item label="Description">
+            <a-textarea v-model:value="nodeConfig.description" :rows="2" size="small" placeholder="Short description for AI classification" />
+          </a-form-item>
+        </a-form>
+        <!-- Type-specific forms -->
         <TextForm v-if="selectedNode.type === 'text'" />
         <ConditionalForm v-if="selectedNode.type === 'conditional'" />
         <a-form v-if="selectedNode.type === 'router-agent'" layout="vertical">
-          <a-form-item label="System Prompt"><a-textarea v-model:value="nodeConfig.systemPrompt" :rows="3" size="small" /></a-form-item>
-          <a-form-item label="Edges (one per line: name|description)">
-            <a-textarea v-model:value="nodeConfig.edgesRaw" :rows="3" size="small" placeholder="support|KB and FAQ help&#10;weather|Weather info" />
+          <a-form-item label="Custom Prompt (optional)">
+            <a-textarea v-model:value="nodeConfig.systemPrompt" :rows="2" size="small" placeholder="Override auto-generated classification prompt" />
           </a-form-item>
+          <a-form-item label="Connected Edges">
+            <div v-for="edge in getOutgoingEdges(selectedNode.id)" :key="edge.id" style="font-size: 12px; margin-bottom: 4px">
+              <a-tag color="blue">{{ edge.label || 'no-label' }}</a-tag> → {{ edge.target }}
+            </div>
+            <p v-if="getOutgoingEdges(selectedNode.id).length === 0" style="color: #999; font-size: 11px">No edges connected. Drag from the right handle to connect.</p>
+          </a-form-item>
+        </a-form>
+        <a-form v-if="selectedNode.type === 'agent-handover'" layout="vertical">
+          <a-form-item label="Message"><a-input v-model:value="nodeConfig.message" size="small" /></a-form-item>
+        </a-form>
+        <a-form v-if="selectedNode.type === 'send-attachment'" layout="vertical">
+          <a-form-item label="File Path Variable"><a-input v-model:value="nodeConfig.filePathVar" size="small" placeholder="filePath" /></a-form-item>
+          <a-form-item label="Caption"><a-input v-model:value="nodeConfig.caption" size="small" placeholder="Optional caption for the file" /></a-form-item>
         </a-form>
         <a-form v-if="selectedNode.type === 'tool-agent'" layout="vertical">
           <a-form-item label="System Prompt"><a-textarea v-model:value="nodeConfig.systemPrompt" :rows="3" size="small" /></a-form-item>
@@ -63,15 +85,13 @@
             <a-checkbox-group v-model:value="nodeConfig.assignedTools" style="display: flex; flex-direction: column; gap: 4px">
               <a-checkbox value="rag_search">Search KB</a-checkbox>
               <a-checkbox value="rag_list_documents">List KB Docs</a-checkbox>
+              <a-checkbox value="generate_refund_pdf">Generate Refund PDF</a-checkbox>
               <a-checkbox value="openweather_get_weather">Get Weather</a-checkbox>
               <a-checkbox value="openweather_get_forecast">Get Forecast</a-checkbox>
             </a-checkbox-group>
           </a-form-item>
         </a-form>
-        <a-form v-if="selectedNode.type === 'agent-handover'" layout="vertical">
-          <a-form-item label="Message"><a-input v-model:value="nodeConfig.message" size="small" /></a-form-item>
-        </a-form>
-        <p v-if="!['text','conditional','router-agent','tool-agent','agent-handover'].includes(selectedNode.type)" style="color: #999; font-size: 12px">No config needed for this node type.</p>
+        <p v-if="!['text','conditional','router-agent','tool-agent','agent-handover','send-attachment'].includes(selectedNode.type)" style="color: #999; font-size: 12px">No additional config needed.</p>
       </a-drawer>
     </div>
   </div>
@@ -92,6 +112,7 @@ import ConditionalNode from './nodes/ConditionalNode.vue';
 import EndSessionNode from './nodes/EndSessionNode.vue';
 import ListenTriggerNode from './nodes/ListenTriggerNode.vue';
 import RouterAgentNode from './nodes/RouterAgentNode.vue';
+import SendAttachmentNode from './nodes/SendAttachmentNode.vue';
 import TextNode from './nodes/TextNode.vue';
 import ToolAgentNode from './nodes/ToolAgentNode.vue';
 import TriggerNode from './nodes/TriggerNode.vue';
@@ -112,6 +133,7 @@ const mounted = ref(false);
 const elements = ref([]);
 const selectedNode = ref(null);
 const nodeConfig = reactive({});
+const labelError = ref('');
 const activeKeys = ref(['entry', 'core', 'agentic', 'end']);
 
 let idCounter = 0;
@@ -126,6 +148,7 @@ const nodeTypes = {
   'tool-agent': markRaw(ToolAgentNode),
   'agent-handover': markRaw(AgentHandoverNode),
   'end-session': markRaw(EndSessionNode),
+  'send-attachment': markRaw(SendAttachmentNode),
 };
 
 const entryNodes = [
@@ -135,6 +158,7 @@ const entryNodes = [
 const coreNodes = [
   { type: 'text', label: 'Text', desc: 'Send a message, optionally capture reply' },
   { type: 'conditional', label: 'Conditional', desc: 'Branch based on variable value' },
+  { type: 'send-attachment', label: 'Send Attachment', desc: 'Send a file or document to the user' },
 ];
 const agenticNodes = [
   { type: 'router-agent', label: 'Router Agent', desc: 'AI picks which path to follow' },
@@ -155,17 +179,36 @@ const nodeColor = type => {
     'end-session': 'default',
     trigger: 'green',
     'listen-trigger': 'cyan',
+    'send-attachment': 'geekblue',
   };
   return m[type] || 'default';
 };
 
+const kebabCaseRe = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const validateLabel = () => {
+  const val = nodeConfig.label || '';
+  if (val && !kebabCaseRe.test(val)) {
+    labelError.value = 'Must be kebab-case (e.g. refund-flow)';
+  } else {
+    labelError.value = '';
+  }
+};
+
+const getOutgoingEdges = nodeId => {
+  return elements.value.filter(e => e.source === nodeId && e.target);
+};
+
 const defaultInput = type => {
-  if (type === 'conditional') return { conditionals: [{ variable: null, operator: null, matches: null, and: [] }] };
-  if (type === 'text') return { messageSource: 'text', message: '', captureData: false, stored_to: 'last_message' };
-  if (type === 'router-agent') return { systemPrompt: '', edgesRaw: '' };
-  if (type === 'tool-agent') return { systemPrompt: '', assignedTools: [] };
-  if (type === 'agent-handover') return { message: 'Transferring to human agent...' };
-  return {};
+  const base = { label: '', description: '' };
+  if (type === 'conditional')
+    return { ...base, conditionals: [{ variable: null, operator: null, matches: null, and: [] }] };
+  if (type === 'text')
+    return { ...base, messageSource: 'text', message: '', captureData: false, stored_to: 'last_message' };
+  if (type === 'router-agent') return { ...base, systemPrompt: '' };
+  if (type === 'tool-agent') return { ...base, systemPrompt: '', assignedTools: [] };
+  if (type === 'agent-handover') return { ...base, message: 'Transferring to human agent...' };
+  if (type === 'send-attachment') return { ...base, filePathVar: 'filePath', caption: '' };
+  return base;
 };
 
 const onDragStart = (event, nodeType) => {
@@ -191,14 +234,19 @@ const onConnect = connection => {
     source: connection.source,
     target: connection.target,
     sourceHandle: connection.sourceHandle,
-    type: 'smoothstep',
+    type: 'straight',
+    markerEnd: { type: 'arrowclosed' },
   });
 };
 
 const onNodeClick = ({ node }) => {
   selectedNode.value = node;
   store.updateSelectedNode(node);
-  Object.assign(nodeConfig, node.data?.input || {});
+  // Clear old config, then assign new values with defaults
+  for (const key of Object.keys(nodeConfig)) delete nodeConfig[key];
+  const input = { label: '', description: '', ...(node.data?.input || {}) };
+  Object.assign(nodeConfig, input);
+  labelError.value = '';
 };
 
 watch(
@@ -297,7 +345,8 @@ onMounted(async () => {
               source: e.source,
               target: e.target,
               sourceHandle: e.label,
-              type: 'smoothstep',
+              type: 'straight',
+              markerEnd: { type: 'arrowclosed' },
             });
           }
         }

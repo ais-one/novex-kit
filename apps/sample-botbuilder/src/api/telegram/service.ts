@@ -20,6 +20,9 @@ function freshState(chatId: string, userName: string, message: string): BotState
     handoverRequired: false,
     sessionEnded: false,
     requireUserInput: true,
+    resumeNodeId: undefined,
+    lastNodeId: undefined,
+    pendingMessages: [],
   } as BotStateType;
 }
 
@@ -43,6 +46,14 @@ export async function handleWebhook(body: Record<string, unknown>): Promise<void
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     logger.error('[bot] TELEGRAM_BOT_TOKEN not set');
+    return;
+  }
+
+  // /reset command — delete session and start fresh
+  if (text.trim().toLowerCase() === '/reset') {
+    await db().delete(botbuilderSessions).where(eq(botbuilderSessions.chatId, chatId));
+    await sendMessage(botToken, chatId, '🔄 Session reset. Send any message to start a new conversation.');
+    logger.info(`[bot] session reset for chatId=${chatId}`);
     return;
   }
 
@@ -94,6 +105,10 @@ export async function handleWebhook(body: Record<string, unknown>): Promise<void
       } else {
         logger.info(`[bot] resuming session id=${session.id} for chatId=${chatId}`);
         state = { ...(session.state as unknown as BotStateType) };
+        // Resume from the node where we paused last time.
+        // If the session's currentNodeId doesn't match any node in the current graph
+        // (e.g. after seed update), the builder will fall back to the trigger node.
+        state.resumeNodeId = session.currentNodeId || undefined;
       }
       state.message = text;
       state.requireUserInput = true;
@@ -117,6 +132,18 @@ export async function handleWebhook(body: Record<string, unknown>): Promise<void
     return;
   }
 
+  // Intent classification (PDT_AIS pattern): when user is on a listen_trigger,
+  // restart from the entry node. The router-agent will classify the message.
+  const flow = graphConfig.flow as unknown as GraphConfig;
+  const currentNode = flow.nodes.find(n => n.id === session!.currentNodeId);
+  if (currentNode?.type === 'listen-trigger') {
+    const triggerNode = flow.nodes.find(n => n.type === 'trigger');
+    if (triggerNode) {
+      logger.info(`[bot] on listen_trigger, restarting from entry: ${triggerNode.id}`);
+      state!.resumeNodeId = triggerNode.id;
+    }
+  }
+
   // Phase 2: External — MCP + graph execution (no DB connection held)
   logger.info('[bot] connecting to MCP...');
   const mcpClient = await connectMcp(process.env.MCP_SERVER_URL || 'http://localhost:3100/mcp');
@@ -126,6 +153,10 @@ export async function handleWebhook(body: Record<string, unknown>): Promise<void
 
   let result: BotStateType;
   try {
+    // Clear pending messages from previous invocation to avoid duplicates
+    state!.pendingMessages = [];
+    // Add user message to history so nodes can see the full conversation
+    state!.history = [...(state!.history || []), { role: 'user', content: text }];
     result = (await compiledGraph.invoke(state!)) as BotStateType;
   } catch (err) {
     logger.error('[bot] graph invocation error:', (err as Error).message);
@@ -133,15 +164,19 @@ export async function handleWebhook(body: Record<string, unknown>): Promise<void
     return;
   }
 
-  logger.info(`[bot] graph result: agentResponse="${(result.agentResponse || '').slice(0, 80)}"`);
+  logger.info(
+    `[bot] graph result: pendingMessages=${result.pendingMessages?.length || 0}, last="${(result.agentResponse || '').slice(0, 60)}"`,
+  );
 
-  // Phase 3: DB — persist bot response + update session state (short transaction)
+  // Phase 3: DB — persist all bot messages + update session state (short transaction)
+  const messages = result.pendingMessages || (result.agentResponse ? [result.agentResponse] : []);
+
   await db().transaction(async tx => {
-    if (result.agentResponse) {
+    for (const msg of messages) {
       await tx.insert(botbuilderMessages).values({
         sessionId: session!.id,
         role: 'bot',
-        content: result.agentResponse,
+        content: msg,
         contentType: 'text',
       });
     }
@@ -149,7 +184,7 @@ export async function handleWebhook(body: Record<string, unknown>): Promise<void
     await tx
       .update(botbuilderSessions)
       .set({
-        currentNodeId: 'listen-trigger',
+        currentNodeId: result.lastNodeId || 'trigger',
         state: result as unknown as Record<string, unknown>,
         status: result.sessionEnded ? 'ended' : 'active',
         updatedAt: new Date(),
@@ -157,8 +192,8 @@ export async function handleWebhook(body: Record<string, unknown>): Promise<void
       .where(eq(botbuilderSessions.id, session!.id));
   });
 
-  // Phase 4: Send response AFTER DB commit
-  if (result.agentResponse) {
-    await sendMessage(botToken, chatId, result.agentResponse);
+  // Phase 4: Send ALL pending messages AFTER DB commit
+  for (const msg of messages) {
+    await sendMessage(botToken, chatId, msg);
   }
 }

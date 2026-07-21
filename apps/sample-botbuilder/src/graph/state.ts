@@ -49,6 +49,18 @@ export const BotState = Annotation.Root({
     reducer: (_current, update) => update,
     default: () => true,
   }),
+  resumeNodeId: Annotation<string | undefined>({
+    reducer: (_current, update) => update,
+    default: () => undefined,
+  }),
+  lastNodeId: Annotation<string | undefined>({
+    reducer: (_current, update) => update,
+    default: () => undefined,
+  }),
+  pendingMessages: Annotation<string[]>({
+    reducer: (current, update) => (update ? [...current, ...update] : current),
+    default: () => [],
+  }),
 });
 
 export type BotStateType = typeof BotState.State;

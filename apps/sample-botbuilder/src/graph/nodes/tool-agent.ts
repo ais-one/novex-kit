@@ -22,6 +22,7 @@ export async function toolAgentNode(state: BotStateType, mcpClient: Client, conf
 
   let finalResponse = '';
   const MAX_ITERATIONS = 10;
+  const toolResultVars: Record<string, unknown> = {};
 
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
     logger.info('[tool-agent] calling LLM...');
@@ -61,6 +62,16 @@ export async function toolAgentNode(state: BotStateType, mcpClient: Client, conf
         const text = (result.content as Array<{ type: string; text: string }>)?.[0]?.text || '';
         logger.info(`[tool] ${toolCall.function.name} → ${text.slice(0, 120)}`);
         messages.push({ role: 'tool', tool_call_id: toolCall.id, content: text });
+
+        // Extract structured data from tool results into state variables
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed.pdf_path) toolResultVars.filePath = parsed.pdf_path;
+          if (parsed.refund_ref) toolResultVars.refundRef = parsed.refund_ref;
+          if (parsed.refund_amount) toolResultVars.refundAmount = parsed.refund_amount;
+        } catch {
+          /* not JSON, skip */
+        }
       }
     } else {
       finalResponse = message.content || '';
@@ -76,11 +87,9 @@ export async function toolAgentNode(state: BotStateType, mcpClient: Client, conf
 
   return {
     agentResponse: finalResponse,
-    history: [
-      ...state.history,
-      { role: 'user' as const, content: state.message },
-      { role: 'bot' as const, content: finalResponse },
-    ],
+    pendingMessages: [finalResponse],
+    variables: { ...state.variables, ...toolResultVars },
+    history: [{ role: 'bot' as const, content: finalResponse }],
     requireUserInput: true,
   };
 }

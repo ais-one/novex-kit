@@ -1,9 +1,27 @@
 import type { BotStateType, GraphConfigNode } from '../state.ts';
 
 export async function textNode(state: BotStateType, config?: GraphConfigNode) {
-  const messageTemplate = (config?.data?.input?.message as string) || '';
+  const input = config?.data?.input as Record<string, unknown> | undefined;
+  const messageTemplate = (input?.message as string) || '';
+  const captureData = input?.captureData as boolean | undefined;
+  const storedTo = (input?.stored_to as string) || 'last_message';
+
   const interpolated = messageTemplate.replace(/\{(\w+)\}/g, (_, key: string) => {
     return String(state.variables?.[key] ?? `{${key}}`);
   });
-  return { agentResponse: interpolated || "Sorry, I don't understand." };
+
+  // captureData: true + resuming from this node = second pass (capture user input)
+  if (captureData && state.resumeNodeId === config?.id) {
+    const updatedVars = { ...state.variables, [storedTo]: state.message };
+    logger.info(`[text] captureData: stored "${state.message.slice(0, 40)}" → ${storedTo}`);
+    return { variables: updatedVars };
+  }
+
+  const response = interpolated || (captureData ? 'Please provide your input.' : "Sorry, I don't understand.");
+
+  return {
+    agentResponse: response,
+    pendingMessages: [response],
+    history: [{ role: 'bot' as const, content: response }],
+  };
 }
