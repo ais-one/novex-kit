@@ -1,9 +1,9 @@
 import express from 'express';
-import base from './api/base/routes.ts';
-import graph from './api/graph/routes.ts';
-import rag from './api/rag/routes.ts';
-import telegram from './api/telegram/routes.ts';
-import tools from './api/tools/routes.ts';
+import base from './base/routes.ts';
+import graph from './graph/routes.ts';
+import rag from './rag/routes.ts';
+import telegram from './telegram/routes.ts';
+import tools from './tools/routes.ts';
 
 const router = express.Router();
 

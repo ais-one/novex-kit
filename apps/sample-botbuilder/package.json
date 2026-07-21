@@ -4,7 +4,7 @@
   "description": "Hybrid deterministic + agentic botbuilder sample — LangGraph + MCP + RAG + Telegram",
   "type": "module",
   "scripts": {
-    "start:api": "node --watch --watch-preserve-output --trace-warnings src/index.ts",
+    "start:api": "node --watch --watch-preserve-output --trace-warnings src/api/index.ts",
     "start:mcp": "node --watch --watch-preserve-output --trace-warnings src/mcp/server.ts",
     "lint": "biome check .",
     "typecheck": "tsc --noEmit",

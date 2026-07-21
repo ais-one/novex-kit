@@ -4,12 +4,12 @@ Hybrid deterministic + agentic botbuilder sample using LangGraph, MCP, RAG, and 
 
 ## Architecture
 
-Two servers in one package:
+Two servers:
 
-| Server | Port | Script |
-|---|---|---|
-| API Server (Telegram webhook + LangGraph engine) | 3101 | `npm run start:api` |
-| MCP Server (tools + RAG) | 3100 | `npm run start:mcp` |
+| Server | Port | Entry | Package script |
+|---|---|---|---|
+| API Server (Telegram + LangGraph) | 3101 | `src/api/index.ts` | `npm run start:api` |
+| MCP Server (tools + RAG) | 3100 | `src/mcp/server.ts` | `npm run start:mcp` |
 
 ## Prerequisites
 
@@ -53,7 +53,7 @@ npm install
 5. Seed the default bot configuration:
 
 ```bash
-npm run seed --workspace=@novex-kit/sample-botbuilder
+npm run db:seed --workspace=db/sample botbuilder
 ```
 
 ## Running
