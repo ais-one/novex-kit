@@ -211,6 +211,44 @@ export const commsOutbox = pgTable(
   ],
 );
 
+// ─── botbuilder_graphs ───────────────────────────────────────────────────────
+
+export const botbuilderGraphs = pgTable('botbuilder_graphs', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  flow: jsonb('flow').notNull(),
+  status: text('status').default('draft'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// ─── botbuilder_sessions ──────────────────────────────────────────────────────
+
+export const botbuilderSessions = pgTable('botbuilder_sessions', {
+  id: serial('id').primaryKey(),
+  chatId: text('chat_id').notNull().unique(),
+  userName: text('user_name'),
+  graphId: integer('graph_id').references(() => botbuilderGraphs.id),
+  currentNodeId: text('current_node_id').default('trigger'),
+  state: jsonb('state'),
+  status: text('status').default('active'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// ─── botbuilder_messages ──────────────────────────────────────────────────────
+
+export const botbuilderMessages = pgTable('botbuilder_messages', {
+  id: serial('id').primaryKey(),
+  sessionId: integer('session_id').references(() => botbuilderSessions.id, { onDelete: 'cascade' }),
+  role: text('role').notNull(),
+  content: text('content').notNull(),
+  contentType: text('content_type').default('text'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 // ─── Relations ────────────────────────────────────────────────────────────────
 
 export const studentRelations = relations(student, ({ many }) => ({

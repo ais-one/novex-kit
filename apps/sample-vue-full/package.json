@@ -17,6 +17,9 @@
     "@common/vue": "file:../../common/compiled/vue",
     "@fontsource/dm-sans": "^5.2.8",
     "@fontsource/fraunces": "^5.2.9",
+    "@vue-flow/background": "^1.3.2",
+    "@vue-flow/controls": "^1.1.3",
+    "@vue-flow/core": "^1.48.2",
     "chart.js": "^4.5.1",
     "leaflet": "^1.9.4"
   },

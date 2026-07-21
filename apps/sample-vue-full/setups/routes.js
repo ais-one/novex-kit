@@ -91,6 +91,19 @@ export const SECURE_ROUTES = [
   },
   { path: '/comms-config', name: 'Comms Config', component: async () => import('../views/TenantCommsConfig.vue') },
 
+  { path: '/botbuilder/list', name: 'Bot List', component: async () => import('../views/botbuilder/List.vue') },
+  {
+    path: '/botbuilder/editor/:id',
+    name: 'Bot Editor',
+    component: async () => import('../views/botbuilder/Editor.vue'),
+  },
+  { path: '/botbuilder/kb', name: 'KB Upload', component: async () => import('../views/botbuilder/KbUpload.vue') },
+  {
+    path: '/botbuilder/test/:id?',
+    name: 'Bot Test',
+    component: async () => import('../views/botbuilder/TestChat.vue'),
+  },
+
   { path: '/demo-view/fill', name: 'Fill No Param', component: async () => import('../views/Demo/Filler.vue') },
   {
     path: '/demo-view/fill/:param',

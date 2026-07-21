@@ -36,6 +36,13 @@
       "when": 1782966366489,
       "tag": "0004_swift_hercules",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784528595733,
+      "tag": "0005_serious_namorita",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,26 @@
+{
+  "name": "@novex-kit/sample-botbuilder",
+  "version": "0.0.1",
+  "description": "Hybrid deterministic + agentic botbuilder sample — LangGraph + MCP + RAG + Telegram",
+  "type": "module",
+  "scripts": {
+    "start:api": "node --watch --watch-preserve-output --trace-warnings src/index.ts",
+    "start:mcp": "node --watch --watch-preserve-output --trace-warnings src/mcp/server.ts",
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "echo \"Error: no test specified\" && exit 0",
+    "test": "exit 0"
+  },
+  "dependencies": {
+    "@common/node": "file:../../common/compiled/node",
+    "@db/rag": "file:../../db/rag",
+    "@db/sample": "file:../../db/sample",
+    "@langchain/langgraph": "^0.2.74",
+    "@langchain/textsplitters": "^1.0.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "openai": "^6.46.0",
+    "pg": "^8.13.0",
+    "pgvector": "^0.3.0",
+    "zod": "^3.0.0"
+  }
+}
