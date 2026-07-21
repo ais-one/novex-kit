@@ -1,23 +1,12 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { embedText, ingestDocument, listDocuments, searchVector } from '../lib/rag.ts';
-
-type ToolHandler = (
-  args: Record<string, unknown>,
-) => Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }>;
+import { ingestDocument, listDocuments, searchVector } from '../lib/rag.ts';
 
 export default function initRagTools(server: McpServer) {
-  const registerTool = (
-    server as unknown as {
-      registerTool: (
-        name: string,
-        meta: { title: string; description: string; inputSchema: Record<string, unknown> },
-        handler: ToolHandler,
-      ) => void;
-    }
-  ).registerTool;
+  // biome-ignore lint/suspicious/noExplicitAny: registerTool requires this binding
+  const register = (server as any).registerTool.bind(server);
 
-  registerTool(
+  register(
     'rag_add_document',
     {
       title: 'Add Document',
@@ -34,7 +23,7 @@ export default function initRagTools(server: McpServer) {
     },
   );
 
-  registerTool(
+  register(
     'rag_search',
     {
       title: 'Search Documents',
@@ -50,7 +39,7 @@ export default function initRagTools(server: McpServer) {
     },
   );
 
-  registerTool(
+  register(
     'rag_list_documents',
     {
       title: 'List Documents',

@@ -3,22 +3,11 @@ import { z } from 'zod';
 
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
-type ToolHandler = (
-  args: Record<string, unknown>,
-) => Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }>;
-
 export default function initOpenWeatherTools(server: McpServer) {
-  const registerTool = (
-    server as unknown as {
-      registerTool: (
-        name: string,
-        meta: { title: string; description: string; inputSchema: Record<string, unknown> },
-        handler: ToolHandler,
-      ) => void;
-    }
-  ).registerTool;
+  // biome-ignore lint/suspicious/noExplicitAny: registerTool requires this binding
+  const register = (server as any).registerTool.bind(server);
 
-  registerTool(
+  register(
     'openweather_get_weather',
     {
       title: 'Get Current Weather',
@@ -59,7 +48,7 @@ export default function initOpenWeatherTools(server: McpServer) {
     },
   );
 
-  registerTool(
+  register(
     'openweather_get_forecast',
     {
       title: 'Get Weather Forecast',
