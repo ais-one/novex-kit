@@ -33,8 +33,7 @@ export function conditionalNode(state: BotStateType, config?: GraphConfigNode) {
 }
 
 function evaluateCondition(state: BotStateType, variable: string, operator: string, matches: unknown): boolean {
-  const value =
-    (state as Record<string, unknown>)[variable] ?? state.variables?.[variable as keyof typeof state.variables];
+  const value = state.variables?.[variable] ?? (state as Record<string, unknown>)[variable];
   const matchStr = String(matches ?? '');
 
   if (operator === '=' || operator === 'equals') return String(value ?? '') === matchStr;
@@ -44,7 +43,9 @@ function evaluateCondition(state: BotStateType, variable: string, operator: stri
   if (operator === '<') return Number(value) < Number(matchStr);
   if (operator === '>=') return Number(value) >= Number(matchStr);
   if (operator === '<=') return Number(value) <= Number(matchStr);
-  if (operator === 'exists') return value !== undefined && value !== null && value !== '';
+  if (operator === 'exists' || operator === 'is not empty')
+    return value !== undefined && value !== null && value !== '';
+  if (operator === 'is empty') return value === undefined || value === null || value === '';
 
   return false;
 }

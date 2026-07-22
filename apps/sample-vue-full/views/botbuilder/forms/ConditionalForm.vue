@@ -9,7 +9,7 @@
         <a-col :span="8"><a-input v-model:value="c.variable" size="small" placeholder="variable" /></a-col>
         <a-col :span="6">
           <a-select v-model:value="c.operator" size="small" :options="[
-            {value:'=',label:'='},{value:'!=',label:'!='},{value:'contains',label:'contains'},{value:'>',label:'>'},{value:'<',label:'<'},{value:'>=',label:'>='},{value:'<=',label:'<='}
+            {value:'=',label:'='},{value:'!=',label:'!='},{value:'contains',label:'contains'},{value:'>',label:'>'},{value:'<',label:'<'},{value:'>=',label:'>='},{value:'<=',label:'<='},{value:'exists',label:'exists'},{value:'is not empty',label:'is not empty'},{value:'is empty',label:'is empty'}
           ]" style="width:100%" />
         </a-col>
         <a-col :span="7"><a-input v-model:value="c.matches" size="small" placeholder="value" /></a-col>
@@ -19,7 +19,7 @@
         <a-row :gutter="4">
           <a-col :span="1"><span style="line-height: 24px; font-size: 12px; color: #999">AND</span></a-col>
           <a-col :span="7"><a-input v-model:value="and.variable" size="small" placeholder="variable" /></a-col>
-          <a-col :span="6"><a-select v-model:value="and.operator" size="small" :options="[{value:'=',label:'='},{value:'!=',label:'!='},{value:'contains',label:'contains'}]" style="width:100%" /></a-col>
+          <a-col :span="6"><a-select v-model:value="and.operator" size="small" :options="[{value:'=',label:'='},{value:'!=',label:'!='},{value:'contains',label:'contains'},{value:'exists',label:'exists'},{value:'is not empty',label:'is not empty'},{value:'is empty',label:'is empty'}]" style="width:100%" /></a-col>
           <a-col :span="7"><a-input v-model:value="and.matches" size="small" placeholder="value" /></a-col>
           <a-col :span="3"><a-button shape="circle" size="small" @click="() => deleteInlineCondition(i, j)"><MinusOutlined /></a-button></a-col>
         </a-row>

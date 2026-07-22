@@ -28,13 +28,15 @@ export interface RefundPdfData {
   reason: string;
 }
 
-export function generateRefundPdf(data: RefundPdfData): string {
+export async function generateRefundPdf(data: RefundPdfData): Promise<string> {
   if (!PDFDocument) throw new Error('pdfkit not installed');
 
   ensureOutputDir();
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
   const buffers: Buffer[] = [];
   doc.on('data', (chunk: Buffer) => buffers.push(chunk));
+
+  const streamDone = new Promise<void>(resolve => doc.on('end', resolve));
 
   // Header
   doc.font('Helvetica-Bold').fontSize(24).text('Minerva Inc.', { align: 'center' });
@@ -135,8 +137,13 @@ export function generateRefundPdf(data: RefundPdfData): string {
     .text('For inquiries, contact merch@minervainc.id or WhatsApp +62 812-3456-7890', { align: 'center' });
 
   doc.end();
+  await streamDone;
 
   const buffer = Buffer.concat(buffers);
+  if (buffer.length === 0) {
+    throw new Error('PDF generation produced empty buffer');
+  }
+
   const filename = `refund-${data.refundRef}.pdf`;
   const filepath = join(OUTPUT_DIR, filename);
   writeFileSync(filepath, buffer);

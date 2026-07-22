@@ -38,14 +38,27 @@ export async function seed(db: NodePgDatabase<any>): Promise<void> {
       {
         id: 'n3',
         type: 'tool-agent',
-        position: { x: 560, y: 100 },
+        position: { x: 560, y: 40 },
         data: {
           input: {
             label: 'general-info',
             description: 'Answer questions from knowledge base',
+            stored_to: 'last_message',
             systemPrompt:
               "Search the knowledge base for Minerva Inc. information. Answer the user's question about the company, products, YouTube channel, team, or anything company-related. Be friendly and helpful.",
             assignedTools: ['rag_search', 'rag_list_documents'],
+          },
+        },
+      },
+      {
+        id: 'n3-tx',
+        type: 'text',
+        position: { x: 820, y: 40 },
+        data: {
+          input: {
+            label: 'send-general',
+            description: 'Send general info response',
+            message: '{last_message}',
           },
         },
       },
@@ -56,174 +69,225 @@ export async function seed(db: NodePgDatabase<any>): Promise<void> {
       {
         id: 'n30',
         type: 'tool-agent',
-        position: { x: 560, y: 220 },
+        position: { x: 560, y: 160 },
         data: {
           input: {
             label: 'refund-policy-info',
             description: 'Explain refund policy from KB',
+            stored_to: 'last_message',
             systemPrompt:
               'Search the knowledge base for the refund policy. Explain clearly: refunds are 80% of original price, 14 day window for standard products, 7 days for customized. Show examples (Jacket Bomber $80→$64, Custom Cup $5→$4). Mention the refund process steps. Do NOT start a refund — just provide information.',
             assignedTools: ['rag_search', 'rag_list_documents'],
           },
         },
       },
+      {
+        id: 'n30-tx',
+        type: 'text',
+        position: { x: 820, y: 160 },
+        data: {
+          input: {
+            label: 'send-refund-policy',
+            description: 'Send refund policy response',
+            message: '{last_message}',
+          },
+        },
+      },
 
       // ═══════════════════════════════════════════════════════════════════
-      // REFUND FLOW — actual refund process
+      // REFUND FLOW — multi-step: ask → capture → extract → check → PDF
       // ═══════════════════════════════════════════════════════════════════
-      // Step 1: Parse user request, search KB, ask for missing info
+      // Step 1: AI asks the user for their data
       {
         id: 'n9',
         type: 'tool-agent',
-        position: { x: 560, y: 340 },
+        position: { x: 560, y: 280 },
         data: {
           input: {
-            label: 'refund-start',
-            description: 'Start refund: explain policy, ask for details',
-            systemPrompt: `You are a Minerva Inc. refund specialist. The user wants to start a refund.
+            label: 'ask-refund-data',
+            description: 'Ask user for name, email, phone, product',
+            stored_to: 'refund_msg',
+            assignedTools: ['rag_search'],
+            systemPrompt: `You are a Minerva Inc. refund specialist. Ask the user for the information needed to process a refund.
 
-First, search the KB with rag_search for the refund policy.
+Required info: full name, email address, phone number, and which product they want to refund.
 
-Then analyze the user's message. They may have already provided product name, order number, and reason. If all info is present:
-- Show the refund calculation (80% of price)
-- Ask them to confirm by saying "yes"
-- Example: "You mentioned Jacket Bomber ($80). Refund is $64 (80%). Confirm?"
+Products: Jacket Bomber ($80), Custom Cup ($5), T-Shirt ($25), Hoodie ($55), Cap ($18), Stickers ($3).
 
-If some info is missing, ask for ONLY what's missing:
-- Missing product: "What product are you refunding? (Jacket Bomber $80, Custom Cup $5, T-Shirt $25, Hoodie $55, Cap $18, Stickers $3)"
-- Missing order: "What is your order number? (format: MNV-YYYYMMDD-XXXX)"
-- Missing reason: "What is the reason for the refund?"
+Check the conversation history. If the user already provided some info, do NOT ask for it again. Only ask for what's missing.
 
-If the user says "cancel", "stop", "never mind", or similar — tell them the refund is cancelled and they can start over anytime.
+If everything is already provided, confirm the details and say the refund is being processed.
 
-Be concise. Don't repeat information the user already provided.`,
-            assignedTools: ['rag_search', 'rag_list_documents'],
-          },
-        },
-      },
-      // Step 2: Confirm refund, ask for contact info
-      {
-        id: 'n11',
-        type: 'tool-agent',
-        position: { x: 820, y: 340 },
-        data: {
-          input: {
-            label: 'refund-confirm',
-            description: 'Calculate refund, get contact info',
-            systemPrompt: `The customer wants to confirm their refund. From the conversation history:
-
-1. Find the product and calculate the refund (80%).
-   Products: Jacket Bomber $80→$64, Custom Cup $5→$4, T-Shirt $25→$20, Hoodie $55→$44, Cap $18→$14.40, Stickers $3→$2.40
-   If product not listed, estimate and say "approximately".
-
-2. If the user provided name, email, phone in their message — thank them and call generate_refund_pdf.
-   If NOT — ask: "To proceed, please provide your full name, email, and phone number."
-
-3. If the user says "cancel", "stop", "never mind" — cancel politely.
-
-Be concise. Use conversation history to avoid repeating.`,
-            assignedTools: ['rag_search', 'generate_refund_pdf'],
-          },
-        },
-      },
-      // Step 3: Generate PDF + send
-      {
-        id: 'n13',
-        type: 'tool-agent',
-        position: { x: 1080, y: 340 },
-        data: {
-          input: {
-            label: 'refund-pdf',
-            description: 'Generate and confirm refund PDF',
-            systemPrompt:
-              'The user provided all details. From the conversation history, extract: customer_name, customer_email, customer_phone, order_number, product_name, product_price, refund_reason. Call generate_refund_pdf. After generating, tell the user the PDF will be sent.',
-            assignedTools: ['generate_refund_pdf'],
+Be friendly and concise.`,
           },
         },
       },
       {
-        id: 'n14',
-        type: 'send-attachment',
-        position: { x: 1340, y: 340 },
-        data: {
-          input: {
-            label: 'send-pdf',
-            description: 'Send refund PDF to user',
-            filePathVar: 'filePath',
-            caption: '📄 Minerva Inc. — Refund Confirmation',
-          },
-        },
-      },
-      {
-        id: 'n15',
+        id: 'n9-tx',
         type: 'text',
-        position: { x: 1600, y: 340 },
+        position: { x: 820, y: 280 },
+        data: {
+          input: {
+            label: 'send-and-capture',
+            description: 'Send AI question, then capture user reply',
+            message: '{refund_msg}',
+            captureData: true,
+            stored_to: 'last_message',
+          },
+        },
+      },
+      // Step 2: Extract structured data from user's reply
+      {
+        id: 'n9-extract',
+        type: 'tool-agent',
+        position: { x: 1340, y: 280 },
+        data: {
+          input: {
+            label: 'extract-refund-data',
+            description: 'Extract name, email, phone, product from reply',
+            multipleVariables: true,
+            stored_to: 'refund_name, refund_email, refund_phone, refund_product',
+            assignedTools: [],
+            systemPrompt: `Extract the user's refund information from their message and the conversation history.
+
+Required fields:
+- refund_name: full name
+- refund_email: email address
+- refund_phone: phone number
+- refund_product: which product they want to refund (exact product name from: Jacket Bomber, Custom Cup, T-Shirt, Hoodie, Cap, Stickers)
+
+Check the FULL conversation history for previously provided information. Do NOT overwrite previously stored values with empty strings.
+
+If a field is not yet provided, use an empty string for that key.
+
+Respond with ONLY a JSON object using these exact keys: refund_name, refund_email, refund_phone, refund_product. No other text.`,
+          },
+        },
+      },
+      // Step 4: Check if all required fields exist
+      {
+        id: 'n9-check',
+        type: 'conditional',
+        position: { x: 1600, y: 280 },
+        data: {
+          input: {
+            label: 'check-all-fields',
+            description: 'Check if all refund data is present',
+            conditionals: [
+              {
+                variable: 'refund_name',
+                operator: 'is not empty',
+                matches: null,
+                and: [
+                  { variable: 'refund_email', operator: 'is not empty', matches: null },
+                  { variable: 'refund_phone', operator: 'is not empty', matches: null },
+                  { variable: 'refund_product', operator: 'is not empty', matches: null },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      // Step 5: Generate PDF
+      {
+        id: 'n9-pdf',
+        type: 'tool-agent',
+        position: { x: 1860, y: 280 },
+        data: {
+          input: {
+            label: 'generate-refund-pdf',
+            description: 'Generate the refund PDF document',
+            stored_to: 'refund_msg',
+            assignedTools: ['generate_refund_pdf'],
+            toolOutputMapping: {
+              generate_refund_pdf: {
+                pdf_path: 'refund_pdf_path',
+                refund_amount: 'refund_amount',
+              },
+            },
+            systemPrompt: `Generate a refund PDF for the customer.
+
+Use the following data from the conversation:
+- Name, email, phone: from the conversation history
+- Product: from the conversation history
+- Order number: use format MNV-YYYYMMDD-XXXX (generate based on today's date if not provided)
+- Refund reason: from the conversation history, or use "Customer request" if not stated
+- Product price: Jacket Bomber $80, Custom Cup $5, T-Shirt $25, Hoodie $55, Cap $18, Stickers $3
+
+Call generate_refund_pdf with the extracted values. After the tool returns, confirm to the user that the refund is being processed.`,
+          },
+        },
+      },
+      // Step 6: Send the PDF file
+      {
+        id: 'n9-att',
+        type: 'send-attachment',
+        position: { x: 2120, y: 280 },
+        data: {
+          input: {
+            label: 'send-pdf-file',
+            description: 'Send refund PDF to user',
+            filePathVar: 'refund_pdf_path',
+            caption: '\u{1F4C4} Minerva Inc. \u2014 Refund Confirmation',
+          },
+        },
+      },
+      // Step 7: Confirmation message
+      {
+        id: 'n9-done',
+        type: 'text',
+        position: { x: 2380, y: 280 },
         data: {
           input: {
             label: 'refund-done',
             description: 'Confirm refund submitted',
             message:
-              '✅ Your refund has been submitted!\n\n📋 PDF sent above.\n💰 Refund processed in 5–7 business days.\n\nThank you for being a Minerva Inc. customer!',
+              '\u2705 Your refund has been submitted!\n\n\u{1F4CB} PDF sent above.\n\u{1F4B0} Refund processed in 5\u20137 business days.\n\nThank you for being a Minerva Inc. customer!',
           },
         },
       },
 
       // ═══════════════════════════════════════════════════════════════════
-      // NEW LEAD FLOW
+      // NEW LEAD FLOW — single AI extracts all contact info via JSON
       // ═══════════════════════════════════════════════════════════════════
       {
         id: 'n5',
-        type: 'text',
-        position: { x: 560, y: 460 },
-        data: {
-          input: {
-            label: 'ask-name',
-            description: 'Ask for full name',
-            message: "Great! We'd love to have you join Minerva Inc.! 🎮\n\nFirst, what is your full name?",
-            captureData: true,
-            stored_to: 'customer_name',
-          },
-        },
-      },
-      {
-        id: 'n6',
-        type: 'text',
-        position: { x: 820, y: 460 },
-        data: {
-          input: {
-            label: 'ask-email',
-            description: 'Ask for email address',
-            message: 'Thanks, {customer_name}! What is your email address?',
-            captureData: true,
-            stored_to: 'customer_email',
-          },
-        },
-      },
-      {
-        id: 'n7',
-        type: 'text',
-        position: { x: 1080, y: 460 },
-        data: {
-          input: {
-            label: 'ask-phone',
-            description: 'Ask for phone number',
-            message: 'Almost done! What is your phone number?',
-            captureData: true,
-            stored_to: 'customer_phone',
-          },
-        },
-      },
-      {
-        id: 'n8',
         type: 'tool-agent',
-        position: { x: 1340, y: 460 },
+        position: { x: 560, y: 480 },
         data: {
           input: {
-            label: 'confirm-lead',
-            description: 'Confirm registration details',
-            systemPrompt:
-              'Extract name, email, phone from conversation history. Confirm details and thank them for registering with Minerva Inc. Tell them about new videos and merchandise updates.',
-            assignedTools: ['rag_search'],
+            label: 'capture-lead',
+            description: 'Extract name, email, phone from user message',
+            multipleVariables: true,
+            stored_to: 'customer_name, customer_email, customer_phone, welcome_message',
+            systemPrompt: `You are Minerva Inc.'s registration assistant. Extract the user's contact info from their message.
+
+Check the FULL conversation history for previously provided information.
+
+If name/email/phone are ALL present (from this message or previous ones):
+- Put each in its JSON field: customer_name, customer_email, customer_phone
+- Put a friendly welcome in welcome_message: "Thanks {name}! You're now registered with Minerva Inc. We'll send updates about new videos and merchandise to {email}."
+
+If any field is STILL missing, ask for ONLY what's missing:
+- Put empty strings for fields you don't have yet
+- Put your question in welcome_message
+
+IMPORTANT: Do NOT overwrite previously stored values with empty strings. If you already have customer_name from a previous message but don't have customer_email yet, set customer_name to the stored value and ask for customer_email.
+
+Respond with ONLY a JSON object using these keys: customer_name, customer_email, customer_phone, welcome_message. No other text.`,
+            assignedTools: [],
+          },
+        },
+      },
+      {
+        id: 'n5-tx',
+        type: 'text',
+        position: { x: 820, y: 480 },
+        data: {
+          input: {
+            label: 'send-lead-response',
+            description: 'Send welcome message or question',
+            message: '{welcome_message}',
           },
         },
       },
@@ -234,25 +298,38 @@ Be concise. Use conversation history to avoid repeating.`,
       {
         id: 'n20',
         type: 'tool-agent',
-        position: { x: 560, y: 580 },
+        position: { x: 560, y: 600 },
         data: {
           input: {
             label: 'weather',
             description: 'Answer weather questions',
+            stored_to: 'last_message',
             systemPrompt:
               'You are a friendly weather assistant. Use the weather tools to answer weather questions. Be concise.',
             assignedTools: ['openweather_get_weather', 'openweather_get_forecast'],
           },
         },
       },
+      {
+        id: 'n20-tx',
+        type: 'text',
+        position: { x: 820, y: 600 },
+        data: {
+          input: {
+            label: 'send-weather',
+            description: 'Send weather response',
+            message: '{last_message}',
+          },
+        },
+      },
 
       // ═══════════════════════════════════════════════════════════════════
-      // LISTEN TRIGGER — terminal, NO outgoing edges
+      // TERMINAL LISTEN TRIGGER (NO outgoing edges)
       // ═══════════════════════════════════════════════════════════════════
       {
         id: 'n21',
         type: 'listen-trigger',
-        position: { x: 1900, y: 340 },
+        position: { x: 2640, y: 340 },
         data: { input: { label: 'wait-next', description: 'Wait for next user message' } },
       },
     ],
@@ -267,27 +344,31 @@ Be concise. Use conversation history to avoid repeating.`,
       { source: 'n2', target: 'n20', label: 'weather' },
       { source: 'n2', target: 'n3', label: 'fallback' },
 
-      // General → listen
-      { source: 'n3', target: 'n21' },
+      // General: AI → text → listen
+      { source: 'n3', target: 'n3-tx' },
+      { source: 'n3-tx', target: 'n21' },
 
-      // Refund policy → listen
-      { source: 'n30', target: 'n21' },
+      // Refund policy: AI → text → listen
+      { source: 'n30', target: 'n30-tx' },
+      { source: 'n30-tx', target: 'n21' },
 
-      // Refund process: n9→n11→n13→n14→n15→listen
-      { source: 'n9', target: 'n11' },
-      { source: 'n11', target: 'n13' },
-      { source: 'n13', target: 'n14' },
-      { source: 'n14', target: 'n15' },
-      { source: 'n15', target: 'n21' },
+      // Refund: ask → send+capture → extract → check → (all: PDF → attach → done) or (missing: back to ask)
+      { source: 'n9', target: 'n9-tx' },
+      { source: 'n9-tx', target: 'n9-extract' },
+      { source: 'n9-extract', target: 'n9-check' },
+      { source: 'n9-check', target: 'n9-pdf', label: 'source-if-0' },
+      { source: 'n9-check', target: 'n9', label: 'source-else' },
+      { source: 'n9-pdf', target: 'n9-att' },
+      { source: 'n9-att', target: 'n9-done' },
+      { source: 'n9-done', target: 'n21' },
 
-      // New lead: n5→n6→n7→n8→listen
-      { source: 'n5', target: 'n6' },
-      { source: 'n6', target: 'n7' },
-      { source: 'n7', target: 'n8' },
-      { source: 'n8', target: 'n21' },
+      // New lead: AI extract → text → listen
+      { source: 'n5', target: 'n5-tx' },
+      { source: 'n5-tx', target: 'n21' },
 
-      // Weather → listen
-      { source: 'n20', target: 'n21' },
+      // Weather: AI → text → listen
+      { source: 'n20', target: 'n20-tx' },
+      { source: 'n20-tx', target: 'n21' },
     ],
   };
 

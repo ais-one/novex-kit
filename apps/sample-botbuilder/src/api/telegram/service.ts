@@ -132,8 +132,8 @@ export async function handleWebhook(body: Record<string, unknown>): Promise<void
     return;
   }
 
-  // Intent classification (PDT_AIS pattern): when user is on a listen_trigger,
-  // restart from the entry node. The router-agent will classify the message.
+  // When user is on a listen_trigger, restart from the entry node.
+  // The router-agent will classify the message and route to the correct flow.
   const flow = graphConfig.flow as unknown as GraphConfig;
   const currentNode = flow.nodes.find(n => n.id === session!.currentNodeId);
   if (currentNode?.type === 'listen-trigger') {

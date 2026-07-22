@@ -22,7 +22,7 @@ export const BotState = Annotation.Root({
     default: () => [],
   }),
   variables: Annotation<Record<string, unknown>>({
-    reducer: (_current, update) => update,
+    reducer: (current, update) => ({ ...current, ...update }),
     default: () => ({}),
   }),
   agentResponse: Annotation<string | undefined>({
@@ -50,6 +50,10 @@ export const BotState = Annotation.Root({
     default: () => true,
   }),
   resumeNodeId: Annotation<string | undefined>({
+    reducer: (_current, update) => update,
+    default: () => undefined,
+  }),
+  captureDataDone: Annotation<string | undefined>({
     reducer: (_current, update) => update,
     default: () => undefined,
   }),

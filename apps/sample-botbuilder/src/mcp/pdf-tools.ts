@@ -34,7 +34,7 @@ export default function initPdfTools(server: McpServer) {
       const refundRef = `REF-${Date.now()}`;
       const refundAmount = Number(product_price) * 0.8;
 
-      const filepath = generateRefundPdf({
+      const filepath = await generateRefundPdf({
         refundRef,
         customerName: String(customer_name),
         customerEmail: String(customer_email),

@@ -9,16 +9,18 @@ import { sendAttachmentNode } from './nodes/send-attachment.ts';
 import { textNode } from './nodes/text.ts';
 import { toolAgentNode } from './nodes/tool-agent.ts';
 import { triggerNode } from './nodes/trigger.ts';
-import { BotState, type BotStateType, type GraphConfig } from './state.ts';
+import { BotState, type BotStateType, type GraphConfig, type GraphConfigNode } from './state.ts';
 
-function logWrap(nodeId: string, nodeType: string, fn: (state: BotStateType) => unknown) {
+function logWrap(node: GraphConfigNode, fn: (state: BotStateType) => unknown) {
+  const input = node.data?.input as Record<string, unknown> | undefined;
+  const label = (input?.label as string) || node.id;
   return async (state: BotStateType) => {
-    logger.info(`[node] ${nodeType} (${nodeId}) — start`);
+    logger.info(`[node] ${node.type}:${label} (${node.id}) — start`);
     const result = await fn(state);
     const r = result as Record<string, unknown>;
     const summary = r?.agentResponse ? ` agentResponse="${String(r.agentResponse).slice(0, 60)}"` : '';
-    logger.info(`[node] ${nodeType} (${nodeId}) — done${summary}`);
-    return { ...r, lastNodeId: nodeId };
+    logger.info(`[node] ${node.type}:${label} (${node.id}) — done${summary}`);
+    return { ...r, lastNodeId: node.id };
   };
 }
 
@@ -55,29 +57,28 @@ export async function buildGraph(config: GraphConfig, mcpClient?: Client) {
       case 'trigger':
         graph.addNode(
           node.id,
-          logWrap(node.id, node.type, state => triggerNode(state)),
+          logWrap(node, state => triggerNode(state)),
         );
         break;
       case 'text':
         graph.addNode(
           node.id,
-          logWrap(node.id, node.type, state => textNode(state, node)),
+          logWrap(node, state => textNode(state, node)),
         );
         break;
       case 'conditional':
         graph.addNode(
           node.id,
-          logWrap(node.id, node.type, state => conditionalNode(state, node)),
+          logWrap(node, state => conditionalNode(state, node)),
         );
         break;
       case 'tool-agent':
         graph.addNode(
           node.id,
-          logWrap(node.id, node.type, state => toolAgentNode(state, mcpClient!, node)),
+          logWrap(node, state => toolAgentNode(state, mcpClient!, node)),
         );
         break;
       case 'router-agent': {
-        // Auto-generate edge info from outgoing edges and target node descriptions
         const outgoing = config.edges.filter(e => e.source === node.id);
         const edgeInfo: EdgeInfo[] = outgoing.map(e => {
           const targetNode = config.nodes.find(n => n.id === e.target);
@@ -91,32 +92,32 @@ export async function buildGraph(config: GraphConfig, mcpClient?: Client) {
         });
         graph.addNode(
           node.id,
-          logWrap(node.id, node.type, state => routerAgentNode(state, node, edgeInfo)),
+          logWrap(node, state => routerAgentNode(state, node, edgeInfo)),
         );
         break;
       }
       case 'agent-handover':
         graph.addNode(
           node.id,
-          logWrap(node.id, node.type, state => agentHandoverNode(state, node)),
+          logWrap(node, state => agentHandoverNode(state, node)),
         );
         break;
       case 'end-session':
         graph.addNode(
           node.id,
-          logWrap(node.id, node.type, state => endSessionNode(state)),
+          logWrap(node, state => endSessionNode(state)),
         );
         break;
       case 'listen-trigger':
         graph.addNode(
           node.id,
-          logWrap(node.id, node.type, state => listenTriggerNode(state, node)),
+          logWrap(node, state => listenTriggerNode(state, node)),
         );
         break;
       case 'send-attachment':
         graph.addNode(
           node.id,
-          logWrap(node.id, node.type, state => sendAttachmentNode(state, node)),
+          logWrap(node, state => sendAttachmentNode(state, node)),
         );
         break;
     }
@@ -220,7 +221,7 @@ export async function buildGraph(config: GraphConfig, mcpClient?: Client) {
           node.id,
           (state: unknown) => {
             const s = state as BotStateType;
-            const result = s.resumeNodeId === node.id ? '__resume__' : '__pause__';
+            const result = s.captureDataDone === node.id ? '__resume__' : '__pause__';
             logger.info(`[captureData] ${node.id} → ${result === '__resume__' ? outgoing[0].target : 'END (pause)'}`);
             return result;
           },

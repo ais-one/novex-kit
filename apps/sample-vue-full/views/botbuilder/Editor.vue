@@ -90,6 +90,27 @@
               <a-checkbox value="openweather_get_forecast">Get Forecast</a-checkbox>
             </a-checkbox-group>
           </a-form-item>
+          <!-- Tool Output Mapping: only show for checked tools that have output schemas -->
+          <template v-for="toolName in (nodeConfig.assignedTools || [])" :key="toolName">
+            <a-form-item v-if="toolOutputSchemas[toolName]?.length" :label="`${toolLabel(toolName)} Output Mapping`">
+              <div v-for="field in toolOutputSchemas[toolName]" :key="field.field" style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px">
+                <span style="font-size: 12px; min-width: 120px">{{ field.label }}:</span>
+                <a-input
+                  :value="(nodeConfig.toolOutputMapping || {})[toolName]?.[field.field] || ''"
+                  @update:value="setToolOutputMapping(toolName, field.field, $event)"
+                  size="small"
+                  :placeholder="`e.g. ${toolName}_${field.field}`"
+                />
+              </div>
+            </a-form-item>
+          </template>
+          <a-form-item label="Store to Variable">
+            <a-input v-model:value="nodeConfig.stored_to" size="small" placeholder="e.g. refund_msg" />
+          </a-form-item>
+          <a-form-item label="Multiple Variables">
+            <a-switch v-model:checked="nodeConfig.multipleVariables" size="small" />
+            <span style="margin-left: 8px; color: #999; font-size: 12px">Store as JSON object to each key in stored_to (comma-separated)</span>
+          </a-form-item>
         </a-form>
         <p v-if="!['text','conditional','router-agent','tool-agent','agent-handover','send-attachment'].includes(selectedNode.type)" style="color: #999; font-size: 12px">No additional config needed.</p>
       </a-drawer>
@@ -135,6 +156,7 @@ const selectedNode = ref(null);
 const nodeConfig = reactive({});
 const labelError = ref('');
 const activeKeys = ref(['entry', 'core', 'agentic', 'end']);
+const toolOutputSchemas = ref({});
 
 let idCounter = 0;
 const nextId = () => `n${++idCounter}`;
@@ -184,6 +206,28 @@ const nodeColor = type => {
   return m[type] || 'default';
 };
 
+const toolLabels = {
+  rag_search: 'Search KB',
+  rag_list_documents: 'List KB Docs',
+  generate_refund_pdf: 'Generate Refund PDF',
+  openweather_get_weather: 'Get Weather',
+  openweather_get_forecast: 'Get Forecast',
+};
+const toolLabel = name => toolLabels[name] || name;
+
+const setToolOutputMapping = (toolName, field, value) => {
+  if (!nodeConfig.toolOutputMapping) nodeConfig.toolOutputMapping = {};
+  if (!nodeConfig.toolOutputMapping[toolName]) nodeConfig.toolOutputMapping[toolName] = {};
+  if (value) {
+    nodeConfig.toolOutputMapping[toolName][field] = value;
+  } else {
+    delete nodeConfig.toolOutputMapping[toolName][field];
+    if (Object.keys(nodeConfig.toolOutputMapping[toolName]).length === 0) {
+      delete nodeConfig.toolOutputMapping[toolName];
+    }
+  }
+};
+
 const kebabCaseRe = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const validateLabel = () => {
   const val = nodeConfig.label || '';
@@ -205,7 +249,15 @@ const defaultInput = type => {
   if (type === 'text')
     return { ...base, messageSource: 'text', message: '', captureData: false, stored_to: 'last_message' };
   if (type === 'router-agent') return { ...base, systemPrompt: '' };
-  if (type === 'tool-agent') return { ...base, systemPrompt: '', assignedTools: [] };
+  if (type === 'tool-agent')
+    return {
+      ...base,
+      systemPrompt: '',
+      assignedTools: [],
+      stored_to: '',
+      multipleVariables: false,
+      toolOutputMapping: {},
+    };
   if (type === 'agent-handover') return { ...base, message: 'Transferring to human agent...' };
   if (type === 'send-attachment') return { ...base, filePathVar: 'filePath', caption: '' };
   return base;
@@ -319,6 +371,12 @@ const save = async () => {
 };
 
 onMounted(async () => {
+  // Fetch tool output schemas
+  try {
+    const schemaRv = await http.get('http://127.0.0.1:3101/api/sample-botbuilder/tools/output-schemas');
+    if (schemaRv.data?.schemas) toolOutputSchemas.value = schemaRv.data.schemas;
+  } catch {}
+
   if (!isNew) {
     try {
       const rv = await http.get(`http://127.0.0.1:3101/api/sample-botbuilder/graph/configs/${botId}`);

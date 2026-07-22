@@ -10,11 +10,33 @@ export async function textNode(state: BotStateType, config?: GraphConfigNode) {
     return String(state.variables?.[key] ?? `{${key}}`);
   });
 
-  // captureData: true + resuming from this node = second pass (capture user input)
+  // captureData: resuming from this node = capture user input
   if (captureData && state.resumeNodeId === config?.id) {
     const updatedVars = { ...state.variables, [storedTo]: state.message };
     logger.info(`[text] captureData: stored "${state.message.slice(0, 40)}" → ${storedTo}`);
-    return { variables: updatedVars };
+    // Set captureDataDone so conditional edge routes to next node, clear resumeNodeId so loop-back sends instead of captures
+    return { variables: updatedVars, captureDataDone: config?.id, resumeNodeId: undefined };
+  }
+
+  // captureData: loop back after previous capture — send message again, clear captureDataDone
+  if (captureData && state.captureDataDone === config?.id) {
+    const response = interpolated || 'Please provide your input.';
+    logger.info(`[text] captureData loop-back: sending "${response.slice(0, 40)}"`);
+    return {
+      agentResponse: response,
+      pendingMessages: [response],
+      history: [{ role: 'bot' as const, content: response }],
+      captureDataDone: undefined,
+    };
+  }
+
+  // captureData with no message: just pause, don't send anything
+  if (captureData && !messageTemplate) {
+    return {
+      agentResponse: '',
+      pendingMessages: [],
+      history: [],
+    };
   }
 
   const response = interpolated || (captureData ? 'Please provide your input.' : "Sorry, I don't understand.");
