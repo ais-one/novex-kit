@@ -70,7 +70,13 @@ const login = async (req: Request, res: Response): Promise<void> => {
       res.status(401).json({ message: 'Incorrect credentials...1' });
       return;
     }
-    if (!(await matchScryptHash(req.body[PASSWORD_FIELD], user[SALT_FIELD], user[PASSWORD_FIELD]))) {
+    if (
+      !(await matchScryptHash(
+        req.body[PASSWORD_FIELD] as string,
+        user[SALT_FIELD] as string,
+        user[PASSWORD_FIELD] as string,
+      ))
+    ) {
       res.status(401).json({ message: 'Incorrect credentials...2' });
       return;
     }
@@ -83,7 +89,7 @@ const login = async (req: Request, res: Response): Promise<void> => {
       res.status(401).json({ message: 'Authorization Format Error' });
       return;
     }
-    if (USE_OTP || user.mfa_active) {
+    if (USE_OTP && user.mfa_active) {
       res.status(200).json({ otp: id });
       return;
     }
@@ -128,7 +134,7 @@ const otp = async (req: Request, res: Response): Promise<void> => {
       }
 
       const valid =
-        USE_OTP !== 'TEST' ? (await verify({ token: pin, secret: otpSecret ?? '' })).valid : String(pin) === '111111';
+        USE_OTP === 'TEST' ? String(pin) === '111111' : (await verify({ token: pin, secret: otpSecret ?? '' })).valid;
       if (valid) {
         const tokens = await createToken(user);
         setTokensToHeader(res, tokens);
