@@ -5,7 +5,8 @@ export default defineConfig({
   schema: './schema.ts',
   out: './drizzle',
   schemaFilter: ['public'],
+  migrations: { schema: 'drizzle_sample' },
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'postgresql://localhost:5432/db_express',
+    url: process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/db_express',
   },
 });
