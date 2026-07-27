@@ -1,7 +1,5 @@
+import { auth } from '@common/vue/plugins/fetch';
 import { useMainStore } from '../store';
-
-// TODO import { http } from '@common/vue/plugins/fetch'
-const { VITE_API_URL } = import.meta.env;
 
 // const permissions = {
 //   // g1 = route groups, g2 = user roles
@@ -20,18 +18,16 @@ export const authGuard = async (to, from, next) => {
   const store = useMainStore();
 
   const previouslyLoggedIn = async () => {
+    try {
+      const response = await auth.get('/api/auth/verify');
+      if (response.status >= 200 && response.status < 400) {
+        store.user = response.data.user;
+        return true;
+      }
+    } catch (e) {
+      // Token missing, expired, or invalid — fall through to redirect
+    }
     return false;
-    // let result = false
-    // const store = useMainStore()
-
-    // // check if user previously logged in (has token in cookies)
-    // const response = await http.get(`${VITE_API_URL}/auth/verify`)
-    // if (response.status == 200) {
-    //   const user = response.data.data.user
-    //   store.user = user
-    //   result = true
-    // }
-    // return result
   };
 
   // TODO find users from localStorage? // potential security leak

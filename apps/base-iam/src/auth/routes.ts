@@ -12,7 +12,7 @@ export const myauthRoute = express
   .post('/otp', own.otp)
   .post('/refresh', auth.authRefresh)
   .get('/logout', own.logout)
-  .get('/verify', auth.authUser, async (req, res) => res.json({}))
+  .get('/verify', auth.authUser, async (req, res) => res.json({ user: req.user }))
   .get('/me', auth.authUser, (req, res) => {
     const { sub } = req.user;
     // you can also get more user information from here from a datastore
