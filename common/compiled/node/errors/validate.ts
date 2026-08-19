@@ -1,4 +1,4 @@
-// shared/middleware/validate.js
+// common/compiled/node/errors/validate.ts
 // Express middleware factory — validates req[target] against a Zod schema.
 //
 // On success  → req[target] is replaced with the parsed (coerced + stripped) value.
@@ -7,27 +7,25 @@
 // Usage:
 //   router.post('/', validate('body', CreatePaymentBodySchema), asyncWrap(handler))
 
-import { AppError } from './AppError.ts';
+import type { NextFunction, Request, Response } from 'express';
+import type { ZodTypeAny } from 'zod';
+import { ValidationError } from './AppError.ts';
 
-class ValidationError extends AppError {
-  constructor(message) {
-    super(message, 422, 'VALIDATION_ERROR');
-  }
-}
+type ValidationTarget = 'body' | 'params' | 'query';
 
-/**
- * @param {'body' | 'params' | 'query'} target
- * @param {import('zod').ZodTypeAny} schema
- */
-export function validate(target, schema) {
-  return (req, _res, next) => {
+export function validate(target: ValidationTarget, schema: ZodTypeAny) {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req[target]);
     if (!result.success) {
       // Zod v4: result.error.issues (renamed from .errors in v3)
-      const message = result.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ');
-      return next(new ValidationError(message));
+      const message = result.error.issues
+        .map((issue: { path: PropertyKey[]; message: string }) => `${issue.path.join('.')}: ${issue.message}`)
+        .join('; ');
+      next(new ValidationError(message, result.error.issues, { cause: result.error }));
+      return;
     }
-    req[target] = result.data;
-    return next();
+    // biome-ignore lint/suspicious/noExplicitAny: req[target] (body/params/query) has a different literal type per Express itself; assigning the parsed value back is the documented contract
+    (req as any)[target] = result.data;
+    next();
   };
 }

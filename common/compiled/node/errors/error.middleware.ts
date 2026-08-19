@@ -18,6 +18,7 @@ function normalizeError(err: unknown): NormalizedError {
       message: String(e.message || 'An unexpected error occurred'),
       details: e.details,
       stack: typeof e.stack === 'string' ? e.stack : undefined,
+      cause: e.cause,
       isOperational: true,
     };
   }
@@ -50,21 +51,28 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
   const statusCode = error.statusCode ?? 500;
 
   if (statusCode >= 500) {
-    logger.error({
+    logger.error(`${req.method} ${req.path} ${statusCode}`, {
       type: 'server_error',
       code: error.code,
-      message: error.message,
       path: req.path,
       method: req.method,
-      requestId: req.headers['x-request-id'],
+      requestId: req.requestId,
+      layer: 'controller',
+      fn: 'errorHandler',
       stack: error.stack,
+      ...(error.cause !== undefined && {
+        cause: error.cause instanceof Error ? error.cause.stack : String(error.cause),
+      }),
     });
   } else if (isDev) {
-    logger.warn({
+    logger.warn(`${req.method} ${req.path} ${statusCode}`, {
       type: 'client_error',
       code: error.code,
       status: statusCode,
       path: req.path,
+      requestId: req.requestId,
+      layer: 'controller',
+      fn: 'errorHandler',
     });
   }
 

@@ -28,9 +28,10 @@ declare namespace Express {
       info(msg: unknown, meta?: Record<string, unknown>): void;
       debug(msg: unknown, meta?: Record<string, unknown>): void;
     };
-    rawBody?: Buffer;
     startTime: number;
-    /** Set by `express/requestId.ts`'s `requestIdMiddleware` — see the structured-logging skill. */
+    /** Set by `@common/node/express/requestId.ts`'s `requestIdMiddleware` — see the structured-logging skill. */
     requestId: string;
+    /** Set by `@apps/vision-common/express/audit/audit-context.ts`'s `auditContext()` — see its README. */
+    dbTransaction: <T>(callback: (trx: import('knex').Knex.Transaction) => Promise<T>) => Promise<T>;
   }
 }

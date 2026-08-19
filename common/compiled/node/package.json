@@ -11,7 +11,7 @@
   },
   "main": "logger.ts",
   "scripts": {
-    "test": "node --experimental-test-coverage --test-reporter=spec --test __test__/*.test.ts",
+    "test": "node --experimental-test-coverage --experimental-test-module-mocks --test-reporter=spec --test __test__/*.test.ts",
     "cover": "node --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=lcov.info --test __test__/*.spec.ts",
     "typecheck": "tsc --noEmit"
   },

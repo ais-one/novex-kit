@@ -28,9 +28,8 @@ declare namespace Express {
       info(msg: unknown, meta?: Record<string, unknown>): void;
       debug(msg: unknown, meta?: Record<string, unknown>): void;
     };
-    rawBody?: Buffer;
     startTime: number;
-    /** Set by `express/requestId.ts`'s `requestIdMiddleware` — see the structured-logging skill. */
+    /** Set by `@common/node/express/requestId.ts`'s `requestIdMiddleware` — see the structured-logging skill. */
     requestId: string;
   }
 }
