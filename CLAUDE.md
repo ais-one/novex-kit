@@ -242,6 +242,45 @@ Read `docs/conventions.md` before making code changes.
   ```
 - Mark incomplete or planned work with `TODO`
 
+## Clean architecture (controller → service → repository)
+
+Backend apps under `apps/*` follow a layered architecture — **routes → controllers → services → repositories** — so each file has one reason to change and business logic stays independent of Express and of any specific data source.
+
+This layering is always **TypeScript with `strict: true`** — never plain JS+JSDoc, and never the `strict: false` seen in this repo's older tsconfigs (`common/compiled/node`, `apps/vision-custom-api`). Give the app its own `tsconfig.json` + `global.d.ts` (copy from `apps/vision-common` or `apps/vision-queue-consumer` — see the skill for the exact template and the strict-mode pitfalls already hit building those).
+
+| Layer | File pattern | Responsibility | May import/call |
+|---|---|---|---|
+| Routes | `routes/*.routes.ts` | Express route wiring only | controllers |
+| Controllers | `controllers/*.controller.ts` | Parse/validate the request (`zod`), call **one** service method, shape the HTTP response | services |
+| Services | `services/*.service.ts` | Business logic and orchestration — no `req`/`res`, no direct DB/HTTP calls | repositories |
+| Repositories — data | `repositories/data/*.repository.ts` | Persistence: DB/cache queries | DB/cache clients (e.g. `@common/node/services/db/*`) |
+| Repositories — external | `repositories/external/*.repository.ts` | Calls to third-party APIs or other internal services over HTTP | `fetch` / SDK clients |
+
+The repository layer is the **only** layer allowed to know about a physical data source, and is split internally into `data/` (databases, caches) and `external/` (third-party APIs, other internal services) so swapping a data source or an API provider never touches a service or controller. Not every app needs both subfolders populated — an empty counterpart is fine; a repository file that mixes the two concerns is not.
+
+Don't confuse this with `common/compiled/node/services/*` — that's shared cross-app **infrastructure** (DB client factories, cloud SDK wrappers) consumed *by* the repository layer, not the per-app business-logic service layer described above.
+
+**Mockability is mandatory** for services and repositories — a controller must be testable without a real service, and a service must be testable without a real DB or network call:
+- Preferred: a plain module with named function exports (see `common/compiled/node/auth/store.ts`), mocked in tests with `mock.module()` (see [Module mock paths](#module-mock-paths)).
+- Acceptable when a layer needs interchangeable implementations: a class with constructor-injected dependencies and a default singleton export (see `apps/document-parser/src/controllers/parser.controller.ts` and `src/services/document-parser.service.ts`), mocked by constructing with a fake collaborator instead.
+- Either way: a service never imports a concrete DB client or calls `fetch` directly, and a controller never imports a repository directly — only the layer immediately below.
+
+**DTOs are mandatory at every boundary.** A repository maps a raw DB row or a third-party API response into the domain model before returning it — never let either raw shape leak up to the service. A controller maps the domain model into a response DTO before sending it — never `res.json()` a domain model directly. Every successful response is `{ message, data }` (`data: null` when there's nothing to return); errors keep the existing `{ error: { code, message } }` shape already produced by `common/node/errors/error.middleware.ts`. Validate a third-party response with zod in the repository the moment it's received, the same way request input is validated in the controller (`common/node/errors/validate.ts`).
+
+Full conventions, a worked example, and a per-app rollout map (what to extract from today's fat handlers in `vision-custom-api`, `vision-mcp`, and `vision-rag`) live in the `clean-architecture` skill — invoke with `/clean-architecture`. Use the `clean-architecture-reviewer` subagent to audit a change or an app for layering/mockability/DTO compliance.
+
+## Logging and tracing
+
+All logging goes through `common/node/logger`'s structured JSON transport (level, timestamp, service — already automatic) — never `console.*`. On top of that base, controller/service/repository code follows a stricter contract:
+
+- **Per-layer responsibility**: controllers log request-received / request-completed (status, duration) and unhandled errors bubbling up; services log business-meaningful domain events only (`resource.action`, past tense, e.g. `report.generated`) — not technical noise; repositories log only failures and slow-query warnings, never successful happy-path calls.
+- **Every log line identifies its origin** — a `layer` (`controller`/`service`/`repository`) and `fn` (the function/route/tool name) field, not just a bare message.
+- **Every unit of work carries a `requestId`** (header `x-request-id` — the one canonical name repo-wide; do not introduce alternates like `x-correlation-id`) from entry (HTTP request, MCP tool call, queue message) through every layer, and forwarded on any call to another of this repo's own apps.
+- **The logger is an injected dependency** inside services and repositories — passed down explicitly (or constructor-injected for class-based code), never grabbed as the bare global from that code, so log calls carry the current request's context and stay mockable in tests the same way a repository is. The bare global `logger` import remains correct for infrastructure code outside this layering.
+- Errors extend `common/node/errors/AppError` and its subclasses. A layer wrapping a lower-level error uses `{ cause: originalError }` so the full chain survives to the one place that logs it — normally the central `errorHandler` in `common/node/errors/error.middleware.ts` for HTTP, or a consumer's top-level catch for a queue message. Don't log the same error at more than one layer on its way up.
+
+Full mechanism, field shapes, the request-ID propagation rules, and the per-app gaps to close live in the `structured-logging` skill — invoke with `/structured-logging`.
+
 ## Commit conventions
 
 Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/).
@@ -415,6 +454,8 @@ Route middleware available after `authUser`:
 | `docs/design/authn.md` | Authentication setup — SAML 2.0 and OIDC provider configuration |
 | `docs/design/authz.md` | Authorization — RBAC and FGA: setup, JWT payload, roles fallback chain, usage |
 | `docs/design/pg-audit-implementation.md` | PostgreSQL audit trail implementation (SOC2/HIPAA) |
+| `.claude/skills/clean-architecture/SKILL.md` | Controller/service/repository layering and mocking conventions |
+| `.claude/skills/structured-logging/SKILL.md` | Per-layer logging, error handling, and request-ID tracing conventions |
 | `docs/cloud/` | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare |
 | `docs/release-troubleshooting.md` | Troubleshooting `release-please` CI job failures |
 | `docs/NOTES.md` | Design decisions, caveats, open questions, TODOs |

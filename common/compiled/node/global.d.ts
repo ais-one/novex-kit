@@ -30,5 +30,7 @@ declare namespace Express {
     };
     rawBody?: Buffer;
     startTime: number;
+    /** Set by `express/requestId.ts`'s `requestIdMiddleware` — see the structured-logging skill. */
+    requestId: string;
   }
 }
