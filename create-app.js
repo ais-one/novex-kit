@@ -10,8 +10,8 @@ const ROOT_DIR = path.resolve(__dirname);
 const APPS_DIR = path.join(ROOT_DIR, "apps");
 
 const templates = {
-  "vision-rest-app": "vision-rest-app-sample",
-  "vision-queue-consumer": "vision-queue-consumer-sample",
+  "vision-rest-app": "sample-rest-app",
+  "vision-queue-consumer": "sample-queue-consumer",
 };
 
 function ask(question) {

@@ -45,7 +45,7 @@ export const openDb = async (): Promise<void> => {
   }
 
   db = connected;
-  logger.info('postgres CONNECTED(vision-rest-app-sample)');
+  logger.info('postgres CONNECTED(sample-rest-app)');
 };
 
 /** Returns the connected Knex instance. Throws if `openDb()` hasn't been called yet — a programmer error. */
@@ -58,5 +58,5 @@ export const getDb = (): KnexType => {
 export const closeDb = async (): Promise<void> => {
   await db?.destroy();
   db = null;
-  logger.info('postgres CLOSED(vision-rest-app-sample)');
+  logger.info('postgres CLOSED(sample-rest-app)');
 };

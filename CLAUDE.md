@@ -246,7 +246,7 @@ Read `docs/conventions.md` before making code changes.
 
 Backend apps under `apps/*` follow a layered architecture — **routes → controllers → services → repositories** — so each file has one reason to change and business logic stays independent of Express and of any specific data source.
 
-This layering is always **TypeScript with `strict: true`** — never plain JS+JSDoc, and never the `strict: false` seen in this repo's older tsconfigs (`common/compiled/node`, `apps/vision-custom-api`). Give the app its own `tsconfig.json` + `global.d.ts` (copy from `apps/vision-common` or `apps/vision-queue-consumer` — see the skill for the exact template and the strict-mode pitfalls already hit building those).
+This layering is always **TypeScript with `strict: true`** — never plain JS+JSDoc, and never the `strict: false` seen in this repo's older tsconfigs (`common/compiled/node`, `apps/vision-custom-api`). Give the app its own `tsconfig.json` + `global.d.ts` (copy from `apps/vision-common` or `apps/sample-queue-consumer` — see the skill for the exact template and the strict-mode pitfalls already hit building those).
 
 | Layer | File pattern | Responsibility | May import/call |
 |---|---|---|---|

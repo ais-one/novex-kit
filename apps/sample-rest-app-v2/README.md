@@ -1,4 +1,4 @@
-# vision-rest-app-sample
+# sample-rest-app
 
 Reference implementation of the full backend stack this repo's `.claude` skills describe. Copy this app's shape for a new real REST service; don't develop directly in it.
 
@@ -46,7 +46,7 @@ auth middleware, so `req.user` is always undefined and `app.current_user_id` rec
    docker run -d --name visionpostgres -e POSTGRES_USER=visionuser -e POSTGRES_PASSWORD=vision123 -e POSTGRES_DB=mydb -p 5432:5432 postgres:15
    ```
 2. Copy `.env.sample` to `.env` and set `DATABASE_URL` to point at it.
-3. `npm run start` — connects on boot (`openDb()` in `src/index.ts`) and **fails fast** if Postgres isn't reachable. Unlike `apps/vision-queue-consumer`'s best-effort queue connection, there's no acceptable degraded mode here — the database is this app's core dependency, not a side capability.
+3. `npm run start` — connects on boot (`openDb()` in `src/index.ts`) and **fails fast** if Postgres isn't reachable. Unlike `apps/sample-queue-consumer`'s best-effort queue connection, there's no acceptable degraded mode here — the database is this app's core dependency, not a side capability.
 
 The `orders` table is created automatically (`hasTable` + `createTable`) on connect; a real service would use proper Knex migrations instead.
 

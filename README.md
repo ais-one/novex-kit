@@ -42,7 +42,7 @@ The following templates are currently available:
 | `vision-rest-app`       | REST API application       |
 | `vision-queue-consumer` | Queue consumer application |
 
-Reference template apps live under `apps/` — [`apps/vision-rest-app-sample`](apps/vision-rest-app-sample) and [`apps/vision-queue-consumer-sample`](apps/vision-queue-consumer-sample) — alongside every other app (see [Available Templates](#available-templates) above).
+Reference template apps live under `apps/` — [`apps/sample-rest-app`](apps/sample-rest-app) and [`apps/sample-queue-consumer`](apps/sample-queue-consumer) — alongside every other app (see [Available Templates](#available-templates) above).
 
 ### Create a New App
 
@@ -131,8 +131,8 @@ For example:
 
 ```text
 apps/
-├── vision-rest-app-sample/
-└── vision-queue-consumer-sample/
+├── sample-rest-app/
+└── sample-queue-consumer/
 ```
 
 To add a new template:
@@ -146,8 +146,8 @@ For example:
 
 ```js
 const templates = {
-  "vision-rest-app": "vision-rest-app-sample",
-  "vision-queue-consumer": "vision-queue-consumer-sample",
+  "vision-rest-app": "sample-rest-app",
+  "vision-queue-consumer": "sample-queue-consumer",
   "my-new-template": "my-new-template-sample",
 };
 ```
@@ -158,7 +158,7 @@ After registering the template, it will automatically become available when runn
 npm run create:app
 ```
 
-**Important:** the generated application is created under `apps/` and is considered **userland content**. Template maintainers should keep reusable starter code in its own dedicated app under `apps/` (e.g. `vision-rest-app-sample`) rather than modifying a generated application to serve as a future template.
+**Important:** the generated application is created under `apps/` and is considered **userland content**. Template maintainers should keep reusable starter code in its own dedicated app under `apps/` (e.g. `sample-rest-app`) rather than modifying a generated application to serve as a future template.
 
 ## Read Me First
 

@@ -1,5 +1,5 @@
 {
-  "name": "@apps/vision-queue-consumer-sample",
+  "name": "@apps/sample-queue-consumer",
   "description": "Sample Kafka consumer — reference implementation for a dedicated, independently deployable queue consumer app. Copy this shape for the next consumer.",
   "version": "0.0.1",
   "private": true,

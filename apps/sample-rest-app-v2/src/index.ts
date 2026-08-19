@@ -31,11 +31,11 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 const server = app.listen(Number(API_PORT), () => {
-  logger.info(`vision-rest-app-sample listening on port ${API_PORT}`);
+  logger.info(`sample-rest-app listening on port ${API_PORT}`);
 });
 
 const shutdown = async (signal: string): Promise<void> => {
-  logger.info(`vision-rest-app-sample received ${signal}, shutting down`);
+  logger.info(`sample-rest-app received ${signal}, shutting down`);
   await closeDb();
   server.close(() => process.exit(0));
 };

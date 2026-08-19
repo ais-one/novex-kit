@@ -18,7 +18,7 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 const server = app.listen(Number(HEALTH_PORT), () => {
-  logger.info(`vision-queue-consumer health server listening on port ${HEALTH_PORT}`);
+  logger.info(`sample-queue-consumer health server listening on port ${HEALTH_PORT}`);
 });
 
 // The health server above must stay up even if the queue can't connect yet — don't let a
@@ -26,11 +26,11 @@ const server = app.listen(Number(HEALTH_PORT), () => {
 try {
   await startSampleEventConsumer();
 } catch (e) {
-  logger.error(`vision-queue-consumer failed to start the queue consumer: ${String(e)}`);
+  logger.error(`sample-queue-consumer failed to start the queue consumer: ${String(e)}`);
 }
 
 const shutdown = async (signal: string): Promise<void> => {
-  logger.info(`vision-queue-consumer received ${signal}, shutting down`);
+  logger.info(`sample-queue-consumer received ${signal}, shutting down`);
   await stopSampleEventConsumer();
   server.close(() => process.exit(0));
 };

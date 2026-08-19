@@ -1,4 +1,4 @@
-# vision-queue-consumer
+# sample-queue-consumer
 
 Sample Kafka consumer — a reference implementation for building a **dedicated, independently deployable** queue consumer app. Copy this app's shape for the next consumer; don't add consuming logic to an existing HTTP API.
 

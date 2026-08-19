@@ -1,5 +1,5 @@
 {
-  "name": "@apps/vision-rest-app-sample",
+  "name": "@apps/sample-rest-app",
   "description": "Sample REST API — reference implementation of the full controller/service/repository stack: layering, zod validation, DTO boundaries, structured per-layer logging with request-ID tracing, AppError-based error handling, and mockable unit tests. Copy this app's shape for a new real REST service.",
   "version": "0.0.1",
   "private": true,
