@@ -29,7 +29,6 @@
   },
   "scripts": {
     "clean:all": "find . -name node_modules -type d -prune -exec rm -rf '{}' + && find . -name package-lock.json -type f -delete",
-    "create:app": "node create-app.js",
     "git:hash": "git rev-parse --verify --short HEAD",
     "git:branch": "git rev-parse --abbrev-ref HEAD",
     "check": "biome check",
