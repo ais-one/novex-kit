@@ -12,6 +12,10 @@ function collectSchemaFiles(dirPath: string): string[] {
 }
 
 function isSchemaLike(value: unknown): boolean {
+  // Accept schema factory functions too (e.g. ApiResponseSchema(dataSchema, id) => z.object(...)) —
+  // their arguments aren't known here, so a function export is trusted as-is rather than invoked.
+  if (typeof value === 'function') return true;
+
   return Boolean(
     value &&
       typeof value === 'object' &&
