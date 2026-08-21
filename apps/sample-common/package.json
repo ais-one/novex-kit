@@ -5,6 +5,11 @@
   "private": true,
   "type": "module",
   "license": "MIT",
+  "exports": {
+    ".": "./index.ts",
+    "./*": "./*.ts"
+  },
+  "main": "index.ts",
   "scripts": {
     "create:app": "node create-app.js",
     "lint": "biome check --config-path ../../biome-node.json",

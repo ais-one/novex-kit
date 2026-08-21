@@ -9,19 +9,24 @@ import { after, afterEach, before, describe, it } from 'node:test';
 import { closeDb, getDb, openDb } from '../../repositories/data/db.ts';
 import { findOrderById, insertOrder } from '../../repositories/data/orders.repository.ts';
 
-before(async () => {
-  await openDb();
-});
+// Skipped when DATABASE_URL isn't set (e.g. no local Postgres running) instead of crashing in
+// `before`. Everything, including the before/after hooks, must live inside the same describe —
+// a root-level before/after would still run even when the inner describe is skipped.
+const describeIfDb = process.env.DATABASE_URL ? describe.only : describe.skip;
 
-after(async () => {
-  await closeDb();
-});
+describeIfDb('repositories/data/orders.repository (integration — real PostgreSQL)', () => {
+  before(async () => {
+    await openDb();
+  });
 
-// afterEach(async () => {
-//   await getDb()('orders').delete(); // keep the real table clean between test runs
-// });
+  after(async () => {
+    await closeDb();
+  });
 
-describe.only('repositories/data/orders.repository (integration — real PostgreSQL)', () => {
+  // afterEach(async () => {
+  //   await getDb()('orders').delete(); // keep the real table clean between test runs
+  // });
+
   it.only('insertOrder persists an order and returns it with an assigned id', async () => {
     const order = await insertOrder(getDb(), {
       customerEmail: 'a@b.com',
