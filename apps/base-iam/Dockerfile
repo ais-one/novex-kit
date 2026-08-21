@@ -21,7 +21,7 @@ COPY common/vanilla/iso/ ./common/vanilla/iso/
 COPY common/schemas/ ./common/schemas/
 COPY apps/${APP_NAME}/ ./apps/${APP_NAME}/
 
-FROM node:${NODE_VERSION}-alpine AS production
+FROM node:${NODE_VERSION}-alpine AS runtime
 ARG APP_NAME
 ARG API_PORT
 RUN apk update && apk upgrade --no-cache \

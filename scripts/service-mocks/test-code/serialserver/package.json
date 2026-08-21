@@ -10,7 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@ais-one/node": "^0.0.28",
     "winston": "^3.10.0",
     "winston-daily-rotate-file": "^4.7.1"
   },

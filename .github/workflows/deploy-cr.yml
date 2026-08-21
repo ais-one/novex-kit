@@ -13,11 +13,10 @@
 # - CR_IMAGENAME: The image name. If not specified, the repository name will be used
 # Specify the following inputs
 # - tag_gr
-# - env (development, statging, production) - MIGHT NOT BE NEEDED
-#   - git repo branch / tag
-#   - container image tag
-#   - path to dockerfile
-#   - environment (development, staging, production)
+# - cr_imagename
+# - tag_ci
+# - dockerfile_path
+# environment NOT needed as it is specified in the container orchestration platform. 
 name: DEPLOY - Container Registry
 
 on:
@@ -40,17 +39,6 @@ on:
         description: 'path to dockerfile'
         default: '.'
         required: false
-      cr_env:
-        description: 'deployment environment (development, staging, production)'
-        default: 'development'
-        required: true
-        type: choice
-        options:
-        - development
-        - staging
-        - production
-
-
 
 env:
   CR_IMAGENAME: ${{ github.event.inputs.cr_imagename || vars.CR_IMAGENAME || github.event.repository.name }}
@@ -59,7 +47,7 @@ env:
   CR_HOST: ${{ vars.CR_HOST }}
   CR_NS: ${{ vars.CR_NS }}
   DOCKERFILE_PATH: ${{ github.event.inputs.dockerfile_path || '.' }}
-  DOCKERFILE_TARGET: production # follow value in docker file
+  DOCKERFILE_TARGET: runtime # follow value in docker file
 jobs:
   build:
     name: Build Image
@@ -71,7 +59,6 @@ jobs:
           echo "image name: ${{ github.event.inputs.cr_imagename }}"
           echo "image tag: ${{ github.event.inputs.tag_ci }}"
           echo "docker file path: ${{ github.event.inputs.dockerfile_path }}"
-          echo "environment: ${{ github.event.inputs.cr_env }}"
   request-approval:
     name: Request Deployment Approval
     needs: [build]
@@ -97,7 +84,7 @@ jobs:
           ref: ${{ github.event.inputs.tag_gr }}
       - name: Build and push image to CR
         env:
-          IMAGE_TARGET: production
+          IMAGE_TARGET: runtime
           IMAGE_TAG: ${{ github.sha }}
         run: |
           # cat password.txt |
@@ -105,7 +92,6 @@ jobs:
           docker build -f apps/$CR_IMAGENAME/Dockerfile \
             -t $CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }} \
             --target $DOCKERFILE_TARGET \
-            --build-arg ARG_NODE_ENV=${{ github.event.inputs.cr_env }} \
             --build-arg ARG_API_PORT=3000 \
             $DOCKERFILE_PATH || exit 1001
           docker push $CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}

@@ -81,7 +81,7 @@ npm run start
 For running with Docker or Podman:
 
 ```bash
-docker build -t novex-kit --target production --build-arg APP_NAME=sample-api --build-arg API_PORT=3000 .
+docker build -t novex-kit --target runtime --build-arg APP_NAME=sample-api --build-arg API_PORT=3000 .
 docker run -p 3000:3000 novex-kit
 ```
 

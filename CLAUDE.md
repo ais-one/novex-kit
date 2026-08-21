@@ -379,7 +379,7 @@ git config merge.ours.driver true
 
 ```bash
 docker build -t novex-kit \
-  --target production \
+  --target runtime \
   --build-arg APP_NAME=sample-api \
   --build-arg API_PORT=3000 .
 

@@ -17,12 +17,12 @@
     "@apps/vision-common": "file:../vision-common",
     "@common/node": "file:../../common/compiled/node",
     "express": "^5.2.1",
-    "knex": "^3.2.10",
-    "pg": "^8.20.0",
-    "zod": "^4.3.6"
+    "knex": "^3.3.0",
+    "pg": "^8.23.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/pg": "^8.20.0"
+    "@types/pg": "^8.23.1"
   },
   "engines": {
     "node": ">=22",

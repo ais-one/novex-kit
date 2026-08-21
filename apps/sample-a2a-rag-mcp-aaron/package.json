@@ -17,13 +17,6 @@
     "test:e2e": "exit 0"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.117.1",
-    "@common/node": "file:../../common/compiled/node",
-    "@langchain/textsplitters": "^1.0.1",
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "mammoth": "^1.12.0",
-    "openai": "^6.46.0",
-    "pdf-parse": "^2.4.5",
-    "pgvector": "^0.3.0"
+    "@common/node": "file:../../common/compiled/node"
   }
 }
