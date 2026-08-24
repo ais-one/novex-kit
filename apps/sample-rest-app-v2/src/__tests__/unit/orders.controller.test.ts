@@ -27,7 +27,7 @@ const asMockRequest = (overrides: Record<string, unknown>): Request => {
   const req = createRequest({ body: overrides.body as Record<string, unknown> }) as unknown as Request;
   req.requestId = 'test-request-id';
   if (overrides.params) req.params = overrides.params as Request['params'];
-  // Stands in for `@apps/vision-common/express/audit/audit-context.ts`'s `auditContext()` —
+  // Stands in for `@apps/sample-common/express/audit/audit-context`'s `auditContext()` —
   // this controller-level unit test doesn't exercise the real Knex transaction wiring, only
   // that the controller opens `req.dbTransaction()` and forwards its `trx` to the service.
   req.dbTransaction = ((callback: (trx: unknown) => Promise<unknown>) =>

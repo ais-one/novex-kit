@@ -18,7 +18,7 @@ Reference implementation of the full backend stack this repo's `.claude` skills 
 | AppError + stack/cause preservation | `NotFoundError` for a missing order; `common/node/errors/error.middleware.ts` is the single place that logs an unhandled error |
 | TypeScript, `strict: true` | `tsconfig.json` |
 | Mockable service/repository, tiered tests | `__tests__/unit/` — service test mocks both repositories, external-repository test mocks `fetch`. `__tests__/integration/` — the data repository tested against a real PostgreSQL instance. |
-| SOC2/HIPAA-style audit trail plumbing | `@apps/vision-common/express/audit/audit-context.ts`'s `auditContext()`, wired in `src/index.ts` — see [Auditing](#auditing) |
+| SOC2/HIPAA-style audit trail plumbing | `@apps/sample-common/express/audit/audit-context`'s `auditContext()`, wired in `src/index.ts` — see [Auditing](#auditing) |
 
 ## Auditing
 

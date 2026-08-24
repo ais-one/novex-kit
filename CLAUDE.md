@@ -247,7 +247,7 @@ Read `docs/conventions.md` before making code changes.
 
 Backend apps under `apps/*` follow a layered architecture — **routes → controllers → services → repositories** — so each file has one reason to change and business logic stays independent of Express and of any specific data source.
 
-This layering is always **TypeScript with `strict: true`** — never plain JS+JSDoc, and never the `strict: false` seen in this repo's older tsconfigs (`common/compiled/node`, `apps/vision-custom-api`). Give the app its own `tsconfig.json` + `global.d.ts` (copy from `apps/vision-common` or `apps/sample-queue-consumer` — see the skill for the exact template and the strict-mode pitfalls already hit building those).
+This layering is always **TypeScript with `strict: true`** — never plain JS+JSDoc, and never the `strict: false` seen in this repo's older tsconfigs (`common/compiled/node`). Give the app its own `tsconfig.json` + `global.d.ts` (copy from `apps/sample-common` or `apps/sample-queue-consumer` — see the skill for the exact template and the strict-mode pitfalls already hit building those).
 
 | Layer | File pattern | Responsibility | May import/call |
 |---|---|---|---|
@@ -263,12 +263,12 @@ Don't confuse this with `common/compiled/node/services/*` — that's shared cros
 
 **Mockability is mandatory** for services and repositories — a controller must be testable without a real service, and a service must be testable without a real DB or network call:
 - Preferred: a plain module with named function exports (see `common/compiled/node/auth/store.ts`), mocked in tests with `mock.module()` (see [Module mock paths](#module-mock-paths)).
-- Acceptable when a layer needs interchangeable implementations: a class with constructor-injected dependencies and a default singleton export (see `apps/document-parser/src/controllers/parser.controller.ts` and `src/services/document-parser.service.ts`), mocked by constructing with a fake collaborator instead.
+- Acceptable when a layer needs interchangeable implementations: a class with constructor-injected dependencies and a default singleton export, mocked by constructing with a fake collaborator instead.
 - Either way: a service never imports a concrete DB client or calls `fetch` directly, and a controller never imports a repository directly — only the layer immediately below.
 
 **DTOs are mandatory at every boundary.** A repository maps a raw DB row or a third-party API response into the domain model before returning it — never let either raw shape leak up to the service. A controller maps the domain model into a response DTO before sending it — never `res.json()` a domain model directly. Every successful response is `{ message, data }` (`data: null` when there's nothing to return); errors keep the existing `{ error: { code, message } }` shape already produced by `common/node/errors/error.middleware.ts`. Validate a third-party response with zod in the repository the moment it's received, the same way request input is validated in the controller (`common/node/errors/validate.ts`).
 
-Full conventions, a worked example, and a per-app rollout map (what to extract from today's fat handlers in `vision-custom-api`, `vision-mcp`, and `vision-rag`) live in the `clean-architecture` skill — invoke with `/clean-architecture`. Use the `clean-architecture-reviewer` subagent to audit a change or an app for layering/mockability/DTO compliance.
+Full conventions and a worked example live in the `clean-architecture` skill — invoke with `/clean-architecture`. Use the `clean-architecture-reviewer` subagent to audit a change or an app for layering/mockability/DTO compliance.
 
 ## Logging and tracing
 

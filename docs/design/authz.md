@@ -4,8 +4,8 @@ This project supports two composable authorization layers on top of JWT authenti
 
 | Layer | Module | Purpose |
 |---|---|---|
-| **RBAC** | `common/compiled/node/auth/rbac.js` | Tenant-scoped roles and permissions stored in the DB |
-| **FGA** | `common/compiled/node/auth/openfga.js` | Fine-grained per-object checks via OpenFGA |
+| **RBAC** | `common/compiled/node/auth/rbac.ts` | Tenant-scoped roles and permissions stored in the DB |
+| **FGA** | `common/compiled/node/auth/openfga.ts` | Fine-grained per-object checks via OpenFGA |
 
 Both are optional. They can be used independently or together.
 
@@ -94,17 +94,17 @@ const data = await getUserTenantsData(req.user.sub, req.user.tenant_id);
 
 ```
 tenants           id, name, slug, plan, is_active, timestamps
-roles             id, tenant_id→tenants, name, description, timestamps
+tenant_roles      id, tenant_id→tenants, name, description, timestamps
 permissions       id, name (e.g. "users:read"), description, timestamps
 role_permissions  (role_id, permission_id) composite PK
 user_tenant_roles (user_id, tenant_id, role_id) composite PK
 ```
 
-Roles are **tenant-scoped**. Permissions are **global**. A user can hold **multiple roles per tenant**.
+Roles are **tenant-scoped**. Permissions are **global**. A user can hold **multiple roles per tenant**. These tables live in the `db/iam` schema (`@db/iam`), not `db/sample` — see [Files](#files) below.
 
 ```
 tenants
-  └── roles (tenant_id FK)
+  └── tenant_roles (tenant_id FK)
         └── role_permissions (role_id FK)
               └── permissions
 
@@ -115,10 +115,13 @@ users
 ### Setup
 
 ```bash
-cd db/sample
-npx knex migrate:latest
-npx knex seed:run --specific=initial_rbac.js
+npm run db:migrate --workspace=db/iam
+npm run db:seed --workspace=db/iam
 ```
+
+This applies all pending `db/iam` migrations and runs every seed file for that schema — including `initial_rbac.ts` and `initial_openfga.ts` below — in order; there's no per-seed selector (unlike the old knex `seed:run --specific=`), see `db/README.md`.
+
+The service also needs `rbac.configure({ tenants, tenantRoles, permissions, rolePermissions, userTenantRoles })` called once at app startup, passing the `db/iam` Drizzle table references, before any RBAC call resolves — see `common/compiled/node/auth/rbac.ts`. Until `configure()` is called, `rbac.isConfigured()` returns `false` and RBAC falls back per the [roles fallback chain](#roles-fallback-chain-createtoken) above.
 
 Enable in `apps/sample-api/.env.json`:
 
@@ -132,7 +135,7 @@ Enable in `apps/sample-api/.env.json`:
 
 ```js
 import { authUser } from '@common/node/auth';
-import { requireRole, getUserTenantsData } from '@common/node/auth/rbac.js';
+import { requireRole, getUserTenantsData } from '@common/node/auth/rbac';
 
 // Middleware — declarative role check
 router.get('/admin', authUser, requireRole('admin'), handler);
@@ -156,7 +159,7 @@ router.get('/reports', authUser, async (req, res) => {
 ### Role and permission management
 
 ```js
-import { assignRole, revokeRole, grantPermission, revokePermission } from '@common/node/auth/rbac.js';
+import { assignRole, revokeRole, grantPermission, revokePermission } from '@common/node/auth/rbac';
 
 await assignRole(userId, tenantId, roleId);
 await revokeRole(userId, tenantId, roleId);
@@ -216,12 +219,11 @@ docker run -p 8080:8080 openfga/openfga run
 **2. Run migration and seed**
 
 ```bash
-cd db/sample
-npx knex migrate:latest
-npx knex seed:run --specific=initial_openfga.js
+npm run db:migrate --workspace=db/iam
+npm run db:seed --workspace=db/iam
 ```
 
-The seed prints the `store_id` and `auth_model_id` it created.
+This runs every seed file for the `db/iam` schema, including `initial_openfga.ts`, which prints the `store_id` and `auth_model_id` it created.
 
 **3. Configure the app**
 
@@ -237,7 +239,7 @@ The seed prints the `store_id` and `auth_model_id` it created.
 
 ```js
 import { authUser } from '@common/node/auth';
-import { requireFga, writeTuple, deleteTuple } from '@common/node/auth/openfga.js';
+import { requireFga, writeTuple, deleteTuple } from '@common/node/auth/openfga';
 
 // Declarative middleware — static object
 router.delete('/users/:id', authUser, requireFga('assignee', 'role:admin'), handler);
@@ -260,7 +262,7 @@ await deleteTuple('user:42', 'assignee', 'role:admin');
 
 ```js
 import { authUser } from '@common/node/auth';
-import { requireFga } from '@common/node/auth/openfga.js';
+import { requireFga } from '@common/node/auth/openfga';
 
 // Coarse: user must be an admin (JWT roles check)
 // Fine:   user must own this specific document (FGA)
@@ -312,18 +314,17 @@ Store and model IDs should be managed via a secrets vault and injected as enviro
 
 | File | Purpose |
 |---|---|
-| `common/compiled/node/auth/rbac.js` | RBAC service — `getActiveTenant`, `getUserTenantsData`, `requireRole`, `assignRole`, `revokeRole`, `grantPermission`, `revokePermission` |
-| `common/compiled/node/auth/openfga.js` | FGA client wrapper — `setup`, `listUserRoles`, `check`, `writeTuple`, `deleteTuple`, `requireFga` |
-| `db/sample/migrations/20260416000000_fga_config.ts` | Creates `fga_config` table |
-| `db/sample/migrations/20260416000001_rbac_tables.ts` | Creates `tenants`, `roles`, `permissions`, `role_permissions`, `user_tenant_roles` |
-| `db/sample/seeds/initial_rbac.ts` | Seeds tenant, roles, permissions, user assignments |
-| `db/sample/seeds/initial_openfga.ts` | Creates FGA store, model, seed tuples |
+| `common/compiled/node/auth/rbac.ts` | RBAC service — `configure`, `isConfigured`, `getUserTenantsData`, `requireRole`, `assignRole`, `revokeRole`, `grantPermission`, `revokePermission` |
+| `common/compiled/node/auth/openfga.ts` | FGA client wrapper — `setup`, `listUserRoles`, `check`, `writeTuple`, `deleteTuple`, `requireFga` |
+| `db/iam/drizzle/*.sql` | Drizzle-generated migrations creating `tenants`, `tenant_roles`, `permissions`, `role_permissions`, `user_tenant_roles`, `fga_config` in the `iam` schema (these tables originally migrated under `db/sample`/knex — see `db/sample/drizzle/0002_remove_rbac_fga.sql`, which drops them from `public` again) |
+| `db/iam/seeds/initial_rbac.ts` | Seeds tenant, roles, permissions, user assignments |
+| `db/iam/seeds/initial_openfga.ts` | Creates FGA store, model, seed tuples |
 
 ### Modified files
 
 | File | Change |
 |---|---|
-| `common/compiled/node/auth/index.js` | Extend `setup()`; three-tier roles chain in `createToken`; attach `req.rbac` and `req.fga` in `authUser` |
-| `common/compiled/node/express/preRoute.js` | Read `RBAC_CONFIG` and `FGA_CONFIG`; pass to `authService.setup()` |
+| `common/compiled/node/auth/index.ts` | Extend `setup()`; three-tier roles chain in `createToken`; attach `req.rbac` and `req.fga` in `authUser` |
+| `common/compiled/node/express/preRoute.ts` | Read `RBAC_CONFIG` and `FGA_CONFIG`; pass to `authService.setup()` |
 | `apps/sample-api/.env.json` | Added `RBAC_CONFIG` and `FGA_CONFIG` blocks |
-| `common/compiled/node/package.json` | Added `@openfga/sdk ^0.9.0` |
+| `common/compiled/node/package.json` | Added `@openfga/sdk` (currently `^0.9.7`) |
