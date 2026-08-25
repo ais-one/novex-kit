@@ -4,7 +4,7 @@ Sample Kafka consumer — a reference implementation for building a **dedicated,
 
 ## Why a separate app
 
-A queue consumer is a long-running process, not a request/response call — it shouldn't share a deployment unit, scaling policy, or failure blast radius with an HTTP API. This app has its own `package.json`, starts its own process, and can be deployed/restarted/scaled independently of `vision-custom-api`, `vision-mcp`, etc. See `apps/vision-common/services/mq/README.md` for the full reasoning.
+A queue consumer is a long-running process, not a request/response call — it shouldn't share a deployment unit, scaling policy, or failure blast radius with an HTTP API. This app has its own `package.json`, starts its own process, and can be deployed/restarted/scaled independently of any other app in this repo. See `apps/sample-common/services/mq/README.md` for the full reasoning.
 
 ## Structure
 
@@ -24,10 +24,10 @@ This follows the same controller → service → repository layering as HTTP app
 1. A local Kafka broker on `localhost:9092` (e.g. `docker-compose` per `docs/archive/backend.md`, or the mock in `scripts/service-mocks`).
 2. `npm run start` — connects, subscribes to the topic in `.env.json`'s `QUEUE_CONFIG.topic` (default `sample.events`), and serves `/health` and `/health/ready` on `HEALTH_PORT` (default `3100`).
 
-If the broker isn't reachable, the app still starts (the health server comes up regardless) and logs a connection error — it does not crash. This is deliberate: see `MqKafka.open()` in `apps/vision-common/services/mq/kafka.ts`.
+If the broker isn't reachable, the app still starts (the health server comes up regardless) and logs a connection error — it does not crash. This is deliberate: see `MqKafka.open()` in `apps/sample-common/services/mq/kafka.ts`.
 
 ## Building a real consumer from this template
 
 1. Replace `sample-event.service.ts`'s schema and `processSampleEvent` body with the real event shape and real business logic.
 2. Rename `sample-event.consumer.ts` / `queue.repository.ts`'s exports to match, and point `QUEUE_CONFIG.topic`/`groupId` at the real topic.
-3. If this consumer needs to call another `vision-*` app's shared logic, add it to `apps/vision-common` rather than duplicating it here.
+3. If this consumer needs to call another app's shared logic, add it to `apps/sample-common` rather than duplicating it here.

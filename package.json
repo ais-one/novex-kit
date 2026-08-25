@@ -37,6 +37,8 @@
     "prepare": "git config core.hooksPath .githooks && chmod +x .githooks/pre-commit .githooks/pre-push || echo 'Can not set git hooks'",
     "test:schemas": "node scripts/test-schemas.ts",
     "test:workspaces": "npm run test --workspaces",
+    "kafka:provision": "cd apps/sample-queue-consumer && node ../../scripts/kafka-provision.ts",
+    "kafka:offset": "cd apps/sample-queue-consumer && node ../../scripts/kafka-offset.ts",
     "test:cover-only": "node --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=lcov.info --test __tests__/**/*.spec.js",
     "test:e2e": "start-server-and-test start http://localhost:8080 test",
     "release:auth": "semantic-release -e ./release/auth-service.release.config.cjs",

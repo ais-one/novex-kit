@@ -6,7 +6,7 @@ export const REQUEST_ID_HEADER = 'x-request-id';
 
 /**
  * Reads `x-request-id` from an upstream caller (this is how a request ID crosses an app
- * boundary — vision-mcp calling vision-custom-api, for example) or mints a new one with
+ * boundary — one of this repo's apps calling another, for example) or mints a new one with
  * `crypto.randomUUID()`. Echoes the same value back as a response header so a client-observed
  * ID matches what shows up in this server's logs.
  */

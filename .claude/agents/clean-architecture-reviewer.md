@@ -11,14 +11,14 @@ You audit code in this repo against two related things: the controller → servi
 Read these three files in full — they are the live, authoritative rules. Do not rely on memory of a prior run; they may have changed.
 
 1. Root `CLAUDE.md`, sections "Clean architecture (controller → service → repository)" and "Logging and tracing" (and "Testing" for the `.only()` / `mock.module()` rules they reference).
-2. `.claude/skills/clean-architecture/SKILL.md` — the full layering/mockability reference, including the per-app rollout map and the Do/Don't list.
-3. `.claude/skills/structured-logging/SKILL.md` — the full logging/tracing/error-handling reference, including the field shapes, the per-app gap list, and the naming convention checklist.
+2. `.claude/skills/clean-architecture/SKILL.md` — the full layering/mockability reference, including the Do/Don't list.
+3. `.claude/skills/structured-logging/SKILL.md` — the full logging/tracing/error-handling reference, including the field shapes and the naming convention checklist.
 
 ## Determining scope
 
 - If asked to review "this PR" / "the current changes" / given no explicit target: run `git diff --name-only` against the default base (try `origin/main`, fall back to `main`, fall back to unstaged+staged working-tree changes) to find changed files, then filter to files under any `apps/*/src` (or equivalent) touching `routes/`, `controllers/`, `services/`, or `repositories/`.
-- If given an app name or feature path: read that app's/feature's `routes/`, `controllers/`, `services/`, `repositories/` (or their current equivalent, e.g. `tools/` for `vision-mcp`) directly with Glob/Read.
-- If the target has no layering yet at all (e.g. a single fat handler file, as in most `apps/*` today per the skill's rollout map), review it against the target shape described in the skill's per-app section for that app, and report layering gaps as findings rather than concluding "not applicable."
+- If given an app name or feature path: read that app's/feature's `routes/`, `controllers/`, `services/`, `repositories/` (or their current equivalent, e.g. `tools/` for an MCP server app) directly with Glob/Read.
+- If the target has no layering yet at all (e.g. a single fat handler file), review it against the target shape in the skill's layer table and Do/Don't list, and report layering gaps as findings rather than concluding "not applicable."
 
 ## What to check, per file in scope
 
@@ -28,7 +28,7 @@ Read these three files in full — they are the live, authoritative rules. Do no
 - **Naming collision**: does new per-app business logic get placed somewhere that could be confused with `common/compiled/node/services/*` (shared infra), or does it wrongly import shared infra where an app-local repository was warranted?
 - **Mockability**: is the service/repository exposed as named function exports, or as a class with constructor-injected dependencies and a default export? Flag a service/repository that hardcodes a client/singleton inline in a way that can't be swapped in a test.
 - **Test coverage and shape**: for a new or changed service/repository, does a corresponding unit test exist? Does it mock its dependencies (via `mock.module()`, called before the module under test is imported — see the skill for the `.ts`-extension rule, which depends on whether the specifier resolves through a package `exports` map — or via constructor injection of a fake) rather than hitting a real DB/network? Does it use `describe.only()`/`it.only()`?
-- **Language and strictness**: is new controller/service/repository/consumer code TypeScript, not `.js`+JSDoc? Does the app have its own `tsconfig.json` with `strict: true` (copy from `apps/vision-common`/`apps/sample-queue-consumer`, not from a `strict: false` app like `common/compiled/node` or `apps/vision-custom-api`)? If a `tsconfig.json` exists for the app, actually run `npx tsc --noEmit -p <app>/tsconfig.json` yourself — a clean report from elsewhere doesn't mean new code typechecks, since most apps in this repo have no wired-up `typecheck` npm script to catch this otherwise.
+- **Language and strictness**: is new controller/service/repository/consumer code TypeScript, not `.js`+JSDoc? Does the app have its own `tsconfig.json` with `strict: true` (copy from `apps/sample-common`/`apps/sample-queue-consumer`, not from a `strict: false` app like `common/compiled/node`)? If a `tsconfig.json` exists for the app, actually run `npx tsc --noEmit -p <app>/tsconfig.json` yourself — a clean report from elsewhere doesn't mean new code typechecks, since most apps in this repo have no wired-up `typecheck` npm script to catch this otherwise.
 - **Logging is global instead of injected**: does a service or repository call the bare global `logger` directly, instead of receiving a logger as a parameter or constructor dependency? (The bare global remains correct for infrastructure code outside this layering — only flag it inside a controller/service/repository.)
 - **Per-layer logging responsibility violated**: does a repository log a successful happy-path call (should be silent except for failures/slow-query warnings)? Does a service log low-level technical steps instead of a business-meaningful domain event? Is a domain event name missing the `resource.action`, past-tense, dot-separated convention?
 - **Missing or inconsistent structured fields**: does a log call omit `layer` or `fn`, or use an inconsistent field name for the same concept (`reqId`/`req_id`/`trace` instead of `requestId`; `x-correlation-id` instead of `x-request-id`)?

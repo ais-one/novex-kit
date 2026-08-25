@@ -31,7 +31,7 @@ declare namespace Express {
     startTime: number;
     /** Set by `@common/node/express/requestId.ts`'s `requestIdMiddleware` — see the structured-logging skill. */
     requestId: string;
-    /** Set by `@apps/sample-common/express/audit/audit-context`'s `auditContext()` — see its README. */
+    /** Set by `express/audit/audit-context.ts`'s `auditContext()` middleware — see its README. */
     dbTransaction: <T>(callback: (trx: import('knex').Knex.Transaction) => Promise<T>) => Promise<T>;
   }
 }

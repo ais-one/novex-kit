@@ -14,7 +14,7 @@
     "test": "npm run test:unit && npm run test:integration && npm run test:schema"
   },
   "dependencies": {
-    "@apps/vision-common": "file:../vision-common",
+    "@apps/sample-common": "file:../sample-common",
     "@common/node": "file:../../common/compiled/node",
     "express": "^5.2.1",
     "zod": "^4.4.3"

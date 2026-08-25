@@ -6,7 +6,7 @@ import type { NewOrder, Order, OrderItem } from '../../dto/order.dto.ts';
 // function maps to/from the domain `Order` (camelCase) before it crosses this file's boundary.
 // Every function takes a `Knex` (or `Knex.Transaction`) rather than calling `getDb()` itself,
 // so a caller can route it through `req.dbTransaction()` — see
-// docs/design/pg-audit-implementation.md §6 and @apps/vision-common/express/audit/audit-context.ts.
+// docs/design/pg-audit-implementation.md §6 and @apps/sample-common/express/audit/audit-context.
 
 type OrderRow = {
   id: number;
