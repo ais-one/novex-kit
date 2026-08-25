@@ -1,0 +1,31 @@
+{
+  "name": "@apps/sample-rest-app-v2",
+  "description": "Sample REST API — reference implementation of the full controller/service/repository stack: layering, zod validation, DTO boundaries, structured per-layer logging with request-ID tracing, AppError-based error handling, and mockable unit tests. Copy this app's shape for a new real REST service.",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "lint": "biome check --config-path ../biome.json",
+    "start": "node --watch --watch-preserve-output --trace-warnings src/index.ts",
+    "test:unit": "node --test-reporter=spec --experimental-test-coverage --experimental-test-module-mocks --test --test-only ./src/**/__tests__/unit/*.test.ts",
+    "test:integration": "node --test-reporter=spec --test --test-only ./src/**/__tests__/integration/*.test.ts",
+    "test:schema": "exit 0",
+    "test": "npm run test:unit && npm run test:integration && npm run test:schema"
+  },
+  "dependencies": {
+    "@apps/sample-common": "file:../sample-common",
+    "@common/node": "file:../../common/compiled/node",
+    "express": "^5.2.1",
+    "knex": "^3.3.0",
+    "pg": "^8.23.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  },
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10"
+  }
+}

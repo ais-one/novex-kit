@@ -1,0 +1,28 @@
+{
+  "name": "@apps/sample-queue-consumer",
+  "description": "Sample Kafka consumer — reference implementation for a dedicated, independently deployable queue consumer app. Copy this shape for the next consumer.",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "lint": "biome check --config-path ../biome.json",
+    "start": "node --watch --watch-preserve-output --trace-warnings src/index.ts",
+    "kafka:provision": "node ../../scripts/kafka-provision.ts",
+    "kafka:offset": "node ../../scripts/kafka-offset.ts",
+    "test:unit": "node --test-reporter=spec --experimental-test-coverage --experimental-test-module-mocks --test --test-only ./src/**/__tests__/*.test.ts",
+    "test:integration": "exit 0",
+    "test:schema": "exit 0",
+    "test": "npm run test:unit && npm run test:integration && npm run test:schema"
+  },
+  "dependencies": {
+    "@apps/sample-common": "file:../sample-common",
+    "@common/node": "file:../../common/compiled/node",
+    "express": "^5.2.1",
+    "zod": "^4.4.3"
+  },
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10"
+  }
+}

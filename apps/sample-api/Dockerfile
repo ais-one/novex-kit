@@ -69,8 +69,8 @@ COPY common/schemas/ ./common/schemas/
 COPY apps/${APP_NAME}/ ./apps/${APP_NAME}/
 COPY apps/sample-common/ ./apps/sample-common/
 
-# ─── Stage 3: production image ────────────────────────────────────────────────
-FROM node:${NODE_VERSION}-alpine AS production
+# ─── Stage 3: runtime image ───────────────────────────────────────────────────
+FROM node:${NODE_VERSION}-alpine AS runtime
 ARG APP_NAME
 ARG API_PORT
 

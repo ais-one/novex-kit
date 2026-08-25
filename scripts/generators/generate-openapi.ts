@@ -26,27 +26,7 @@ import { pathToFileURL } from 'node:url';
 import * as yaml from 'js-yaml';
 import { z } from 'zod';
 import { createDocument } from 'zod-openapi';
-
-// ─── CLI args ─────────────────────────────────────────────────────────────────
-
-/**
- * Parses `--key value` pairs from the given argv array into a plain object.
- * Each `--key` consumes the next element as its value.
- *
- * @param argv - Argument array (typically `process.argv.slice(2)`).
- * @returns A record mapping each flag name (without `--`) to its string value.
- */
-function parseArgs(argv: string[]): Record<string, string> {
-  const result: Record<string, string> = {};
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg.startsWith('--')) {
-      result[arg.slice(2)] = argv[i + 1] ?? '';
-      i++;
-    }
-  }
-  return result;
-}
+import { parseArgs } from './lib/args.ts';
 
 const args = parseArgs(process.argv.slice(2));
 
@@ -93,6 +73,11 @@ function pascalToWords(pascal: string): string {
 const filesToProcess: { kebab: string; filePath: string; isSidecar: boolean }[] = [];
 const seenKebabs = new Set<string>();
 
+function addFile(kebab: string, filePath: string, isSidecar: boolean): void {
+  filesToProcess.push({ kebab, filePath, isSidecar });
+  seenKebabs.add(kebab);
+}
+
 // 1. Per-table layout: src/<table>/schema.ts (sidecar) and src/<table>/generated/schema.ts (generated-only)
 if (srcDir && existsSync(srcDir)) {
   for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
@@ -104,12 +89,10 @@ if (srcDir && existsSync(srcDir)) {
 
     if (existsSync(sidecarPath)) {
       // Has a sidecar — full CRUD table
-      filesToProcess.push({ kebab, filePath: sidecarPath, isSidecar: true });
-      seenKebabs.add(kebab);
+      addFile(kebab, sidecarPath, true);
     } else if (existsSync(generatedPath)) {
       // Generated-only (schemaOnly table) — components only, no paths
-      filesToProcess.push({ kebab, filePath: generatedPath, isSidecar: false });
-      seenKebabs.add(kebab);
+      addFile(kebab, generatedPath, false);
     }
   }
 }
@@ -121,8 +104,7 @@ if (extraSchemasDir && existsSync(extraSchemasDir)) {
     if (!entry.isFile() || !entry.name.endsWith('.schema.ts')) continue;
     const kebab = entry.name.replace(/\.schema\.ts$/, '');
     if (!seenKebabs.has(kebab)) {
-      filesToProcess.push({ kebab, filePath: resolve(extraSchemasDir, entry.name), isSidecar: true });
-      seenKebabs.add(kebab);
+      addFile(kebab, resolve(extraSchemasDir, entry.name), true);
     }
   }
 }
@@ -201,15 +183,20 @@ const componentOnlyTables: string[] = [];
 for (const { kebab, mod, isSidecar } of loaded) {
   // Use suffix-based export lookup so hand-written sidecars with non-kebab naming
   // (e.g. CategoryBodySchema in categories.schema.ts) are correctly detected.
-  const bodySchemaKey = Object.keys(mod).find(k => k.endsWith('BodySchema'));
-  const updateSchemaKey = Object.keys(mod).find(k => k.endsWith('UpdateSchema'));
-  const paramsSchemaKey = Object.keys(mod).find(k => k.endsWith('ParamsSchema'));
-  const responseSchemaKey = Object.keys(mod).find(k => k.endsWith('ResponseSchema'));
+  const findExport = (suffix: string) => {
+    const key = Object.keys(mod).find(k => k.endsWith(suffix));
+    return key ? { key, value: mod[key] } : undefined;
+  };
+  const body = findExport('BodySchema');
+  const update = findExport('UpdateSchema');
+  const params = findExport('ParamsSchema');
+  const response = findExport('ResponseSchema');
 
-  const bodySchema = bodySchemaKey ? mod[bodySchemaKey] : undefined;
-  const updateSchema = updateSchemaKey ? mod[updateSchemaKey] : undefined;
-  const paramsSchema = paramsSchemaKey ? mod[paramsSchemaKey] : undefined;
-  const responseSchema = responseSchemaKey ? mod[responseSchemaKey] : undefined;
+  const bodySchemaKey = body?.key;
+  const bodySchema = body?.value;
+  const updateSchema = update?.value;
+  const paramsSchema = params?.value;
+  const responseSchema = response?.value;
 
   // Derive the pascal name from the BodySchema export key (strips the 'BodySchema' suffix).
   // Falls back to kebab-derived name when the sidecar has no CRUD exports.

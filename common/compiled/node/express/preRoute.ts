@@ -12,6 +12,7 @@ import * as shutdown from '../errors/shutdown.ts';
 import { healthRouter } from '../health/router.ts';
 import { loggerMiddleware } from '../logger.ts';
 import * as services from '../services/index.ts';
+import { requestIdMiddleware } from './requestId.ts';
 
 /**
  * Bootstrap the Express app: registers security, CORS, body parsing middleware and starts services.
@@ -54,6 +55,9 @@ const preRoute = () => {
   if (TOKEN_SERVICE_NAME && USER_SERVICE_NAME) {
     authService.setup(TOKEN_SERVICE_NAME, USER_SERVICE_NAME, services.get);
   }
+
+  // must run before loggerMiddleware so every request/response log line carries req.requestId
+  app.use(requestIdMiddleware);
 
   // with timeout handling: socket timeouts, client aborts, close connections, normal responses
   // and prevents duplicate logs

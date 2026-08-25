@@ -25,30 +25,9 @@
 //   crud/<table>/routes.ts                ← created ONCE  (your sidecar)
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, relative, resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-
-// ─── CLI argument parsing ─────────────────────────────────────────────────────
-
-/**
- * Parses a flat `--key value` argument list into a plain object.
- * Consecutive `--key` tokens consume the immediately following token as their value.
- * Unknown or boolean-style flags (no following value) are stored as empty strings.
- *
- * @param argv - The argument list to parse, typically `process.argv.slice(2)`.
- * @returns A map of flag name (without the `--` prefix) to its string value.
- */
-function parseArgs(argv: string[]): Record<string, string> {
-  const result: Record<string, string> = {};
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg.startsWith('--')) {
-      result[arg.slice(2)] = argv[i + 1] ?? '';
-      i++;
-    }
-  }
-  return result;
-}
+import { parseArgs } from './lib/args.ts';
 
 const args = parseArgs(process.argv.slice(2));
 const schemaFilePath = args.schema;
@@ -110,6 +89,19 @@ function getColumns(table: object): Record<string, any> {
 
 // ─── SQL type → Zod code mapping ─────────────────────────────────────────────
 
+/** SQL types treated as numeric for primary-key coercion (`z.coerce.number()` vs `z.string()`). */
+const NUMERIC_SQL_TYPES = new Set(['serial', 'bigserial', 'integer', 'int', 'int2', 'int4', 'int8', 'bigint']);
+
+/**
+ * Strips precision/length modifiers and trailing qualifiers from a raw SQL type string,
+ * e.g. `'varchar(255)'` → `'varchar'`, `'timestamp with time zone'` → `'timestamp'`.
+ *
+ * @param sqlType - The raw SQL type string as returned by `col.getSQLType()`.
+ */
+function normalizeSqlType(sqlType: string): string {
+  return sqlType.toLowerCase().split('(')[0].split(' ')[0].trim();
+}
+
 /**
  * Maps a Drizzle / PostgreSQL SQL type string to the corresponding Zod v4 schema code snippet.
  *
@@ -129,7 +121,7 @@ function getColumns(table: object): Record<string, any> {
  * @returns A Zod schema code snippet string (e.g. `'z.string()'`, `'z.number().int()'`).
  */
 function sqlTypeToZodCode(sqlType: string): string {
-  const base = sqlType.toLowerCase().split('(')[0].split(' ')[0].trim();
+  const base = normalizeSqlType(sqlType);
   switch (base) {
     case 'serial':
     case 'bigserial':
@@ -201,14 +193,13 @@ function toKebabCase(str: string): string {
 // ─── File helpers ─────────────────────────────────────────────────────────────
 
 /**
- * Writes `content` to `filePath`, creating any intermediate directories as needed.
- * Always overwrites the file if it already exists.
+ * Writes `content` to `filePath`. Always overwrites the file if it already exists.
+ * The caller is responsible for ensuring `filePath`'s directory exists.
  *
  * @param filePath - Absolute path of the file to write.
  * @param content  - UTF-8 string content to write.
  */
 function writeFile(filePath: string, content: string): void {
-  mkdirSync(dirname(filePath), { recursive: true });
   writeFileSync(filePath, content, 'utf8');
 }
 
@@ -328,12 +319,6 @@ interface TableInfo {
    * Carries nullable information so the schema accurately reflects DB constraints.
    */
   responseFields: ResponseField[];
-  /**
-   * All column names for this table.
-   * Used to build an explicit SELECT column list when `excludeFromResponse` is non-empty,
-   * ensuring sensitive columns are never returned in API responses.
-   */
-  allColNames: string[];
   /**
    * Column names to omit from SELECT queries in generated controllers.
    * When non-empty, the controller uses an explicit column list instead of `SELECT *`.
@@ -486,11 +471,11 @@ export default express
  * @returns The full file content as a UTF-8 string ready to be written to disk.
  */
 function generateControllerFile(info: TableInfo): string {
-  const { varName, pkColName, pkIsNumeric, allColNames, excludeFromResponse } = info;
+  const { varName, pkColName, pkIsNumeric, responseFields, excludeFromResponse } = info;
   const pkExpr = pkIsNumeric ? `Number(req.params.${pkColName})` : `req.params.${pkColName}`;
 
-  // Build explicit column select when sensitive fields must be excluded from responses
-  const safeColNames = allColNames.filter(c => !excludeFromResponse.includes(c));
+  // responseFields already excludes excludeFromResponse — reuse its column list for SELECT.
+  const safeColNames = responseFields.map(f => f.name);
   const hasExclusions = excludeFromResponse.length > 0;
   const selectArgLines = safeColNames.map(c => `      ${c}: table.${c},`).join('\n');
   const selectCall = hasExclusions ? `.select({\n${selectArgLines}\n    })` : '.select()';
@@ -582,7 +567,7 @@ const SIDECAR_HEADER = `\
  * @returns The full file content as a UTF-8 string ready to be written to disk.
  */
 function generateSidecarSchema(info: TableInfo): string {
-  const { varName, kebabName, pascalName } = info;
+  const { pascalName } = info;
   return `${SIDECAR_HEADER}// Re-export everything from generated — add custom schemas below.
 export * from './generated/schema.ts';
 
@@ -636,7 +621,7 @@ export { default } from './generated/controller.ts';
  * @returns The full file content as a UTF-8 string ready to be written to disk.
  */
 function generateSidecarRoutes(info: TableInfo): string {
-  const { varName, kebabName, pascalName } = info;
+  const { varName, pascalName } = info;
   return `${SIDECAR_HEADER}import express from 'express';
 import generatedRoutes from './generated/routes.ts';
 
@@ -688,10 +673,15 @@ console.log();
 
 const schemaExports = await import(pathToFileURL(schemaPath).href);
 
-const generated: string[] = [];
-const schemaOnlyGenerated: string[] = [];
+interface TableRef {
+  varName: string;
+  kebabName: string;
+}
+
+const generated: TableRef[] = [];
+const schemaOnlyGenerated: TableRef[] = [];
 const skipped: string[] = [];
-const sidecarsCreated: string[] = [];
+const sidecarsCreated: TableRef[] = [];
 
 for (const [varName, exported] of Object.entries(schemaExports)) {
   if (!isPgTable(exported)) continue;
@@ -717,57 +707,52 @@ for (const [varName, exported] of Object.entries(schemaExports)) {
   const [pkColName, pkCol] = pkEntry;
   // biome-ignore lint/suspicious/noExplicitAny: drizzle column internals
   const pkSqlType: string = (pkCol as any).getSQLType?.() ?? 'unknown';
-  const pkBase = pkSqlType.toLowerCase().split('(')[0].split(' ')[0].trim();
-  const pkIsNumeric = ['serial', 'bigserial', 'integer', 'int', 'int2', 'int4', 'int8', 'bigint'].includes(pkBase);
+  const pkIsNumeric = NUMERIC_SQL_TYPES.has(normalizeSqlType(pkSqlType));
 
   // Per-table config
   const tableConfig = config.tables?.[varName];
   const excludeFromBodySet = new Set(tableConfig?.excludeFromBody ?? []);
   const excludeFromResponse = tableConfig?.excludeFromResponse ?? [];
 
-  // All column names — used for explicit SELECT when excludeFromResponse is set
-  const allColNames = Object.keys(columns);
+  // Shared per-column metadata — feeds both bodyFields and responseFields below.
+  const colMeta = Object.entries(columns).map(([colName, col]) => {
+    // biome-ignore lint/suspicious/noExplicitAny: drizzle column internals
+    const c = col as any;
+    const sqlType: string = c.getSQLType?.() ?? 'unknown';
+    return {
+      name: colName,
+      col: c,
+      zodCode: sqlTypeToZodCode(sqlType),
+      isPrimary: c.primary === true,
+      notNull: (c.notNull ?? false) as boolean,
+      hasDefault: (c.hasDefault ?? false) as boolean,
+    };
+  });
 
   // Build body fields — exclude PK, server-managed SQL-expression columns, and config-excluded columns
-  const bodyFields: BodyField[] = Object.entries(columns)
-    // biome-ignore lint/suspicious/noExplicitAny: drizzle column internals
-    .filter(([colName, col]) => !(col as any).primary && !excludeFromBodySet.has(colName))
-    .filter(([, col]) => {
-      // biome-ignore lint/suspicious/noExplicitAny: drizzle column internals
-      const c = col as any;
+  const bodyFields: BodyField[] = colMeta
+    .filter(m => !m.isPrimary && !excludeFromBodySet.has(m.name))
+    .filter(m => {
       // SQL expression defaults (e.g. sql`now()`, sql`session_user`, sql`inet_client_addr()`) are
       // server-managed — exclude them from body schemas so clients cannot supply them.
-      const defaultVal = c.config?.default;
+      const defaultVal = m.col.config?.default;
       const isSqlExpression = defaultVal !== undefined && typeof defaultVal?.getSQL === 'function';
       return !isSqlExpression;
     })
-    .map(([colName, col]) => {
-      // biome-ignore lint/suspicious/noExplicitAny: drizzle column internals
-      const c = col as any;
-      const sqlType: string = c.getSQLType?.() ?? 'unknown';
-      const notNull: boolean = c.notNull ?? false;
-      const hasDefault: boolean = c.hasDefault ?? false;
-      return {
-        name: colName,
-        zodCode: sqlTypeToZodCode(sqlType),
-        required: notNull && !hasDefault,
-      };
-    });
+    .map(m => ({
+      name: m.name,
+      zodCode: m.zodCode,
+      required: m.notNull && !m.hasDefault,
+    }));
 
   // Build response fields — ALL columns minus excludeFromResponse, used for ResponseSchema and OpenAPI
-  const responseFields: ResponseField[] = Object.entries(columns)
-    .filter(([colName]) => !excludeFromResponse.includes(colName))
-    .map(([colName, col]) => {
-      // biome-ignore lint/suspicious/noExplicitAny: drizzle column internals
-      const c = col as any;
-      const sqlType: string = c.getSQLType?.() ?? 'unknown';
-      const notNull: boolean = c.notNull ?? false;
-      return {
-        name: colName,
-        zodCode: sqlTypeToZodCode(sqlType),
-        nullable: !notNull,
-      };
-    });
+  const responseFields: ResponseField[] = colMeta
+    .filter(m => !excludeFromResponse.includes(m.name))
+    .map(m => ({
+      name: m.name,
+      zodCode: m.zodCode,
+      nullable: !m.notNull,
+    }));
 
   const kebabName = toKebabCase(varName);
   const pascalName = toPascalCase(varName);
@@ -779,19 +764,20 @@ for (const [varName, exported] of Object.entries(schemaExports)) {
     pkIsNumeric,
     bodyFields,
     responseFields,
-    allColNames,
     excludeFromResponse,
   };
 
   const tableDir = resolve(appRoot, OUTPUT_DIR, kebabName);
   const tableGenDir = resolve(tableDir, 'generated');
+  // Creates both tableDir and tableGenDir in one call (recursive mkdir creates all missing ancestors).
+  mkdirSync(tableGenDir, { recursive: true });
 
   // ── Always generate the Zod schema file ───────────────────────────────────
   writeFile(resolve(tableGenDir, 'schema.ts'), generateSchemaFile(info));
 
   // Config: schemaOnly — skip routes, controllers, and sidecars
   if (config.schemaOnly?.includes(varName)) {
-    schemaOnlyGenerated.push(varName);
+    schemaOnlyGenerated.push({ varName, kebabName });
     continue;
   }
 
@@ -808,64 +794,61 @@ for (const [varName, exported] of Object.entries(schemaExports)) {
   const controllerNew = writeIfAbsent(sidecarControllerPath, generateSidecarController(info));
   const routesNew = writeIfAbsent(sidecarRoutesPath, generateSidecarRoutes(info));
 
-  if (schemaNew || controllerNew || routesNew) sidecarsCreated.push(varName);
+  if (schemaNew || controllerNew || routesNew) sidecarsCreated.push({ varName, kebabName });
 
-  generated.push(varName);
+  generated.push({ varName, kebabName });
 }
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
+
+/** Logs `header` followed by every line `formatItem` produces for each item — no-op when `items` is empty. */
+function printSection<T>(header: string, items: T[], formatItem: (item: T) => string[]): void {
+  if (!items.length) return;
+  console.log(header);
+  for (const item of items) {
+    for (const line of formatItem(item)) console.log(line);
+  }
+}
 
 if (generated.length === 0 && schemaOnlyGenerated.length === 0 && skipped.length === 0) {
   console.log('No pgTable exports found in the schema file.');
   process.exit(0);
 }
 
-console.log(`Generated (${generated.length}):`);
-for (const name of generated) {
-  const kebab = toKebabCase(name);
-  const tCfg = config.tables?.[name];
+printSection(`Generated (${generated.length}):`, generated, ({ varName, kebabName }) => {
+  const tCfg = config.tables?.[varName];
   const bodyNote = tCfg?.excludeFromBody?.length ? ` [body: -${tCfg.excludeFromBody.length} fields]` : '';
   const responseNote = tCfg?.excludeFromResponse?.length
     ? ` [response: -${tCfg.excludeFromResponse.length} fields]`
     : '';
-  console.log(`  ${name}${bodyNote}${responseNote}`);
-  console.log(`    crud/${kebab}/generated/schema.ts      (overwritten)`);
-  console.log(`    crud/${kebab}/generated/routes.ts      (overwritten)`);
-  console.log(`    crud/${kebab}/generated/controller.ts  (overwritten)`);
-}
+  return [
+    `  ${varName}${bodyNote}${responseNote}`,
+    `    crud/${kebabName}/generated/schema.ts      (overwritten)`,
+    `    crud/${kebabName}/generated/routes.ts      (overwritten)`,
+    `    crud/${kebabName}/generated/controller.ts  (overwritten)`,
+  ];
+});
 
-if (schemaOnlyGenerated.length) {
-  console.log(`\nSchema only (${schemaOnlyGenerated.length}) — Zod schema generated, no routes/controllers:`);
-  for (const name of schemaOnlyGenerated) {
-    const kebab = toKebabCase(name);
-    console.log(`  ${name}`);
-    console.log(`    crud/${kebab}/generated/schema.ts    (overwritten)`);
-  }
-}
+printSection(
+  `\nSchema only (${schemaOnlyGenerated.length}) — Zod schema generated, no routes/controllers:`,
+  schemaOnlyGenerated,
+  ({ varName, kebabName }) => [`  ${varName}`, `    crud/${kebabName}/generated/schema.ts    (overwritten)`],
+);
 
-if (skipped.length) {
-  console.log(`\nSkipped (${skipped.length}):`);
-  for (const s of skipped) console.log(`  ${s}`);
-}
+printSection(`\nSkipped (${skipped.length}):`, skipped, s => [`  ${s}`]);
 
-if (sidecarsCreated.length) {
-  console.log(`\nSidecars created (once — yours to edit):`);
-  for (const name of sidecarsCreated) {
-    const kebab = toKebabCase(name);
-    console.log(`  crud/${kebab}/schema.ts`);
-    console.log(`  crud/${kebab}/controller.ts`);
-    console.log(`  crud/${kebab}/routes.ts`);
-  }
-}
+printSection('\nSidecars created (once — yours to edit):', sidecarsCreated, ({ kebabName }) => [
+  `  crud/${kebabName}/schema.ts`,
+  `  crud/${kebabName}/controller.ts`,
+  `  crud/${kebabName}/routes.ts`,
+]);
 
 if (generated.length) {
   const prefix = routePrefix ? `${routePrefix}` : '';
-  console.log(`\nNext step — mount routes in crud/router.ts:`);
-  for (const name of generated) {
-    const kebab = toKebabCase(name);
-    console.log(`  import ${name}Route from './${kebab}/routes.ts';`);
-    console.log(`  router.use('/${kebab}', ${name}Route); // ${prefix}/${kebab}`);
-  }
+  printSection('\nNext step — mount routes in crud/router.ts:', generated, ({ varName, kebabName }) => [
+    `  import ${varName}Route from './${kebabName}/routes.ts';`,
+    `  router.use('/${kebabName}', ${varName}Route); // ${prefix}/${kebabName}`,
+  ]);
 }
 
 console.log();

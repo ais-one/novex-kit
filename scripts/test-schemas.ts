@@ -2,32 +2,20 @@ import { readdirSync, statSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+const SCHEMA_FILE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts']);
+
 function collectSchemaFiles(dirPath: string): string[] {
-  const entries = readdirSync(dirPath, { withFileTypes: true });
-  const files: string[] = [];
-
-  for (const entry of entries) {
-    const entryPath = resolve(dirPath, entry.name);
-
-    if (entry.isDirectory()) {
-      files.push(...collectSchemaFiles(entryPath));
-      continue;
-    }
-
-    if (!entry.isFile()) {
-      continue;
-    }
-
-    const extension = extname(entry.name);
-    if (extension === '.js' || extension === '.mjs' || extension === '.cjs' || extension === '.ts') {
-      files.push(entryPath);
-    }
-  }
-
-  return files.sort((a, b) => a.localeCompare(b));
+  return readdirSync(dirPath, { recursive: true, withFileTypes: true })
+    .filter(entry => entry.isFile() && SCHEMA_FILE_EXTENSIONS.has(extname(entry.name)))
+    .map(entry => resolve(entry.parentPath, entry.name))
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function isSchemaLike(value: unknown): boolean {
+  // Accept schema factory functions too (e.g. ApiResponseSchema(dataSchema, id) => z.object(...)) —
+  // their arguments aren't known here, so a function export is trusted as-is rather than invoked.
+  if (typeof value === 'function') return true;
+
   return Boolean(
     value &&
       typeof value === 'object' &&

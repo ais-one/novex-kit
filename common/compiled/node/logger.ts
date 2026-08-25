@@ -46,6 +46,9 @@ const loggerMiddleware = (req: Request, res: Response, next: NextFunction) => {
     path: req.path,
     ip: req.ip,
     userAgent: req.get('user-agent'),
+    requestId: req.requestId,
+    layer: 'controller',
+    fn: 'loggerMiddleware',
   });
 
   const logResponse = (status: number, reason: string | null = null) => {
@@ -58,6 +61,9 @@ const loggerMiddleware = (req: Request, res: Response, next: NextFunction) => {
       path: req.path,
       status,
       duration: `${duration}ms`,
+      requestId: req.requestId,
+      layer: 'controller',
+      fn: 'loggerMiddleware',
       ...(reason && { reason }),
     });
   };

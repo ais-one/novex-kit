@@ -34,10 +34,10 @@
   "dependencies": {
     "@common/iso": "file:../../common/vanilla/iso",
     "@common/node": "file:../../common/compiled/node",
-    "@db/sample": "file:../../db/sample",
     "@db/audit": "file:../../db/audit",
-    "@json2csv/plainjs": "^7.0.6",
-    "csv-parse": "^7.0.1",
+    "@db/sample": "file:../../db/sample",
+    "@json2csv/plainjs": "^7.0.8",
+    "csv-parse": "^7.0.2",
     "fido2-lib": "^3.5.9",
     "pdfkit": "^0.19.1"
   }

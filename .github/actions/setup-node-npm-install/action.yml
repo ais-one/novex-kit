@@ -5,11 +5,11 @@ inputs:
   node-version:
     description: Node.js version to install.
     required: false
-    default: '24.13.0'
+    default: '24.18.0'
   npm-version:
     description: npm version to install globally.
     required: false
-    default: '11.6.2'
+    default: '11.18.0'
   install-command:
     description: Dependency install command to run.
     required: false

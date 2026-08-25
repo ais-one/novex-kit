@@ -1,14 +1,4 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "strict": false,
-    "noImplicitAny": false,
-    "skipLibCheck": true,
-    "erasableSyntaxOnly": true
-  },
+  "extends": "../tsconfig.base.json",
   "include": ["src/**/*.ts", "global.d.ts", "__tests__/**/*.ts", "../../common/compiled/node/tests/http-mocks.ts"]
 }

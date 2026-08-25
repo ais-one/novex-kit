@@ -19,9 +19,8 @@ apps/                # backend and frontend apps (npm workspace)
   sample-api/        # sample backend app — copy and rename, do not develop here directly
   base-iam/          # sample IAM service — auth, RBAC/FGA, user management (SAML/OIDC)
   cron/              # HTTP-triggered cron microservice — plain Express app (its own preRoute/postRoute), no internal scheduler; an external scheduler hits routes like `POST /cron/process-outbox`. Auth is a separate bearer-token scheme (`CRON_API_KEY`), not the main JWT/RBAC/FGA system
-  sample-mcp/        # MCP server example
-  sample-a2a/        # agent-to-agent sample — supervisor (Claude) + specialist (OpenAI RAG) over MCP
-  sample-rag/        # RAG sample — document ingestion + retrieval via MCP tools + OpenAI generation
+  sample-a2a-mcp-rag/ # current combined RAG + MCP + A2A demo — src/{a2a,mcp,rag,lib}/ + demo/, backed by @db/rag (Drizzle + pgvector)
+  sample-a2a-rag-mcp-aaron/ # earlier version of the same demo — ingest/mcp-server/a2a layout, raw SQL (no Drizzle); kept for reference, not actively developed
   sample-vue-full/   # full-featured sample Vue app (port 8081)
   sample-vue-minimal/ # minimal Vue app (port 8080)
   sample-common/     # internal shared backend code for apps/* workspaces (@apps/sample-common)
@@ -38,6 +37,7 @@ db/                  # database schemas, migrations, seeds — separate npm work
   sample/            # @db/sample — public schema: schema.ts, drizzle.config.ts, migrations, seeds (consumed by sample-api, cron)
   iam/               # @db/iam — iam schema: schema.ts, drizzle.config.ts, migrations, seeds (consumed by base-iam)
   audit/             # @db/audit — audit schema: schema.ts, drizzle.config.ts, migrations (SOC2/HIPAA trail)
+  rag/               # @db/rag — pgvector schema (documents, chunks + embedding column): schema.ts, drizzle.config.ts (consumed by sample-a2a-mcp-rag)
 docs/                # project documentation
 generated/           # gitignored scratch folder for local build/runtime artifacts — only .gitignore/README.md are tracked
 scripts/             # code/OpenAPI generation tooling, service mocks (npm workspace)
@@ -48,7 +48,7 @@ scripts/             # code/OpenAPI generation tooling, service mocks (npm works
 .githooks/           # native git hooks (pre-commit, pre-push)
 ```
 
-`sample-mcp`, `sample-a2a`, and `sample-rag` are demo scripts (`npm run demo`, etc.), not long-running services — most have no real `test` script (stubbed to exit 0). `sample-mcp` is the MCP *server* (StreamableHTTP transport); `sample-a2a` and `sample-rag` are MCP *clients*, each with their own `mcp-client.ts` (duplicated, not shared). In `sample-a2a`, `supervisor.ts` and `specialist.ts` are two separate A2A protocol servers (ports 3100/3101, `/.well-known/agent.json` + `POST /` task endpoints) — the supervisor classifies and delegates to the specialist, which does the actual MCP-backed RAG query.
+`sample-a2a-mcp-rag` is the current combined RAG + MCP + A2A demo (`sample-a2a-rag-mcp-aaron` is an earlier version of the same idea, kept for reference — same concept, `ingest`/`mcp-server`/`a2a` layout, raw SQL instead of Drizzle, not actively developed). In the active app: `src/rag/` ingests documents into pgvector via `@db/rag` (Drizzle); `src/mcp/server.ts` is the MCP *server* (StreamableHTTP transport, `npm run start:mcp`) exposing `rag_search`/`rag_add_document`/etc.; `src/a2a/` holds the MCP *client* (`src/lib/mcp-client.ts`) plus `supervisor.ts` and `specialist.ts`, two separate A2A protocol servers (`npm run start:supervisor`/`start:specialist`, `/.well-known/agent.json` + `POST /` task endpoints) — the supervisor classifies and delegates to the specialist, which does the actual MCP-backed RAG query. `demo/demo.ts` (`npm run demo`) seeds sample docs into an already-running MCP server, spawns the supervisor and specialist as child processes, sends sample queries through the supervisor, then tears both down. Most scripts here are demo entry points, not long-running services — it has no real `test` script (stubbed to exit 0).
 
 ## Setup
 
@@ -177,6 +177,7 @@ Each backend app builds its Express instance from `preRoute()` / `postRoute()` i
 | `public` | `apps/sample-api`, `apps/cron` | `db/sample/schema.ts` | `@db/sample/schema` |
 | `iam` | `apps/base-iam` | `db/iam/schema.ts` | `@db/iam/schema` |
 | `audit` | audit trail (SOC2/HIPAA) | `db/audit/schema.ts` | `@db/audit/schema` |
+| `rag` | `apps/sample-a2a-mcp-rag` | `db/rag/schema.ts` | `@db/rag/schema` |
 
 The PGlite socket server itself (`scripts/db-mocks/serve-db.ts`, `npm run serve`, port 5432) lives outside `db/`, alongside the other local service mocks (redis, kafka, SAML/OIDC) — it's dev-infra tooling, not schema/migrations. It reads and writes `db/dev.db` (gitignored).
 
@@ -241,6 +242,45 @@ Read `docs/conventions.md` before making code changes.
   globalThis.__myApp[_key] = value
   ```
 - Mark incomplete or planned work with `TODO`
+
+## Clean architecture (controller → service → repository)
+
+Backend apps under `apps/*` follow a layered architecture — **routes → controllers → services → repositories** — so each file has one reason to change and business logic stays independent of Express and of any specific data source.
+
+This layering is always **TypeScript with `strict: true`** — never plain JS+JSDoc, and never the `strict: false` seen in this repo's older tsconfigs (`common/compiled/node`). Give the app its own `tsconfig.json` + `global.d.ts` (copy from `apps/sample-common` or `apps/sample-queue-consumer` — see the skill for the exact template and the strict-mode pitfalls already hit building those).
+
+| Layer | File pattern | Responsibility | May import/call |
+|---|---|---|---|
+| Routes | `routes/*.routes.ts` | Express route wiring only | controllers |
+| Controllers | `controllers/*.controller.ts` | Parse/validate the request (`zod`), call **one** service method, shape the HTTP response | services |
+| Services | `services/*.service.ts` | Business logic and orchestration — no `req`/`res`, no direct DB/HTTP calls | repositories |
+| Repositories — data | `repositories/data/*.repository.ts` | Persistence: DB/cache queries | DB/cache clients (e.g. `@common/node/services/db/*`) |
+| Repositories — external | `repositories/external/*.repository.ts` | Calls to third-party APIs or other internal services over HTTP | `fetch` / SDK clients |
+
+The repository layer is the **only** layer allowed to know about a physical data source, and is split internally into `data/` (databases, caches) and `external/` (third-party APIs, other internal services) so swapping a data source or an API provider never touches a service or controller. Not every app needs both subfolders populated — an empty counterpart is fine; a repository file that mixes the two concerns is not.
+
+Don't confuse this with `common/compiled/node/services/*` — that's shared cross-app **infrastructure** (DB client factories, cloud SDK wrappers) consumed *by* the repository layer, not the per-app business-logic service layer described above.
+
+**Mockability is mandatory** for services and repositories — a controller must be testable without a real service, and a service must be testable without a real DB or network call:
+- Preferred: a plain module with named function exports (see `common/compiled/node/auth/store.ts`), mocked in tests with `mock.module()` (see [Module mock paths](#module-mock-paths)).
+- Acceptable when a layer needs interchangeable implementations: a class with constructor-injected dependencies and a default singleton export, mocked by constructing with a fake collaborator instead.
+- Either way: a service never imports a concrete DB client or calls `fetch` directly, and a controller never imports a repository directly — only the layer immediately below.
+
+**DTOs are mandatory at every boundary.** A repository maps a raw DB row or a third-party API response into the domain model before returning it — never let either raw shape leak up to the service. A controller maps the domain model into a response DTO before sending it — never `res.json()` a domain model directly. Every successful response is `{ message, data }` (`data: null` when there's nothing to return); errors keep the existing `{ error: { code, message } }` shape already produced by `common/node/errors/error.middleware.ts`. Validate a third-party response with zod in the repository the moment it's received, the same way request input is validated in the controller (`common/node/errors/validate.ts`).
+
+Full conventions and a worked example live in the `clean-architecture` skill — invoke with `/clean-architecture`. Use the `clean-architecture-reviewer` subagent to audit a change or an app for layering/mockability/DTO compliance.
+
+## Logging and tracing
+
+All logging goes through `common/node/logger`'s structured JSON transport (level, timestamp, service — already automatic) — never `console.*`. On top of that base, controller/service/repository code follows a stricter contract:
+
+- **Per-layer responsibility**: controllers log request-received / request-completed (status, duration) and unhandled errors bubbling up; services log business-meaningful domain events only (`resource.action`, past tense, e.g. `report.generated`) — not technical noise; repositories log only failures and slow-query warnings, never successful happy-path calls.
+- **Every log line identifies its origin** — a `layer` (`controller`/`service`/`repository`) and `fn` (the function/route/tool name) field, not just a bare message.
+- **Every unit of work carries a `requestId`** (header `x-request-id` — the one canonical name repo-wide; do not introduce alternates like `x-correlation-id`) from entry (HTTP request, MCP tool call, queue message) through every layer, and forwarded on any call to another of this repo's own apps.
+- **The logger is an injected dependency** inside services and repositories — passed down explicitly (or constructor-injected for class-based code), never grabbed as the bare global from that code, so log calls carry the current request's context and stay mockable in tests the same way a repository is. The bare global `logger` import remains correct for infrastructure code outside this layering.
+- Errors extend `common/node/errors/AppError` and its subclasses. A layer wrapping a lower-level error uses `{ cause: originalError }` so the full chain survives to the one place that logs it — normally the central `errorHandler` in `common/node/errors/error.middleware.ts` for HTTP, or a consumer's top-level catch for a queue message. Don't log the same error at more than one layer on its way up.
+
+Full mechanism, field shapes, the request-ID propagation rules, and the per-app gaps to close live in the `structured-logging` skill — invoke with `/structured-logging`.
 
 ## Commit conventions
 
@@ -339,7 +379,7 @@ git config merge.ours.driver true
 
 ```bash
 docker build -t novex-kit \
-  --target production \
+  --target runtime \
   --build-arg APP_NAME=sample-api \
   --build-arg API_PORT=3000 .
 
@@ -415,8 +455,11 @@ Route middleware available after `authUser`:
 | `docs/design/authn.md` | Authentication setup — SAML 2.0 and OIDC provider configuration |
 | `docs/design/authz.md` | Authorization — RBAC and FGA: setup, JWT payload, roles fallback chain, usage |
 | `docs/design/pg-audit-implementation.md` | PostgreSQL audit trail implementation (SOC2/HIPAA) |
+| `.claude/skills/clean-architecture/SKILL.md` | Controller/service/repository layering and mocking conventions |
+| `.claude/skills/structured-logging/SKILL.md` | Per-layer logging, error handling, and request-ID tracing conventions |
 | `docs/cloud/` | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare |
 | `docs/release-troubleshooting.md` | Troubleshooting `release-please` CI job failures |
 | `docs/NOTES.md` | Design decisions, caveats, open questions, TODOs |
+| `docs/housekeeping.md` | Dependency/Actions updates — Dependabot config plus the `/housekeeping-scan-actions` and `/housekeeping-update-packages` Claude Code commands |
 | `scripts/generators/README.md` | `generate-crud.ts` / `generate-openapi.ts` flags, config file, override recipes |
 | `db/README.md` | Local PGlite multi-schema DB server, migrations, seeding, reset |
