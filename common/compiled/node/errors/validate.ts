@@ -24,8 +24,13 @@ export function validate(target: ValidationTarget, schema: ZodTypeAny) {
       next(new ValidationError(message, result.error.issues, { cause: result.error }));
       return;
     }
-    // biome-ignore lint/suspicious/noExplicitAny: req[target] (body/params/query) has a different literal type per Express itself; assigning the parsed value back is the documented contract
-    (req as any)[target] = result.data;
+    // Express 5 defines `req.query` as a getter-only accessor (lib/request.js) — a plain
+    // `req.query = ...` assignment throws "Cannot set property query of #<IncomingMessage>
+    // which has only a getter". `Object.defineProperty` replaces it with a plain writable data
+    // property instead, which Express deliberately leaves `configurable: true` for exactly this
+    // case. `body`/`params` are already plain writable properties, so this is a no-op-equivalent
+    // overwrite for them — one code path for all three targets.
+    Object.defineProperty(req, target, { value: result.data, writable: true, enumerable: true, configurable: true });
     next();
   };
 }

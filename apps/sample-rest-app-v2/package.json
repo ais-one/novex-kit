@@ -1,5 +1,5 @@
 {
-  "name": "@apps/sample-rest-app",
+  "name": "@apps/sample-rest-app-v2",
   "description": "Sample REST API — reference implementation of the full controller/service/repository stack: layering, zod validation, DTO boundaries, structured per-layer logging with request-ID tracing, AppError-based error handling, and mockable unit tests. Copy this app's shape for a new real REST service.",
   "version": "0.0.1",
   "private": true,
@@ -14,15 +14,15 @@
     "test": "npm run test:unit && npm run test:integration && npm run test:schema"
   },
   "dependencies": {
-    "@apps/vision-common": "file:../vision-common",
+    "@apps/sample-common": "file:../sample-common",
     "@common/node": "file:../../common/compiled/node",
     "express": "^5.2.1",
-    "knex": "^3.2.10",
-    "pg": "^8.20.0",
-    "zod": "^4.3.6"
+    "knex": "^3.3.0",
+    "pg": "^8.23.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/pg": "^8.20.0"
+    "@types/pg": "^8.23.1"
   },
   "engines": {
     "node": ">=22",

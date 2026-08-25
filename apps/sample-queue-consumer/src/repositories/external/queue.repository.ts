@@ -1,8 +1,8 @@
-import MqKafka from '@apps/vision-common/services/mq/kafka.ts';
-import type { QueueHandler } from '@apps/vision-common/services/mq/types.ts';
+import MqKafka from '@apps/sample-common/services/mq/kafka';
+import type { QueueHandler } from '@apps/sample-common/services/mq/types';
 
 // Swapping the backend later (e.g. to SQS) means changing this one file — see
-// apps/vision-common/services/mq/README.md — nothing in services/ or consumers/ changes.
+// apps/sample-common/services/mq/README.md — nothing in services/ or consumers/ changes.
 
 const { topic = 'sample.events', groupId = 'sample-queue-consumer' } = globalThis.__config?.QUEUE_CONFIG ?? {};
 

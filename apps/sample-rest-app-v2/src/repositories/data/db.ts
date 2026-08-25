@@ -2,7 +2,7 @@ import Knex, { type Knex as KnexType } from 'knex';
 
 // This app's database is always PostgreSQL — never sqlite, never another RDBMS, never an
 // in-memory store. Knex (not drizzle) is required here so `getDb()` can be handed straight to
-// `@apps/vision-common/express/audit/audit-context.ts`'s `auditContext()`, which every mutating
+// `@apps/sample-common/express/audit/audit-context`'s `auditContext()`, which every mutating
 // route in this app goes through — see docs/design/pg-audit-implementation.md §6. This is a
 // local, standalone Knex instance rather than the shared `common/compiled/node/services/db/knex.ts`
 // (`StoreKnex`) wrapper: that class exists so multiple unrelated cross-app config blocks can

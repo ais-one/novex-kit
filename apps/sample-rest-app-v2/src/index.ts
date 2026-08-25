@@ -1,7 +1,7 @@
 import '@common/node/logger'; // Initialize global logger
 import '@common/node/config'; // Load .env / .env.json into globalThis.__config
 
-import { auditContext } from '@apps/vision-common/express/audit/audit-context.ts';
+import { auditContext } from '@apps/sample-common/express/audit/audit-context';
 import { errorHandler, notFoundHandler } from '@common/node/errors/error.middleware';
 import { requestIdMiddleware } from '@common/node/express/requestId';
 import { healthRouter } from '@common/node/health/router';

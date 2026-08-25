@@ -9,8 +9,10 @@ Use this workspace for backend-only code that is not template-wide enough for `c
 Suggested folders:
 
 - `auth/` - shared auth helpers used by multiple backend apps
-- `express/` - shared Express middleware or route helpers
-- `services/` - shared service-layer logic (this one currently created)
+- `express/` - shared Express middleware or route helpers (populated: `express/audit/` — the
+  Knex-based audit-context/hard-delete middleware, for apps on a Postgres+Knex stack)
+- `services/` - shared service-layer logic (populated: `services/mq/` — the Kafka-backed
+  `QueueDriver`, and the RAG/document-ingestion helpers this workspace was originally created for)
 - `utils/` - backend utility helpers
 - `__tests__/` - unit and integration tests for this workspace
 
@@ -21,15 +23,15 @@ Add this dependency from another app workspace:
 ```json
 {
   "dependencies": {
-    "@apps/shared-sample": "file:../shared-sample"
+    "@apps/sample-common": "file:../sample-common"
   }
 }
 ```
 
 Then import concrete modules directly, for example:
 
-```js
-import { someHelper } from '@apps/shared-sample/services/some-helper.js';
+```ts
+import { auditContext } from '@apps/sample-common/express/audit/audit-context';
 ```
 
-Avoid barrel `index.js` files. Export concrete modules from their own files.
+Avoid barrel `index.ts` files. Export concrete modules from their own files.

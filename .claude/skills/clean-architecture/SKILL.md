@@ -1,13 +1,13 @@
 ---
 name: clean-architecture
-description: Guidance and copy-paste templates for this repo's controller → service → repository layering (single-responsibility, separation of concerns), the repository layer's internal data/ vs external/ split, DTO boundaries (never let a DB row or a third-party response shape reach a service, never send a domain model directly as an HTTP response), zod validation at every input and external-response boundary, the standard `{ message, data }` API response envelope, and making service + repository layers mockable for Node's built-in test runner via mock.module() or constructor injection. Use when adding a new endpoint, MCP tool, or feature to any app under apps/* (vision-custom-api, vision-mcp, vision-rag, document-parser, vision-common), when a route handler or tool handler mixes HTTP/MCP parsing with business logic with direct DB/fetch calls, when introducing a repository for a database or a third-party API client, when shaping an API response or validating input/output, or when writing a unit test for a service or repository that needs a mocked dependency. Not for generic code review, styling, or unrelated refactors — see the clean-architecture-reviewer subagent for auditing existing code against these rules.
+description: Guidance and copy-paste templates for this repo's controller → service → repository layering (single-responsibility, separation of concerns), the repository layer's internal data/ vs external/ split, DTO boundaries (never let a DB row or a third-party response shape reach a service, never send a domain model directly as an HTTP response), zod validation at every input and external-response boundary, the standard `{ message, data }` API response envelope, and making service + repository layers mockable for Node's built-in test runner via mock.module() or constructor injection. Use when adding a new endpoint, MCP tool, or feature to any app under apps/*, when a route handler or tool handler mixes HTTP/MCP parsing with business logic with direct DB/fetch calls, when introducing a repository for a database or a third-party API client, when shaping an API response or validating input/output, or when writing a unit test for a service or repository that needs a mocked dependency. Not for generic code review, styling, or unrelated refactors — see the clean-architecture-reviewer subagent for auditing existing code against these rules.
 ---
 
 # Clean architecture: controller → service → repository
 
 ## Usage
 
-Invoke bare (`/clean-architecture`) for the full pattern. Invoke with an app name (`/clean-architecture vision-mcp`) to jump straight to that app's section under [Applying this to the apps in this repo today](#applying-this-to-the-apps-in-this-repo-today).
+Invoke bare (`/clean-architecture`) for the full pattern. Invoke with an app name (`/clean-architecture <app>`) for `clean-architecture-reviewer` to audit that app against it.
 
 This skill is the detailed reference behind the short policy in root `CLAUDE.md` under "Clean architecture (controller → service → repository)". Read that section first if you haven't — this document expands on it.
 
@@ -15,9 +15,9 @@ For what each layer logs, how errors propagate with their stack intact, and how 
 
 ## Language and strictness requirement
 
-Every controller, service, repository, and consumer built under this pattern is **TypeScript with `strict: true`** — no exceptions, even though this repo generally allows plain JS+JSDoc (`vision-mcp`, `common/vanilla/*`) and most existing tsconfig.json files here (`common/compiled/node`, `apps/vision-custom-api`) run with `strict: false`. This architecture is stricter than the repo default on purpose: a repository/service boundary is exactly where a silent `any` or an unchecked `null` does the most damage, since it's the layer everything else is mocked against.
+Every controller, service, repository, and consumer built under this pattern is **TypeScript with `strict: true`** — no exceptions, even though this repo generally allows plain JS+JSDoc (`common/vanilla/*`) and most existing tsconfig.json files here (`common/compiled/node`) run with `strict: false`. This architecture is stricter than the repo default on purpose: a repository/service boundary is exactly where a silent `any` or an unchecked `null` does the most damage, since it's the layer everything else is mocked against.
 
-Give the app its own `tsconfig.json` — this is the one actually used (and verified against real strict-mode output, not just written and assumed to work) in `apps/vision-common` and `apps/sample-queue-consumer`:
+Give the app its own `tsconfig.json` — this is the one actually used (and verified against real strict-mode output, not just written and assumed to work) in `apps/sample-common` and `apps/sample-queue-consumer`:
 
 ```json
 {
@@ -37,12 +37,12 @@ Give the app its own `tsconfig.json` — this is the one actually used (and veri
 
 Also copy that app's `global.d.ts` (ambient `logger` / `__config` / `Express.Request` declarations). Every app that imports `@common/node/logger` needs the `Express.Request` augmentation to typecheck cleanly — even an app with no authenticated routes — because the logger middleware itself references `req.log`/`req.startTime`.
 
-Two things strict mode surfaces that `strict: false` hides, both hit while building the reference example in `apps/vision-common`/`apps/sample-queue-consumer`:
+Two things strict mode surfaces that `strict: false` hides, both hit while building the reference example in `apps/sample-common`/`apps/sample-queue-consumer`:
 
 - **`noNonNullAssertion` (biome) and strict nullability (tsc) can pull in opposite directions.** When narrowing an optional value — e.g. a mock's captured callback in a test — don't reach for `!`; biome forbids it repo-wide. Destructure into a local and use `assert.ok(value, 'message')` instead: it's a real runtime check (fails loudly if the assumption is wrong, unlike a silently-no-op `?.`), and TypeScript narrows through it the same way.
 - **This repo's existing apps have a `tsconfig.json` but no wired-up `typecheck` npm script**, so nothing catches type errors in CI today — that's how a real `SASLOptions` mismatch and a real nullability bug both made it past "it looks right" during this skill's own reference implementation. Run `npx tsc --noEmit -p <app>/tsconfig.json` yourself after writing new code. Don't assume clean; verify.
 
-This requirement applies going forward, to new code written under this skill. It does not retroactively migrate existing plain-JS apps (`vision-mcp`) or non-strict tsconfigs (`common/compiled/node`, `vision-custom-api`) — that would be a separate, larger effort.
+This requirement applies going forward, to new code written under this skill. It does not retroactively migrate non-strict tsconfigs (`common/compiled/node`) — that would be a separate, larger effort.
 
 ## The four layers
 
@@ -68,7 +68,7 @@ Dependencies only ever point **downward**. A layer may only call the layer direc
 - A **service** implements business logic: validation rules, orchestration across multiple repositories, computing derived values. It never imports `express` types, never touches `req`/`res`, and never imports a DB client or calls `fetch` directly — it calls a repository instead. This is what makes a service testable outside of Express.
 - A **repository** is the only layer allowed to know about a physical data source. It translates between the service's plain-data vocabulary and a specific DB client, ORM, cache, or third-party API.
 
-Skipping a layer (a controller calling a repository directly, a route embedding business logic) is the most common violation — it's what today's fat handlers in `vision-custom-api`, `vision-mcp`, and `vision-rag` do (see the [rollout map](#applying-this-to-the-apps-in-this-repo-today)).
+Skipping a layer (a controller calling a repository directly, a route embedding business logic) is the most common violation to watch for when reviewing new code against this pattern.
 
 ## Validation and DTO boundaries
 
@@ -88,7 +88,7 @@ Four distinct shapes exist in any feature, and code in this repo must not let th
 - **Controller (mandatory)**: validate every request input (`body`/`params`/`query`) with zod before it reaches the service. Use the existing `common/compiled/node/errors/validate.ts` middleware — `validate(target, schema)` parses `req[target]` and calls `next(ValidationError)` on failure, wired into `common/node/errors/AppError.ts`'s hierarchy — rather than hand-rolling `schema.parse()` inside every handler.
 - **Repository — external (mandatory)**: parse a third-party or other-service response with zod immediately on receipt, before mapping it to the domain shape. An external system can change its response shape without warning; catching that at the repository boundary as a clear, typed failure beats an `undefined` silently propagating three layers up into a service.
 - **Repository — data (not required)**: a DB row already has a trusted, statically-typed shape from your own `schema.ts` (drizzle) or query definition — re-validating it with zod is usually redundant work. The discipline here is mapping to the domain shape, not re-validation.
-- **Response DTO (recommended)**: define it as a zod schema too, with `.meta({ id: '...' })` — the exact pattern already used in `common/schemas/{auth,payment,notification}.schema.js`. It plugs directly into the existing OpenAPI generation (`scripts/generate-openapi.ts` imports schemas by name and builds `docs/openapi/openapi.merged.yaml` from them) — one schema is both the runtime shape and the documentation, nothing to keep in sync by hand.
+- **Response DTO (recommended)**: define it as a zod schema too, with `.meta({ id: '...' })` — the exact pattern already used in `common/schemas/{auth,payment,notification}.schema.ts`. It plugs directly into that package's own OpenAPI generation (`cd common/schemas && npm run docs:generate`, which runs `scripts/generators/generate-openapi.ts` and builds `common/schemas/docs/openapi/openapi.merged.yaml`) — one schema is both the runtime shape and the documentation, nothing to keep in sync by hand.
 
 ### API response envelope
 
@@ -110,27 +110,26 @@ type ApiResponse<T> = { message: string; data: T | null };
 
 — produced automatically by `common/compiled/node/errors/error.middleware.ts`'s `errorHandler`, documented by `common/schemas/error.schema.js`'s `ErrorResponseSchema`. A controller only ever constructs the success envelope; the error envelope is the error middleware's job, not something a controller builds by hand.
 
-The success envelope is defined once, shared, next to the existing error schema — real, in `common/schemas/api-response.schema.js`:
+The success envelope is defined once, shared, next to the existing error schema — real, in `common/schemas/api-response.schema.ts`:
 
-```js
-// common/schemas/ is .js + JSDoc, not TypeScript, matching its existing files — this is
-// outside the TS+strict requirement above, which applies to apps/* controllers/services/repositories.
+```ts
+// The one success-response envelope every controller in this repo uses — { message, data }.
+import type { ZodTypeAny } from 'zod';
 import { z } from 'zod';
 
-/** @param {import('zod').ZodTypeAny} dataSchema */
-export const ApiResponseSchema = (dataSchema, id) =>
+export const ApiResponseSchema = (dataSchema: ZodTypeAny, id: string) =>
   z.object({ message: z.string(), data: dataSchema.nullable() }).meta({ id });
 ```
 
-`apps/sample-rest-app` constructs the envelope directly as a plain object in its controllers (`res.json({ message: 'Order created', data: toOrderResponseData(order) })`) rather than parsing through `ApiResponseSchema` at runtime — the schema's real value is feeding `scripts/generate-openapi.ts` (documenting the shape) with the same `.meta({ id })` pattern `common/schemas/auth.schema.js` already uses, not re-validating your own output. Wire `ApiResponseSchema(OrderResponseDataSchema, 'OrderResponse')` into that generator when this app's endpoints get documented.
+`apps/sample-rest-app-v2` constructs the envelope directly as a plain object in its controllers (`res.json({ message: 'Order created', data: toOrderResponseData(order) })`) rather than parsing through `ApiResponseSchema` at runtime — the schema's real value is feeding `common/schemas`'s own OpenAPI generation (documenting the shape) with the same `.meta({ id })` pattern `common/schemas/auth.schema.ts` already uses, not re-validating your own output. Wire `ApiResponseSchema(OrderResponseDataSchema, 'OrderResponse')` into that generator when this app's endpoints get documented.
 
-**Existing gaps this convention doesn't retroactively fix**: `common/schemas/auth.schema.js`'s `MessageResponseSchema` (`{ message }`, no `data` field) is sample/template content for a demo scaffold that isn't wired to any real app; `apps/document-parser`'s actual controllers return `{ success, data, error }` (from its `ParseResult` type), predating this convention. Neither needs to change for this skill to be usable — a new feature built under this skill uses `{ message, data }` regardless of what neighboring sample or pre-existing code does.
+**Existing gap this convention doesn't retroactively fix**: `common/schemas/auth.schema.ts`'s `MessageResponseSchema` (`{ message }`, no `data` field) is sample/template content for a demo scaffold that isn't wired to any real app. That doesn't need to change for this skill to be usable — a new feature built under this skill uses `{ message, data }` regardless of what neighboring sample or pre-existing code does.
 
 ## The repository layer's internal split: `data/` vs `external/`
 
 Split every app's `repositories/` folder into two kinds, even if one side starts empty:
 
-- **`repositories/data/*.repository.ts`** — persistence. Talks to a database or cache. Owns query/schema knowledge. Built on a DB client, typically one of `@common/node/services/db/*` (`drizzle.ts`, `knex.ts`, `redis.ts`, `keyv.ts`) or an app-local client.
+- **`repositories/data/*.repository.ts`** — persistence. Talks to a database or cache. Owns query/schema knowledge. Built on a DB client, typically one of `@common/node/services/db/*` (`drizzle.ts`, `knex.ts`, `redis.ts`, `keyv.ts`) or an app-local client. On a SQL database, select columns explicitly rather than `SELECT *`.
 - **`repositories/external/*.repository.ts`** — integration. Talks to a third-party API or another one of this repo's own services over HTTP (OpenAI, Telegram, S3/OSS, another `apps/*` service). Owns URL/auth/payload-shape knowledge for that one dependency.
 
 Keep them as separate files even for a single feature — a `reports.repository.ts` that both queries Postgres *and* calls an external PDF-rendering API has two reasons to change and belongs in `data/reports.repository.ts` + `external/pdf-provider.repository.ts` instead.
@@ -141,7 +140,7 @@ Keep them as separate files even for a single feature — a `reports.repository.
 
 `common/compiled/node/services/` (`db/`, `oss-files/`, `ali.ts`, `aws.ts`) is shared **infrastructure** used across every app in the repo — DB client factories, cloud SDK wrappers. It is consumed *by* an app's repository layer; it is not itself the per-app business-logic "service" this document describes, despite the shared name. When in doubt: if it's cross-app, template-wide, and about a connection/client, it's `@common/node/services/*`; if it's this feature's business rule, it's this app's `services/*.service.ts`.
 
-The message queue driver is a related but separate case: it lives in `apps/vision-common/services/mq/`, not `common/compiled/node/`, because it's specific to the `vision-*` apps rather than template-wide — see that folder's `README.md` for why, and for the "one dedicated app per consumer" deployment rule.
+The message queue driver is a related but separate case: it lives in `apps/sample-common/services/mq/`, not `common/compiled/node/`, because it's shared `apps/*` infrastructure rather than template-wide — see that folder's `README.md` for why, and for the "one dedicated app per consumer" deployment rule.
 
 ## Mockability
 
@@ -223,15 +222,15 @@ Two rules that silently break this pattern if missed (both already called out in
 2. **The `.ts`-extension rule depends on *how* the specifier resolves — get this wrong and you get `Cannot find module`, not a clear error:**
    - A **relative path** (`'../repositories/data/reports.repository.ts'`) needs the extension, exactly like a normal `import` — there's no package `exports` map involved, so Node's plain relative resolution requires an exact filename match.
    - A specifier that resolves **through a package's `exports` map wildcard** — e.g. `@common/node/auth/store`, matched by `common/compiled/node/package.json`'s `"./**/*": "./**/*.ts"` — must **omit** the extension. The wildcard pattern itself appends `.ts`; typing it yourself produces `store.ts.ts`.
-   - `apps/vision-common` has no `exports` map at all, so deep imports from it (`@apps/vision-common/services/mq/kafka.ts`) always keep the extension, same as a relative path.
+   - `apps/sample-common` has the same kind of wildcard export (`"./*": "./*.ts"`), so deep imports from it (`@apps/sample-common/services/mq/kafka`) also omit the extension. An app with no `exports` map at all resolves deep imports the same way a relative path does — extension required.
    - When in doubt, match whatever a normal `import` of that same specifier already looks like elsewhere in the codebase — `mock.module()` follows the same resolution rules, it doesn't invent its own.
 
 ### Idiom B — class with constructor-injected dependencies (when a layer needs interchangeable implementations)
 
-Already used in this repo at `apps/document-parser`: `ParserController` takes a `DocumentParserService` in its constructor (defaulting to a real singleton), and `DocumentParserService` takes an array of `IDocumentParser` implementations. Reach for this when a layer's whole job is picking between multiple interchangeable backends (multiple file-format parsers, multiple payment providers, etc.) — the interface + constructor injection models that better than a flat function module would.
+No app in this repo exemplifies this idiom yet — the shape below is a hypothetical illustration, not a live citation. Reach for it when a layer's whole job is picking between multiple interchangeable backends (multiple file-format parsers, multiple payment providers, etc.) — the interface + constructor injection models that better than a flat function module would.
 
 ```ts
-// controllers/parser.controller.ts (existing, apps/document-parser/src/controllers/parser.controller.ts)
+// controllers/parser.controller.ts (illustrative)
 export class ParserController {
   private parserService: DocumentParserService;
   constructor(parserService: DocumentParserService = defaultParserService) {
@@ -252,7 +251,7 @@ Either idiom must satisfy the same rule: **a service never imports a concrete DB
 
 ### Which idiom for which layer, in practice
 
-- Controllers: idiom A is usually simplest (plain exported handler functions per route, as in `common/compiled/node/health/controller.ts`) unless the app is already class-based (`document-parser`).
+- Controllers: idiom A is usually simplest (plain exported handler functions per route, as in `common/compiled/node/health/controller.ts`) unless the app is already class-based.
 - Services: idiom A by default.
 - Repositories — `data/`: idiom A. Inject the DB client the same way `auth/store.ts` does (a `setup()`/lookup function or a module-level import of `@common/node/services/db/*`), not a hardcoded connection inline in every query function.
 - Repositories — `external/`: idiom A, one file per external dependency.
@@ -260,7 +259,7 @@ Either idiom must satisfy the same rule: **a service never imports a concrete DB
 ### Test tiers
 
 - **Unit tests** (`*.test.ts`, run by the default `test` script): mock every repository a service depends on; mock the underlying driver (`fetch`, the DB client) for any repository test that has non-trivial mapping/error-handling logic worth covering. Never touch a real DB or network.
-- **Integration tests** (`*.integration.test.ts` — matches the `test:integration` script pattern already used in `apps/vision-custom-api`): allowed to hit a real or sandboxed dependency. Use `@common/node/tests/http-request` for real HTTP calls and `@common/node/tests/http-mocks` for Express req/res stubs when you want a unit-style test of a controller without spinning up a server.
+- **Integration tests** (`__tests__/integration/*.test.ts` — matches the `test:integration` script pattern already used in `apps/sample-rest-app-v2` and `apps/sample-queue-consumer`): allowed to hit a real or sandboxed dependency. Use `@common/node/tests/http-request` for real HTTP calls and `@common/node/tests/http-mocks` for Express req/res stubs when you want a unit-style test of a controller without spinning up a server.
 - All tests use `describe.only()` / `it.only()` — see root `CLAUDE.md` → Testing. A test written without `.only()` silently never runs.
 
 ## Directory layout template
@@ -283,11 +282,11 @@ apps/<app>/src/
     <feature>.controller.test.ts
 ```
 
-Naming: `kebab-case` files, one export family per file, `*.routes.ts` / `*.controller.ts` / `*.service.ts` / `*.repository.ts` suffixes so the layer is obvious from the filename alone (mirrors `document-parser`'s existing `*.controller.ts`/`*.service.ts` suffixes).
+Naming: `kebab-case` files, one export family per file, `*.routes.ts` / `*.controller.ts` / `*.service.ts` / `*.repository.ts` suffixes so the layer is obvious from the filename alone.
 
 ### A TypeScript-execution nuance across apps
 
-`common/compiled/node` and the templates above use **native Node TS execution** (`node file.ts`, per root `CLAUDE.md` and `docs/conventions.md`) — relative imports keep the `.ts` extension (`from '../services/db/schema.ts'`). `apps/document-parser` instead has its own `tsc`/`tsx` build step and uses the NodeNext convention of a `.js` extension inside `.ts` source (`from '../services/document-parser.service.js'`). Follow whichever convention the app you're editing already uses; for a new app or feature, default to native execution with `.ts` extensions, matching `docs/conventions.md`'s stated direction ("avoid compilation, use NodeJS native typescript").
+`common/compiled/node` and the templates above use **native Node TS execution** (`node file.ts`, per root `CLAUDE.md` and `docs/conventions.md`) — relative imports keep the `.ts` extension (`from '../services/db/schema.ts'`). An app with its own `tsc`/`tsx` build step instead follows the NodeNext convention of a `.js` extension inside `.ts` source (`from '../services/foo.service.js'`) — check the app's own `package.json` scripts to see which one it uses. Follow whichever convention the app you're editing already uses; for a new app or feature, default to native execution with `.ts` extensions, matching `docs/conventions.md`'s stated direction ("avoid compilation, use NodeJS native typescript").
 
 ## Do / Don't
 
@@ -301,6 +300,7 @@ Naming: `kebab-case` files, one export family per file, `*.routes.ts` / `*.contr
 - Map a repository's raw DB row or external-provider response into the domain shape before returning it — never let either raw shape reach the service.
 - Give every success response the `{ message, data }` envelope; let the existing error middleware own the error envelope.
 - Validate a third-party response with zod the moment it's received, inside the repository.
+- For comments on each part of the code, keep the comment simple and declarative: "fetches a report by ID" rather than "this function fetches a report by ID from the database and returns it to the service layer". The former is a clear contract; the latter is an implementation detail that will change if the repository switches from Postgres to S3, for example.
 
 **Don't**
 
@@ -315,57 +315,22 @@ Naming: `kebab-case` files, one export family per file, `*.routes.ts` / `*.contr
 
 ## Applying this to the apps in this repo today
 
-No app in this repo currently has a repository layer, and only one has controller/service separation. This section maps the pattern onto each app's actual current code — for when implementation starts, not to be done as part of setting up this skill.
+No app in this repo currently has an open rollout entry against this pattern — use the `clean-architecture-reviewer` subagent to audit a specific app or change when one is needed.
 
-### `document-parser` — reference example, no changes needed
+### `sample-common` — shared home for cross-app repositories
 
-Already `routes/parser.routes.ts` → `ParserController` (`controllers/parser.controller.ts`) → `DocumentParserService` (`services/document-parser.service.ts`) → `IDocumentParser` implementations (`parsers/{pdf,word,excel}-parser.ts`). It has no DB or external API, so it has no `repositories/` folder — the parsers already play the "data access" role for local buffers/files. Hold this app up as the concrete example when explaining the pattern to someone; don't force a repository layer onto it.
-
-### `vision-custom-api` — extract from `routes/leehung/index.ts` and `routes/leehung/modules/index.ts`
-
-Today: `src/routes/leehung/index.ts` (~136 lines) inlines HTTP parsing, a 14-day range validation, calling `agent.ts`, and Telegram replies. `src/routes/leehung/modules/index.ts` (~1680 lines) mixes PDF layout/rendering with all report-building logic. `agent.ts` calls OpenAI's Responses API inline and keeps session state in a module-level `Map`.
-
-Target split:
-- `controllers/leehung.controller.ts` — HTTP parsing/validation (the date-range check) + one call into a report service.
-- `services/report.service.ts` — orchestrates: ask OpenAI for the report content, assemble report data, hand off to PDF rendering, send the result via Telegram. This is where the 1680-line `modules/index.ts` gets split — the report-building *business logic* stays here; the PDF *layout/rendering* is a pure in-process concern (no repository needed for it, per the Do/Don't above) and can stay a plain helper called by the service.
-- `repositories/external/openai.repository.ts` — wraps the OpenAI Responses-API + MCP tool-calling currently inline in `agent.ts`.
-- `repositories/external/telegram.repository.ts` — a thin adapter over the existing shared `@common/node/comms/telegram2` module; don't reimplement Telegram calls, just give this app's service a stable, mockable contract in front of the shared one.
-
-### `vision-mcp` — extract from `tools/leehung.js`
-
-Today: `tools/leehung.js` (~333 lines) has 5 `registerTool` callbacks that each inline input handling, a raw `fetch()` to `VISION_NMS_URL`/`VISION_CUSTOM_API_URL`, response shaping, and Telegram file delivery (temp-file write, send, unlink).
-
-Target split: each `registerTool` callback is this app's "controller" — keep it thin (parse tool input via `zod`, call one service function, format the MCP tool response). Add `services/*.service.ts` for orchestration, and:
-- `repositories/external/nms.repository.ts` — wraps the raw `fetch()` calls to `VISION_NMS_URL`.
-- `repositories/external/vision-custom-api.repository.ts` — wraps the raw `fetch()` calls to `VISION_CUSTOM_API_URL`.
-- Telegram file delivery via the same shared `@common/node/comms/telegram2` module as `vision-custom-api`. If the same external-API repository logic ends up duplicated between `vision-custom-api` and `vision-mcp`, hoist the shared repository into `apps/vision-common` (its documented role: shared backend code for `apps/*` — see its `README.md`) rather than copying it twice.
-
-### `vision-rag` — the layering doubles as fixing the current broken wiring
-
-Today this app doesn't run: `ingestion-service/src/index.ts` and `query-service/src/index.ts` import `./ingest.js`/`./query.js`, neither of which exists — the real logic sits one directory up in `service-ingest.ts`/`service-query.ts`, inlining S3 fetch + text extraction + chunking + OpenAI embedding + raw `pg.Pool` SQL in one file each. `rag-mcp-server/src/mcp.ts` has the same missing-import problem plus a reference to an undefined `db`.
-
-Target split, once this work starts, for both `ingestion-service` and `query-service`:
-- `services/ingest.service.ts` / `services/query.service.ts` — the orchestration currently in `service-ingest.ts`/`service-query.ts`, calling repositories instead of raw clients inline.
-- `repositories/data/pgvector.repository.ts` — wraps the raw `pg.Pool` SQL (currently inline) behind query functions.
-- `repositories/external/s3.repository.ts`, `repositories/external/openai.repository.ts` (and `cohere.repository.ts` for reranking, since `cohere-ai` is imported but not yet in `package.json`) — wrap the currently-inline S3/embedding/LLM/rerank calls.
-
-This is real implementation work and is explicitly out of scope for setting up this skill — noted here so the target shape is unambiguous once that work is picked up.
-
-### `vision-common` — shared home for cross-app repositories
-
-Beyond `constants.ts`, now also hosts `services/mq/` (the Kafka-backed `QueueDriver` — see its `README.md`). Its documented role (see its own `README.md`) is the same as the archived template's `shared-sample`: shared backend code for `apps/*`. Once a repository (e.g. the NMS client, or a Telegram helper) is needed by more than one `vision-*` app, that's the signal to move it here instead of duplicating it — mirroring how `common/compiled/node` hosts cross-app infrastructure for every app in the repo. `apps/sample-queue-consumer` is the first real consumer built against it — copy its shape (`repositories/external/` → `services/` → `consumers/`) for the next one.
+Hosts `services/mq/` (the Kafka-backed `QueueDriver` — see its `README.md`) and `express/audit/` (the Knex-based `auditContext()`/`hardDelete()` middleware — see its `README.md`), alongside the RAG/document-ingestion helpers this workspace was originally created for. Its documented role (see its own `README.md`) is shared backend code for `apps/*`. Once a repository is needed by more than one app, that's the signal to move it here instead of duplicating it — mirroring how `common/compiled/node` hosts cross-app infrastructure for every app in the repo, except scoped to `apps/*`-level concerns (a specific ORM/query-builder choice, a specific queue backend) rather than template-wide ones. `apps/sample-queue-consumer` and `apps/sample-rest-app-v2` are its first real consumers — copy their shape for the next one.
 
 ## References
 
 - Root `CLAUDE.md` → "Clean architecture (controller → service → repository)" (short policy), "Testing" (`.only()`, `mock.module()`, shared test utilities).
 - `common/compiled/node/auth/store.ts` — real named-export repository, mocked via `mock.module()` in the root `CLAUDE.md` example.
 - `common/compiled/node/health/{controller,router}.ts` — real thin controller + router split.
-- `apps/document-parser/src/{controllers,services,interfaces,parsers}` — real controller → service → interchangeable-implementation split.
 - `common/compiled/node/tests/{http-mocks,http-request}.ts` — shared test utilities for controller-level and integration tests.
-- `apps/vision-common/services/mq/{types,kafka}.ts` + `__tests__/unit/kafka.test.ts` — real strict-mode TypeScript repository-layer driver, with a real crash bug (a caught failure in `open()` left state that made an uncaught failure in `subscribe()` possible) found by actually booting it, not just by the unit tests.
+- `apps/sample-common/services/mq/{types,kafka}.ts` + `__tests__/unit/kafka.test.ts` — real strict-mode TypeScript repository-layer driver, with a real crash bug (a caught failure in `open()` left state that made an uncaught failure in `subscribe()` possible) found by actually booting it, not just by the unit tests.
 - `apps/sample-queue-consumer` — real controller(consumer)/service/repository split for a message-driven (non-HTTP) app; its `tsconfig.json`/`global.d.ts` are the copy-paste strict-mode template referenced above.
-- `common/compiled/node/errors/{AppError,error.middleware,validate}.ts` — real, already-wired-in error hierarchy and request-validation middleware (used from `postRoute()` in real apps, confirmed in `apps/vision-custom-api/src/app.ts`).
-- `common/schemas/{error,auth,payment,notification,api-response}.schema.js` + `scripts/generate-openapi.ts` — real zod-schema-to-OpenAPI pipeline (`.meta({id})` → `docs/openapi/openapi.merged.yaml`); `auth`/`payment`/`notification` are sample/template content, `error`/`api-response` are the real, live envelope schemas.
-- `apps/sample-rest-app` — the complete reference implementation: every layer, the `data`/`external` repository split, DTO mapping (including a field — `internalRiskScore` — that deliberately never reaches the response), zod at both the request and external-response boundary, `{ message, data }` responses, injected `ContextLogger`, and tiered tests (service/controller/external-repository mocked at the unit tier; the data repository tested at the integration tier against a **real PostgreSQL instance** — this app's database is always Postgres, never sqlite or an in-memory store, so its repository test is real, not mocked). Verified end to end with a real HTTP boot, a real Postgres round-trip, and a real external API call — read this before the inline snippets elsewhere in this document if you want to see it all wired together.
+- `common/compiled/node/errors/{AppError,error.middleware,validate}.ts` — real, already-wired-in error hierarchy and request-validation middleware (used from `postRoute()` in every real app).
+- `common/schemas/{error,auth,payment,notification,api-response}.schema.ts` + `common/schemas`'s own `docs:generate` script (`scripts/generators/generate-openapi.ts` under the hood) — real zod-schema-to-OpenAPI pipeline (`.meta({id})` → `common/schemas/docs/openapi/openapi.merged.yaml`); `auth`/`payment`/`notification` are sample/template content, `error`/`api-response` are the real, live envelope schemas.
+- `apps/sample-rest-app-v2` — the complete reference implementation: every layer, the `data`/`external` repository split, DTO mapping (including a field — `internalRiskScore` — that deliberately never reaches the response), zod at both the request and external-response boundary, `{ message, data }` responses, injected `ContextLogger`, and tiered tests (service/controller/external-repository mocked at the unit tier; the data repository tested at the integration tier against a **real PostgreSQL instance** — this app's database is always Postgres, never sqlite or an in-memory store, so its repository test is real, not mocked). Verified end to end with a real HTTP boot, a real Postgres round-trip, and a real external API call — read this before the inline snippets elsewhere in this document if you want to see it all wired together.
 - `.claude/skills/structured-logging/SKILL.md` — companion skill: per-layer logging, error handling, and request-ID tracing on top of this layering.
 - `.claude/agents/clean-architecture-reviewer.md` — subagent that audits a change or app against both this document and `structured-logging`.
