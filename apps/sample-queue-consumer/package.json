@@ -8,6 +8,8 @@
   "scripts": {
     "lint": "biome check --config-path ../biome.json",
     "start": "node --watch --watch-preserve-output --trace-warnings src/index.ts",
+    "kafka:provision": "node ../../scripts/kafka-provision.ts",
+    "kafka:offset": "node ../../scripts/kafka-offset.ts",
     "test:unit": "node --test-reporter=spec --experimental-test-coverage --experimental-test-module-mocks --test --test-only ./src/**/__tests__/*.test.ts",
     "test:integration": "exit 0",
     "test:schema": "exit 0",
