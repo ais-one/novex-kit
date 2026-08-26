@@ -7,7 +7,7 @@ Generated OpenAPI YAML output is stored in this folder — **one file per app** 
 Nothing here is hand-edited. Each file is generated from that app's own `src/openapi.ts` (zod DTOs annotated with `.meta({ id })`, run through `zod-openapi`'s `createDocument()`) — regenerate rather than editing the YAML directly.
 
 ```bash
-npm run docs:generate   # regenerate docs/openapi/*.yaml from every onboarded app's src/openapi.ts
-npm run docs:validate   # redocly lint docs/openapi/*.yaml
-npm run docs:make-html  # optional static HTML build via Redocly
+npm run docs:generate:api --workspace=scripts/generators  # regenerate docs/openapi/*.yaml from every onboarded app's src/openapi.ts
+npm run docs:validate                                     # redocly lint docs/openapi/*.yaml
+npm run docs:make-html                                    # optional static HTML build via Redocly
 ```
