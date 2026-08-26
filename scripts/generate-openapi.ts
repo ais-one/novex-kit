@@ -17,7 +17,7 @@ import yaml from 'js-yaml';
 
 // Add an app's name here once it has its own src/openapi.ts — see the skill's
 // "Applying this to the apps in this repo today" section for the onboarding steps.
-const APPS = [];
+const APPS = ['sample-rest-app-v2'];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
