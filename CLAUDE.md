@@ -437,8 +437,8 @@ Route middleware available after `authUser`:
 
 | Middleware | Source | Checks |
 |---|---|---|
-| `requireRole(...roles)` | `@common/node/auth/rbac.js` | flat `req.user.roles` — works with all three layers |
-| `requireFga(relation, object)` | `@common/node/auth/openfga.js` | OpenFGA tuple lookup |
+| `requireRole(...roles)` | `@common/node/auth/require-role.ts` | flat `req.user.roles` — works with all three layers |
+| `requireFga(relation, object)` | `@common/node/auth/openfga.ts` | OpenFGA tuple lookup |
 | `req.rbac.hasRole(...roles)` | attached by `authUser` | flat JWT `roles` array |
 | `req.fga.check(relation, object)` | attached by `authUser` | ad-hoc FGA check inside a handler |
 

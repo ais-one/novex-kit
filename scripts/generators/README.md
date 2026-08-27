@@ -282,4 +282,48 @@ and its own output file (`db/<schema>/openapi/openapi.yaml`) — run it once per
 The standalone `--schemas` path has its own consumer too: `common/schemas/` (hand-written, cross-cutting
 schemas — not CRUD-generated) has its own `docs:generate`/`docs:validate`/`docs:make-html` scripts in
 `common/schemas/package.json`, run from within that folder, producing `common/schemas/docs/openapi/openapi.merged.yaml`.
-There is no root-level `docs:generate` anymore — each schema source generates and validates its own doc independently.
+There is no root-level `docs:generate` for CRUD-generated docs — each schema source generates and validates its
+own doc independently. (See `api-generator-route.ts` below for the one root-level OpenAPI script, which covers a
+different, non-CRUD source of specs.)
+
+---
+
+### api-generator-route.ts
+
+Writes one static `docs/openapi/<app>.yaml` per onboarded REST app, for offline/CI use (`redocly lint`,
+sharing the spec file, static HTML builds). Unlike `generate-openapi.ts` above (which builds a spec from a
+`db/<schema>`'s CRUD Zod schemas), this generator does no schema discovery of its own — each app owns its
+own hand-written `src/openapi.ts` (built with `zod-openapi`'s `createDocument()` from that app's own zod
+DTOs), and this script only loops over the onboarded apps and writes their output.
+
+Run from this workspace directory (`scripts/generators`):
+
+```sh
+npm run docs:generate:api
+```
+
+Or from the repo root:
+
+```sh
+npm run docs:generate:api --workspace=scripts/generators
+```
+
+Or directly:
+
+```sh
+node scripts/generators/api-generator-route.ts
+```
+
+Onboard a new app by adding its folder name to the `APPS` array at the top of the script:
+
+```ts
+const APPS = ['sample-rest-app-v2'];
+```
+
+Each entry must have a corresponding `apps/<app>/src/openapi.ts` that exports a `document` (the object
+returned by `zod-openapi`'s `createDocument()`) — the script dynamically imports that file and writes
+`yaml.dump(document)` to `docs/openapi/<app>.yaml`.
+
+The live, primary way to view an app's docs is that same app mounting them itself, reading straight from
+its own `src/openapi.ts` — this script's output is a secondary, static artifact, not what a docs viewer
+hits day to day. See `.claude/skills/openapi-docs/SKILL.md` for the full per-app OpenAPI convention.
