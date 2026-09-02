@@ -18,7 +18,8 @@
     "@fontsource/dm-sans": "^5.3.0",
     "@fontsource/fraunces": "^5.3.0",
     "chart.js": "^4.5.1",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "pinia": "^4.0.3"
   },
   "msw": {
     "workerDirectory": "public"
