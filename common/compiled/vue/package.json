@@ -7,10 +7,9 @@
     "@ant-design/icons-vue": "^7.0.1",
     "@common/iso": "file:../../vanilla/iso",
     "@common/web": "file:../../vanilla/web",
-    "@sentry/vue": "^10.70.0",
+    "@sentry/vue": "^10.73.0",
     "ant-design-vue": "^4.2.6",
-    "pinia": "^3.0.4",
-    "vue": "^3.5.41",
-    "vue-router": "^5.2.0"
+    "vue": "^3.5.42",
+    "vue-router": "^5.3.0"
   }
 }

@@ -15,11 +15,7 @@
   },
   "dependencies": {
     "@apps/sample-common": "file:../sample-common",
-    "@common/node": "file:../../common/compiled/node",
-    "express": "^5.2.1",
-    "knex": "^3.3.0",
-    "pg": "^8.23.0",
-    "zod": "^4.4.3"
+    "@common/node": "file:../../common/compiled/node"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1"
