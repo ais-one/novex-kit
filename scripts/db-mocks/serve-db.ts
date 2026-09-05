@@ -1,5 +1,6 @@
 import { parseArgs } from 'node:util';
 import { PGlite } from '@electric-sql/pglite';
+import { pgmq } from '@electric-sql/pglite-pgmq';
 import { vector } from '@electric-sql/pglite-pgvector';
 import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 
@@ -12,7 +13,7 @@ const dbPath = values.dbpath ?? '../../db/dev.db';
 
 // The vector extension enables pgvector support (vector(1536), HNSW indexes, <=> operator).
 const db = new PGlite(dbPath, {
-  extensions: { vector },
+  extensions: { vector, pgmq },
 });
 const server = new PGLiteSocketServer({
   db,

@@ -2,8 +2,6 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import FormData from 'form-data';
-import fetch from 'node-fetch';
 
 const BASE_URL = (token: string) => `https://api.telegram.org/bot${token}`;
 
@@ -53,14 +51,14 @@ class TelegramError extends Error {
  *   - "http(s)://..." → use URL
  *   - Everything else  → treat as local path, attach as multipart
  */
-function resolveFile(fd: FormData, fieldName: string, input: string): string | null {
+async function resolveFile(fd: FormData, fieldName: string, input: string): Promise<string | null> {
   if (!input) return null;
   if (input.startsWith('file_id:')) return input.replace('file_id:', '');
   if (input.startsWith('http://') || input.startsWith('https://')) return input;
 
   // Local file – attach to FormData
-  const stream = fs.createReadStream(input);
-  fd.append(fieldName, stream, path.basename(input));
+  const blob = await fs.openAsBlob(input);
+  fd.append(fieldName, blob, path.basename(input));
   return null; // signal: already added to form
 }
 
@@ -183,7 +181,7 @@ export async function sendPhoto(token: string, chatId: number | string, photo: s
   if (opts.disable_notification) fd.append('disable_notification', 'true');
   if (opts.protect_content) fd.append('protect_content', 'true');
 
-  const resolved = resolveFile(fd, 'photo', photo);
+  const resolved = await resolveFile(fd, 'photo', photo);
   if (resolved) fd.append('photo', resolved);
 
   return apiRequest(token, 'sendPhoto', {}, fd);
@@ -212,11 +210,11 @@ export async function sendVideo(token: string, chatId: number | string, video: s
   if (opts.parse_mode) fd.append('parse_mode', opts.parse_mode);
   if (opts.reply_markup) fd.append('reply_markup', opts.reply_markup);
 
-  const resolvedVideo = resolveFile(fd, 'video', video);
+  const resolvedVideo = await resolveFile(fd, 'video', video);
   if (resolvedVideo) fd.append('video', resolvedVideo);
 
   if (opts.thumbnail) {
-    const resolvedThumb = resolveFile(fd, 'thumbnail', opts.thumbnail);
+    const resolvedThumb = await resolveFile(fd, 'thumbnail', opts.thumbnail);
     if (resolvedThumb) fd.append('thumbnail', resolvedThumb);
   }
 
@@ -242,11 +240,11 @@ export async function sendAudio(token: string, chatId: number | string, audio: s
   if (opts.parse_mode) fd.append('parse_mode', opts.parse_mode);
   if (opts.reply_markup) fd.append('reply_markup', opts.reply_markup);
 
-  const resolved = resolveFile(fd, 'audio', audio);
+  const resolved = await resolveFile(fd, 'audio', audio);
   if (resolved) fd.append('audio', resolved);
 
   if (opts.thumbnail) {
-    const resolvedThumb = resolveFile(fd, 'thumbnail', opts.thumbnail);
+    const resolvedThumb = await resolveFile(fd, 'thumbnail', opts.thumbnail);
     if (resolvedThumb) fd.append('thumbnail', resolvedThumb);
   }
 
@@ -272,11 +270,11 @@ export async function sendDocument(
   if (opts.disable_content_type_detection) fd.append('disable_content_type_detection', 'true');
   if (opts.reply_markup) fd.append('reply_markup', opts.reply_markup);
 
-  const resolved = resolveFile(fd, 'document', document);
+  const resolved = await resolveFile(fd, 'document', document);
   if (resolved) fd.append('document', resolved);
 
   if (opts.thumbnail) {
-    const resolvedThumb = resolveFile(fd, 'thumbnail', opts.thumbnail);
+    const resolvedThumb = await resolveFile(fd, 'thumbnail', opts.thumbnail);
     if (resolvedThumb) fd.append('thumbnail', resolvedThumb);
   }
 
@@ -293,7 +291,7 @@ export async function sendVoice(token: string, chatId: number | string, voice: s
   if (opts.caption) fd.append('caption', opts.caption);
   if (opts.parse_mode) fd.append('parse_mode', opts.parse_mode);
 
-  const resolved = resolveFile(fd, 'voice', voice);
+  const resolved = await resolveFile(fd, 'voice', voice);
   if (resolved) fd.append('voice', resolved);
 
   return apiRequest(token, 'sendVoice', {}, fd);
@@ -313,7 +311,7 @@ export async function sendVideoNote(
   if (opts.duration) fd.append('duration', String(opts.duration));
   if (opts.length) fd.append('length', String(opts.length));
 
-  const resolved = resolveFile(fd, 'video_note', videoNote);
+  const resolved = await resolveFile(fd, 'video_note', videoNote);
   if (resolved) fd.append('video_note', resolved);
 
   return apiRequest(token, 'sendVideoNote', {}, fd);
@@ -336,7 +334,7 @@ export async function sendSticker(
   if (opts.emoji) fd.append('emoji', opts.emoji);
   if (opts.reply_markup) fd.append('reply_markup', opts.reply_markup);
 
-  const resolved = resolveFile(fd, 'sticker', sticker);
+  const resolved = await resolveFile(fd, 'sticker', sticker);
   if (resolved) fd.append('sticker', resolved);
 
   return apiRequest(token, 'sendSticker', {}, fd);
@@ -358,7 +356,7 @@ export async function sendAnimation(
   if (opts.caption) fd.append('caption', opts.caption);
   if (opts.has_spoiler) fd.append('has_spoiler', 'true');
 
-  const resolved = resolveFile(fd, 'animation', animation);
+  const resolved = await resolveFile(fd, 'animation', animation);
   if (resolved) fd.append('animation', resolved);
 
   return apiRequest(token, 'sendAnimation', {}, fd);
@@ -391,17 +389,19 @@ export async function sendMediaGroup(
   if (opts.disable_notification) fd.append('disable_notification', 'true');
   if (opts.protect_content) fd.append('protect_content', 'true');
 
-  const mediaArray = media.map((item, i) => {
-    const fieldName = `file_${i}`;
-    const resolved = resolveFile(fd, fieldName, item.file);
-    return {
-      type: item.type,
-      media: resolved ?? `attach://${fieldName}`,
-      ...(item.caption ? { caption: item.caption } : {}),
-      ...(item.parse_mode ? { parse_mode: item.parse_mode } : {}),
-      ...(item.has_spoiler ? { has_spoiler: true } : {}),
-    };
-  });
+  const mediaArray = await Promise.all(
+    media.map(async (item, i) => {
+      const fieldName = `file_${i}`;
+      const resolved = await resolveFile(fd, fieldName, item.file);
+      return {
+        type: item.type,
+        media: resolved ?? `attach://${fieldName}`,
+        ...(item.caption ? { caption: item.caption } : {}),
+        ...(item.parse_mode ? { parse_mode: item.parse_mode } : {}),
+        ...(item.has_spoiler ? { has_spoiler: true } : {}),
+      };
+    }),
+  );
 
   fd.append('media', JSON.stringify(mediaArray));
   return apiRequest(token, 'sendMediaGroup', {}, fd);

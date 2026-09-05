@@ -50,6 +50,20 @@ scripts/             # code/OpenAPI generation tooling, service mocks (npm works
 
 `sample-a2a-mcp-rag` is the current combined RAG + MCP + A2A demo (`sample-a2a-rag-mcp-aaron` is an earlier version of the same idea, kept for reference — same concept, `ingest`/`mcp-server`/`a2a` layout, raw SQL instead of Drizzle, not actively developed). In the active app: `src/rag/` ingests documents into pgvector via `@db/rag` (Drizzle); `src/mcp/server.ts` is the MCP *server* (StreamableHTTP transport, `npm run start:mcp`) exposing `rag_search`/`rag_add_document`/etc.; `src/a2a/` holds the MCP *client* (`src/lib/mcp-client.ts`) plus `supervisor.ts` and `specialist.ts`, two separate A2A protocol servers (`npm run start:supervisor`/`start:specialist`, `/.well-known/agent.json` + `POST /` task endpoints) — the supervisor classifies and delegates to the specialist, which does the actual MCP-backed RAG query. `demo/demo.ts` (`npm run demo`) seeds sample docs into an already-running MCP server, spawns the supervisor and specialist as child processes, sends sample queries through the supervisor, then tears both down. Most scripts here are demo entry points, not long-running services — it has no real `test` script (stubbed to exit 0).
 
+## TypeScript configuration
+
+`tsconfig.base.json` at the repo root holds the compiler options shared by most of the monorepo (`target: ES2025`, `module`/`moduleResolution: NodeNext`, `allowImportingTsExtensions`, `noEmit`, `strict: false`, `skipLibCheck: true`, `types: ["node"]`). Directory groups that used to duplicate an identical `tsconfig.json` per workspace now share a single project file that extends it and covers the whole group via `include`:
+
+| Group | Project file | Covers |
+|---|---|---|
+| `db/*` | `db/tsconfig.json` | `db/sample`, `db/iam`, `db/audit`, `db/rag` |
+| `common/*` | `common/tsconfig.json` | `common/compiled/node`, `common/schemas` (`common/compiled/vue` has no tsconfig yet) |
+| `scripts/*` | `scripts/tsconfig.json` | `db-mocks`, `generators`, `service-mocks`, and the top-level script files |
+
+A file-specific `exclude` still lives on the group's `tsconfig.json` where needed — e.g. `common/tsconfig.json` excludes the standalone `oss-uploader`/`s3-uploader` usage/server scripts under `compiled/node/services/oss-files/` from the main project.
+
+`apps/*` is the exception: `apps/tsconfig.base.json` is a separate, near-duplicate base file (not yet migrated to extend the root one), and each app keeps its **own** `tsconfig.json` rather than a shared group file, since apps' `include` lists differ (each has its own `src/**`, `global.d.ts`, `__tests__/**`). The clean-architecture apps (`sample-common`, `sample-queue-consumer`, `sample-rest-app-v2`) go further and use fully standalone `strict: true` configs that don't extend any shared base at all — see [Clean architecture](#clean-architecture-controller--service--repository) below.
+
 ## Setup
 
 ```bash
