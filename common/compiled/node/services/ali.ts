@@ -371,12 +371,4 @@ export const getObjectStream = async (key: string): Promise<NodeJS.ReadableStrea
   return result.stream;
 };
 
-export {
-  countBucketObjects,
-  deleteObjects,
-  getObject,
-  getSignedUrl,
-  getUploadURL,
-  listObjects,
-  putObject,
-};
+export { countBucketObjects, deleteObjects, getObject, getSignedUrl, getUploadURL, listObjects, putObject };
