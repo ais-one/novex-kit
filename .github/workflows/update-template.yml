@@ -2,13 +2,16 @@ name: Sync Upstream Template
 # Pulls the latest changes from the upstream template repository and opens a PR
 # with the diff, excluding app-specific folders that should never be overwritten.
 #
-# Process:
-#   1. Checks out this repo.
-#   2. Adds the upstream template as a git remote and fetches it.
-#   3. Merges upstream into the working tree (--no-commit) — handles additions,
-#      modifications, and deletions. Conflict markers are left for the PR reviewer.
-#   4. Restores apps/, db/, local-*.yml workflows, and local-* actions from HEAD so local customisations are preserved.
-#   5. If any files changed, opens a PR on branch chore/sync-upstream for review.
+# Process (wholesale copy, not a git merge):
+#   1. Checks out this repo (downstream) and creates the chore/sync-upstream branch.
+#   2. Clones the upstream template into a scratch dir and strips apps/, db/, .git
+#      from it — upstream should never be able to touch those paths.
+#   3. Pulls this repo's own apps/, db/, and local-* workflows/actions aside, wipes
+#      everything else in the working tree, copies the (already-stripped) upstream
+#      tree in wholesale, then puts the protected paths back.
+#      Deletions are handled for free: anything upstream removed is simply never
+#      copied back in — no separate diff/comm step needed.
+#   4. If any files changed, opens a PR on branch chore/sync-upstream for review.
 #
 # Trigger: run manually via workflow_dispatch.
 # Protected branches: safe — changes are pushed to chore/sync-upstream, never directly
@@ -48,7 +51,7 @@ on:
         default: 'main'
         required: false
       ref:
-        description: Branch to check out. Defaults to the ref that triggered the workflow.
+        description: Downstream branch to check out. Defaults to the ref that triggered the workflow.
         required: false
         default: ''
 
@@ -67,75 +70,52 @@ jobs:
         with:
           token: ${{ secrets.SYNC_TOKEN }}
           ref: ${{ github.event.inputs.ref }}
-          fetch-depth: 0
+          fetch-depth: 1
 
-      # Merge upstream into the working tree without committing.
-      # apps/ and db/ are protected via .git/info/attributes (never tracked,
-      # no restore needed) so git never touches those paths during the merge.
-      # Conflicts outside protected folders are auto-resolved in favour of upstream
-      # (-X theirs); the PR diff is the review mechanism.
-      - name: Merge upstream changes (exclude apps/ db/)
+      - name: Create sync branch
         env:
           SYNC_BRANCH: chore/sync-upstream
-          UPSTREAM_BRANCH: ${{ github.event.inputs.upstream_branch || 'main' }}
         run: |
-          git remote add upstream ${{ env.UPSTREAM_URL }}
-          git fetch upstream
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config merge.ours.driver true
-          printf 'apps/** merge=ours\ndb/** merge=ours\n.github/workflows/local-*.yml merge=ours\n.github/actions/local-** merge=ours\n' >> .git/info/attributes
           git checkout -B "$SYNC_BRANCH"
-          git merge upstream/"$UPSTREAM_BRANCH" --no-commit --no-ff --allow-unrelated-histories -X theirs || true
 
-      # Remove any files in protected folders (apps/, db/) that upstream added as new.
-      # merge=ours only prevents conflicts on files that exist in both sides; purely new
-      # upstream additions are staged as clean adds without invoking a merge driver.
-      - name: Remove upstream-added files in protected folders
-        run: |
-          git diff --cached --name-only --diff-filter=A -- 'apps/**' 'db/**' \
-          | xargs -r git rm -f --
-
-      # Explicitly remove files that were deleted in upstream but still exist in HEAD,
-      # outside the protected folders. The merge step alone does not guarantee this when
-      # it exits with conflicts and the index is left in a partial state.
-      - name: Remove upstream-deleted files (outside protected folders)
+      # Upstream never gets a say over apps/ or db/ — strip them (and .git) from the
+      # scratch clone so there's nothing for the copy step below to bring in.
+      - name: Clone upstream template (strip protected paths)
         env:
           UPSTREAM_BRANCH: ${{ github.event.inputs.upstream_branch || 'main' }}
         run: |
-          comm -23 \
-            <(git ls-tree -r --name-only HEAD | grep -v -E '^(apps|db)/|^\.github/(workflows/local-|actions/local-)' | sort) \
-            <(git ls-tree -r --name-only upstream/"$UPSTREAM_BRANCH" | grep -v -E '^(apps|db)/|^\.github/(workflows/local-|actions/local-)' | sort) \
-          | xargs -r git rm -f --
+          git clone --depth 1 --branch "$UPSTREAM_BRANCH" "${{ env.UPSTREAM_URL }}" /tmp/upstream-src
+          rm -rf /tmp/upstream-src/apps /tmp/upstream-src/db /tmp/upstream-src/.git
 
-      # # Alternative: file-copy approach (does not handle upstream deletions natively)
-      # # Checkout reference:
-      # #   single file  — git checkout upstream/main -- path/to/file
-      # #   folder       — git checkout upstream/main -- folder/   (no wildcards)
-      # #   *.ext        — git checkout upstream/main -- 'folder/*.ext'
-      # #   recursive    — git checkout upstream/main -- 'folder/**/*.ext'
-      # - name: Apply upstream changes (exclude apps/ db/)
-      #   run: |
-      #     git checkout upstream/${{ github.event.inputs.upstream_branch || 'main' }} -- .
-      #     git checkout HEAD -- apps/ db/
-      #
-      # - name: Remove workflow/action files deleted upstream
-      #   run: |
-      #     git diff HEAD upstream/${{ github.event.inputs.upstream_branch || 'main' }} \
-      #       --diff-filter=D --name-only \
-      #       | grep -E '^\.github/(workflows|actions)/' \
-      #       | xargs -r git rm -f --
+      # Pull our own protected paths out of the way, wipe everything else, copy in
+      # upstream's tree wholesale, then put the protected paths back. Deletions are
+      # handled for free this way — anything upstream removed is simply never
+      # copied back in, so no separate diff/comm step is needed to detect them.
+      - name: Apply upstream (protect apps/, db/, local-* workflows/actions)
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
 
-      # - name: Check for changes
-      #   id: changes
-      #   run: |
-      #     if git diff --staged --quiet && git diff --quiet; then
-      #       echo "has_changes=false" >> $GITHUB_OUTPUT
-      #       echo "has_changes=false"
-      #     else
-      #       echo "has_changes=true" >> $GITHUB_OUTPUT
-      #       echo "has_changes=true"
-      #     fi
+          mkdir -p /tmp/protected/.github/workflows /tmp/protected/.github/actions
+          [ -d apps ] && mv apps /tmp/protected/apps
+          [ -d db ] && mv db /tmp/protected/db
+          for f in .github/workflows/local-*.yml; do mv "$f" /tmp/protected/.github/workflows/; done
+          for d in .github/actions/local-*; do mv "$d" /tmp/protected/.github/actions/; done
+
+          # wipe everything in the working tree except .git
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+
+          # copy in upstream's tree (already stripped of apps/, db/, .git)
+          cp -a /tmp/upstream-src/. .
+
+          # restore our protected paths, overwriting anything upstream happened to place there
+          [ -d /tmp/protected/apps ] && rm -rf apps && mv /tmp/protected/apps apps
+          [ -d /tmp/protected/db ] && rm -rf db && mv /tmp/protected/db db
+          mkdir -p .github/workflows .github/actions
+          for f in /tmp/protected/.github/workflows/*; do mv "$f" .github/workflows/; done
+          for d in /tmp/protected/.github/actions/*; do mv "$d" .github/actions/; done
 
       # Regenerate lock file so upstream package.json version changes are reflected.
       # Uses npm install (not ci) so the lock file is updated, not validated.

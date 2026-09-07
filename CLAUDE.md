@@ -357,16 +357,11 @@ git push --no-verify
 
 ## Updating from upstream template
 
-```bash
-# commit and push your changes first, then:
-git fetch upstream          # includes tags
-git pull upstream <branch or tag> --no-rebase
-# resolve any template-related merge conflicts
-```
+Run the `Sync Upstream Template` workflow (`.github/workflows/update-template.yml`, triggered via `workflow_dispatch` — inputs: `upstream_branch`, default `main`; `ref`, the downstream branch to update). It clones upstream into a scratch dir, wipes this repo's working tree except the protected paths below, copies upstream's tree in wholesale, restores the protected paths, regenerates `package-lock.json`, and pushes the result to `chore/sync-upstream` for review as a PR — it never pushes directly to the target branch. See the workflow file's own header comment for the exact mechanics.
 
 ### Protected paths during sync
 
-The following paths are never overwritten or deleted by the upstream sync workflow:
+The following paths are never overwritten or deleted by the sync workflow:
 
 | Path | Purpose |
 |---|---|
@@ -377,17 +372,17 @@ The following paths are never overwritten or deleted by the upstream sync workfl
 
 **Adding your own workflows or actions:** name them with the `local-` prefix — workflows as `local-deploy.yml`, actions as a folder `local-my-action/` containing `action.yml`. They will be preserved across all future template syncs. Files without this prefix are treated as template-owned and may be updated or removed by the sync.
 
-To protect additional paths (e.g., a custom `docs/` folder), add a `merge=ours` rule to `.gitattributes`:
-
-```
-docs/** merge=ours
-```
-
-and configure the driver once per clone:
+To protect an additional path (e.g., a custom `docs/` folder), edit the `Apply upstream` step in `.github/workflows/update-template.yml` — add it to both the "pull aside" block and the "restore" block, the same way `apps`/`db` are handled:
 
 ```bash
-git config merge.ours.driver true
+# pull aside, before the wipe
+[ -d docs ] && mv docs /tmp/protected/docs
+
+# restore, after upstream is copied in
+[ -d /tmp/protected/docs ] && rm -rf docs && mv /tmp/protected/docs docs
 ```
+
+There's no `.gitattributes`/merge-driver setup to maintain — the workflow does a wholesale file copy, not a `git merge`, so protection is just whatever paths its own script pulls aside and restores.
 
 ## Docker / Podman
 
