@@ -34,6 +34,7 @@
     "express": "^5.2.1",
     "helmet": "^8.3.0",
     "ioredis": "^6.0.0",
+    "jose": "^6.2.11",
     "js-yaml": "^5.4.1",
     "jsonwebtoken": "^9.0.3",
     "keyv": "^5.6.0",
@@ -54,7 +55,6 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node-fetch": "^2.6.13",
     "@types/pg": "^8.23.1",
     "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.10"

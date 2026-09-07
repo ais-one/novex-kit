@@ -29,5 +29,7 @@ declare namespace Express {
       debug(msg: unknown, meta?: Record<string, unknown>): void;
     };
     startTime: number;
+    /** Set by `@common/node/express/requestId.ts`'s `requestIdMiddleware` — see the structured-logging skill. */
+    requestId: string;
   }
 }

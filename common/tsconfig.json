@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.base.json",
+  "include": ["compiled/node/**/*.ts", "schemas/*.ts"],
+  "exclude": [
+    "node_modules",
+    "compiled/node/services/oss-files/oss-uploader-usage.ts",
+    "compiled/node/services/oss-files/s3-uploader-usage.ts",
+    "compiled/node/services/oss-files/oss-uploader-server.ts",
+    "compiled/node/services/oss-files/s3-uploader-server.ts"
+  ]
+}

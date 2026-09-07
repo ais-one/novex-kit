@@ -20,7 +20,7 @@
     "test:e2e": "start-server-and-test start http://localhost:8080 test"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.123.0",
+    "@anthropic-ai/sdk": "^0.124.0",
     "@db/rag": "file:../../db/rag",
     "@langchain/textsplitters": "^1.0.1",
     "@modelcontextprotocol/sdk": "^1.30.0",
