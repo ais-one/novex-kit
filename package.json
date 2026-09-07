@@ -43,7 +43,7 @@
     "update-commit-hash": "git rev-parse --verify --short HEAD > commit-hash"
   },
   "devDependencies": {
-    "@biomejs/biome": "",
+    "@biomejs/biome": "2.5.12",
     "@playwright/test": "^1.62.1",
     "@redocly/cli": "^2.49.1",
     "@types/express": "^5.0.6",
