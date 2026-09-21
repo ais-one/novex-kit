@@ -18,7 +18,7 @@ import { requestIdMiddleware } from './requestId.ts';
  * Bootstrap the Express app: registers security, CORS, body parsing middleware and starts services.
  * @returns The configured Express app, the express module, and the underlying HTTP(S) server.
  */
-const preRoute = () => {
+const preRoute = (opts: { skipBodyParsing?: boolean } = {}) => {
   const DEFAULT_STACK_TRACE_LIMIT = 3; // default limit error stack trace to 3 level
   const { STACK_TRACE_LIMIT = DEFAULT_STACK_TRACE_LIMIT } = process.env;
 
@@ -119,30 +119,32 @@ const preRoute = () => {
   // express-limiter, compression, use reverse proxy
 
   // ------ body-parser and-cookie parser ------
-  const { BODYPARSER_JSON, BODYPARSER_URLENCODED, BODYPARSER_RAW_ROUTES = '' } = globalThis.__config;
-  // client request body must match request content-type, if applicaion/json, body cannot be null/undefined
-  try {
-    app.use((req, res, next) => {
-      const rawMatch = BODYPARSER_RAW_ROUTES?.split(',')?.find((route: string) =>
-        pathToRegexp.match(route)(req.originalUrl),
-      );
-      if (rawMatch) {
-        // raw routes - ignore bodyparser json
-        next();
-      } else {
-        express.json({
-          ...(BODYPARSER_JSON || { limit: '2mb' }),
-          // Capture the raw bytes so webhook signature verification can use them.
-          verify: (req: Express.Request & { rawBody?: Buffer }, _res: unknown, buf: Buffer) => {
-            req.rawBody = buf;
-          },
-        })(req, res, next);
-      }
-    });
-    app.use(express.urlencoded(BODYPARSER_URLENCODED || { extended: true, limit: '2mb' })); // https://stackoverflow.com/questions/29175465/body-parser-extended-option-qs-vs-querystring/29177740#29177740
-  } catch (e) {
-    logger.error('[bodyparser setup error]', e.toString());
-    throw e;
+  if (!opts.skipBodyParsing) {
+    const { BODYPARSER_JSON, BODYPARSER_URLENCODED, BODYPARSER_RAW_ROUTES = '' } = globalThis.__config;
+    // client request body must match request content-type, if applicaion/json, body cannot be null/undefined
+    try {
+      app.use((req, res, next) => {
+        const rawMatch = BODYPARSER_RAW_ROUTES?.split(',')?.find((route: string) =>
+          pathToRegexp.match(route)(req.originalUrl),
+        );
+        if (rawMatch) {
+          // raw routes - ignore bodyparser json
+          next();
+        } else {
+          express.json({
+            ...(BODYPARSER_JSON || { limit: '2mb' }),
+            // Capture the raw bytes so webhook signature verification can use them.
+            verify: (req: Express.Request & { rawBody?: Buffer }, _res: unknown, buf: Buffer) => {
+              req.rawBody = buf;
+            },
+          })(req, res, next);
+        }
+      });
+      app.use(express.urlencoded(BODYPARSER_URLENCODED || { extended: true, limit: '2mb' })); // https://stackoverflow.com/questions/29175465/body-parser-extended-option-qs-vs-querystring/29177740#29177740
+    } catch (e) {
+      logger.error('[bodyparser setup error]', e.toString());
+      throw e;
+    }
   }
   app.use(cookieParser()); // need this for httpOnly cookie parsing
 
