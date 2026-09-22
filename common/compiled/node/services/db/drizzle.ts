@@ -9,8 +9,8 @@ export default class StoreDrizzle {
   name: string;
 
   constructor(optionName?: string) {
-    this._connectionString = process.env[optionName ?? ''] ?? null;
-    this._poolOptions = optionName ? (globalThis.__config?.[optionName] ?? {}) : {};
+    this._connectionString = (globalThis.__config?.[optionName]?.connectionString ?? {}) as string | null;
+    this._poolOptions = (globalThis.__config?.[optionName]?.options ?? {}) as Omit<PoolConfig, 'connectionString'>;
     this.name = optionName ?? '';
   }
 

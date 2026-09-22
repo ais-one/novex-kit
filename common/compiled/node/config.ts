@@ -69,6 +69,28 @@ const normalizeJsonc = (source: string): string => {
   return result;
 };
 
+const ENV_PLACEHOLDER_PATTERN = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
+
+/** Substitute `${VAR_NAME}` references in a string with values from `process.env`. Throws if unset. */
+const resolveEnvPlaceholdersInString = (value: string, filePath: string): string =>
+  value.replace(ENV_PLACEHOLDER_PATTERN, (match, varName: string) => {
+    const resolved = process.env[varName];
+    if (resolved === undefined) {
+      throw new Error(`Missing environment variable "${varName}" for placeholder ${match} in ${filePath}`);
+    }
+    return resolved;
+  });
+
+/** Recursively resolve `${VAR_NAME}` placeholders throughout a parsed config value. */
+const resolveEnvPlaceholders = (value: unknown, filePath: string): unknown => {
+  if (typeof value === 'string') return resolveEnvPlaceholdersInString(value, filePath);
+  if (Array.isArray(value)) return value.map(item => resolveEnvPlaceholders(item, filePath));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, val]) => [key, resolveEnvPlaceholders(val, filePath)]));
+  }
+  return value;
+};
+
 /** Parse a JSONC string into a plain config object. Throws if the result is not an object. */
 const parseJsoncObject = (raw: string, filePath: string): Record<string, unknown> => {
   const normalized = normalizeJsonc(raw).trim();
@@ -78,7 +100,7 @@ const parseJsoncObject = (raw: string, filePath: string): Record<string, unknown
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     throw new TypeError(`JSON config must be a top-level object: ${filePath}`);
   }
-  return config as Record<string, unknown>;
+  return resolveEnvPlaceholders(config, filePath) as Record<string, unknown>;
 };
 
 /** Read and parse a `.env.json` / `.env.jsonc` file. Returns `{}` if the file does not exist. */
