@@ -26,19 +26,19 @@ export const SECURE_ROUTES = [
     hidden: true,
   },
   {
-    path: '/t4t-student',
+    path: '/t4t/student',
     name: 'T4t - Student',
     component: async () => import('../views/T4t.vue'),
     props: { tableName: 'student' },
   },
   {
-    path: '/t4t-subject',
+    path: '/t4t/subject',
     name: 'T4t - Subject',
     component: async () => import('../views/T4t.vue'),
     props: { tableName: 'subject' },
   },
   {
-    path: '/audit-logs',
+    path: '/t4t/audit-logs',
     name: 'T4t - Audit Logs',
     component: async () => import('../views/T4t.vue'),
     props: { tableName: 't4t_audit_logs' },

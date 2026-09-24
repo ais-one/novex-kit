@@ -1,4 +1,4 @@
-import Fetch from './fetch.js';
+import Fetch from '../iso/fetch.js';
 
 let tableName = '';
 let parentFilter = null;
