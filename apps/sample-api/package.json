@@ -37,8 +37,8 @@
     "@db/audit": "file:../../db/audit",
     "@db/sample": "file:../../db/sample",
     "@json2csv/plainjs": "^7.0.8",
-    "csv-parse": "^7.0.2",
+    "csv-parse": "^7.0.3",
     "fido2-lib": "^3.5.9",
-    "pdfkit": "^0.19.1"
+    "pdfkit": "^0.20.0"
   }
 }
