@@ -116,8 +116,12 @@ Edit branch protection rules in **Settings** → **Branches** → **Add branch p
 
 Match the following patterns:
 
-1. **Pattern:** `main`
-2. **Pattern:** `rel/*`
+|Type|Pattern|
+|----|-------|
+|stable|`main`|
+|release|`rel/*`|
+|tags|`v[0-9]*.[0-9]*.[0-9]*`|
+
 
 For each pattern, enable:
 
@@ -129,6 +133,15 @@ For each pattern, enable:
 | | Add required checks: `Commit Message Format` and `Biome Checks` (from `ci-lint.yml`), `Quality Gate Summary`, `Schema Validation Tests`, `Unit Tests`, `Integration Tests`, `E2E Tests` |
 | **Require conversation resolution before merging** | Enable. |
 | **Include administrators** | Enable. Prevents bypass by repo admins. |
+
+### Repository Environment
+
+1. Settings → Environments → production (choose New environment if it doesn't exist yet).
+2. Under Environment secrets, add environment secrets in [../github/workflow/secrets-var.md#Environment-Workflow-Secrets]()
+3. On the same page, set up the rules:
+  - Required reviewers: add the people or teams who may approve deploys.
+  - Prevent self-review: optional; stops whoever started the run from approving it.
+  - Deployment branches and tags: "Selected branches and tags", for example main and rel/*.
 
 ### Code Scanning
 

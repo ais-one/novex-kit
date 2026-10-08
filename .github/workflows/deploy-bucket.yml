@@ -4,7 +4,8 @@
 # - AWS S3 [TOTEST]
 # - Github Pages [TOTEST]
 #
-# Setup the following github action repo secrets
+# Setup the following secrets as environment secrets on the "production" environment
+# (Settings → Environments → production → Environment secrets) - not repository secrets
 # - ACCESS_KEY_ID
 # - ACCESS_KEY_SECRET
 # Setup the following github action repo vars
@@ -76,22 +77,12 @@ jobs:
           name: my-build
           path: ${{ github.workspace }}/apps/${{ github.event.inputs.app }}/dist
 
-  request-approval:
-    name: Request Deployment Approval
-    needs: [build]
-    runs-on: ubuntu-latest
-    environment:
-      # "production" is a GitHub Environment configured with required reviewers.
-      # Add your authorized users/teams there in:
-      #   Settings → Environments → production → Required reviewers
-      # ← configure required reviewers here in GitHub Settings
-      name: production
-    steps:
-      - name: Approval gate
-        run: echo "✅ Approved — deploying ${{ github.event.inputs.app }}@${{ github.event.inputs.tag }} to ${{ github.event.inputs.bucket }}"
-
   deploy-oss: # aliyun OSS
-    needs: request-approval
+    needs: build
+    # "production" is a GitHub Environment configured with required reviewers - the job waits
+    # for approval, and only then receives the environment secrets (ACCESS_KEY_ID/SECRET).
+    # Settings → Environments → production → Required reviewers / Environment secrets
+    environment: production
     if: github.event.inputs.provider == 'oss'
     name: Deploying To Aliyun OSS - Node Version TODO
     runs-on: ubuntu-latest
@@ -108,7 +99,8 @@ jobs:
       - name: Upload the web folder to the chosen OSS bucket
         run: ./ossutil64 --config-file .ossutilconfig cp ${{ github.workspace }}/apps/${{ github.event.inputs.app }}/dist oss://${{ github.event.inputs.bucket }} -r -f
   deploy-s3: # AWS S3
-    needs: request-approval
+    needs: build
+    environment: production # see deploy-oss for setup
     if: github.event.inputs.provider == 's3'
     runs-on: ubuntu-latest
     steps:
@@ -127,7 +119,8 @@ jobs:
         run: |
           aws s3 sync dist s3://${{ github.event.inputs.bucket }} --delete
   deploy-oss2: # Alibaba Cloud OSS via AWS CLI
-    needs: request-approval
+    needs: build
+    environment: production # see deploy-oss for setup
     if: github.event.inputs.provider == 'oss2'
     runs-on: ubuntu-latest
     steps:
@@ -148,7 +141,8 @@ jobs:
             --delete \
             --endpoint-url https://${{ vars.ENDPOINT }}
   deploy-ghp: # Alibaba Cloud OSS via AWS CLI
-    needs: request-approval
+    needs: build
+    environment: production # see deploy-oss for setup
     if: github.event.inputs.provider == 'ghp'
     runs-on: ubuntu-latest
     steps:
@@ -170,7 +164,8 @@ jobs:
           git checkout -f "${GITHUB_REF##*/}"
           git branch -D gh-pages
   ghsp2-tocheck:
-    needs: request-approval
+    needs: build
+    environment: production # see deploy-oss for setup
     if: github.event.inputs.provider == 'ghp'
     runs-on: ubuntu-latest
     permissions:

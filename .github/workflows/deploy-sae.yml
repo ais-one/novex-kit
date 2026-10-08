@@ -2,11 +2,12 @@
 # Uses the Aliyun CLI (handles API request signing) instead of raw REST calls
 # https://www.alibabacloud.com/help/en/sae/serverless-app-engine-upgrade/developer-reference/api-sae-2019-05-06-deployapplication
 #
-# Setup the following secrets
+# Setup the following secrets as environment secrets on the "production" environment
+# (Settings → Environments → production → Environment secrets) - not repository secrets
 # - ACCESS_KEY_ID: access key ID of a RAM user with SAE deploy permission (e.g. AliyunSAEFullAccess)
 # - ACCESS_KEY_SECRET: access key secret of the RAM user
 # Setup the following vars
-# - CR_HOST: container registry host - use the VPC endpoint if SAE pulls over VPC (e.g. xxx-registry-vpc.ap-southeast-1.cr.aliyuncs.com)
+# - CR_HOST_VPC: container registry host - use the VPC endpoint if SAE pulls over VPC (e.g. xxx-registry-vpc.ap-southeast-1.cr.aliyuncs.com)
 # - CR_NS: container registry namespace
 # - CR_IMAGENAME: The image name. If not specified, the repository name will be used
 # - SAE_APP_ID: SAE application ID
@@ -41,10 +42,8 @@ on:
         required: true
 
 env:
-  ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
-  ACCESS_KEY_SECRET: ${{ secrets.ACCESS_KEY_SECRET }}
   CR_IMAGENAME: ${{ github.event.inputs.cr_imagename || vars.CR_IMAGENAME || github.event.repository.name }}
-  CR_HOST: ${{ vars.CR_HOST }}
+  CR_HOST_VPC: ${{ vars.CR_HOST_VPC }}
   CR_NS: ${{ vars.CR_NS }}
   SAE_APP_ID: ${{ github.event.inputs.sae_app_id || vars.SAE_APP_ID }}
   SAE_REGION: ${{ vars.SAE_REGION || 'ap-southeast-1' }}
@@ -52,24 +51,22 @@ env:
   TIMEOUT_S: ${{ github.event.inputs.timeout_s }}
   POLL_S: 15
 jobs:
-  request-approval:
-    name: Request Deployment Approval
-    runs-on: ubuntu-latest
-    environment:
-      # "production" is a GitHub Environment configured with required reviewers.
-      # Settings → Environments → production → Required reviewers
-      name: production
-    steps:
-      - name: Approval gate
-        run: |
-          echo "✅ Approved — deploying $CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
-          echo "SAE app: $SAE_APP_ID ($SAE_REGION)"
-
   deploy_to_sae:
     runs-on: ubuntu-latest
     name: Deploying SAE
-    needs: [request-approval]
+    environment:
+      # "production" is a GitHub Environment configured with required reviewers - the job
+      # waits for approval, and only then receives the environment secrets below.
+      # Settings → Environments → production → Required reviewers / Environment secrets
+      name: production
+    env:
+      ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
+      ACCESS_KEY_SECRET: ${{ secrets.ACCESS_KEY_SECRET }}
     steps:
+      - name: Approved
+        run: |
+          echo "✅ Approved — deploying $CR_HOST_VPC/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
+          echo "SAE app: $SAE_APP_ID ($SAE_REGION)"
       - name: Install Aliyun Cli
         uses: aliyun/setup-aliyun-cli-action@v1
       - name: Configure Aliyun Cli
@@ -83,7 +80,7 @@ jobs:
       - name: Deploy Application
         id: deploy
         run: |
-          IMAGE_URL="$CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
+          IMAGE_URL="$CR_HOST_VPC/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
           echo "image: $IMAGE_URL"
           args=(--AppId "$SAE_APP_ID" --PackageType Image --ImageUrl "$IMAGE_URL")
           if [ -n "$SAE_ACR_INSTANCE_ID" ]; then
