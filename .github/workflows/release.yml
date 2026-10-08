@@ -1,0 +1,60 @@
+## Release workflow - runs release-please on pushes to main and release branches.
+## Opens/updates workspace-scoped release PRs; merging one creates the tags and GitHub releases.
+## Tests are not re-run here: branch protection already requires PR checks to pass before merge.
+## Writes go through a short-lived GitHub App token, so the workflow token stays read-only.
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - rel/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false # never cancel a release run part-way
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_PLEASE_APP_ID: ${{ vars['RELEASE_PLEASE_APP_ID'] }}
+      RELEASE_PLEASE_APP_PRIVATE_KEY: ${{ secrets['RELEASE_PLEASE_APP_PRIVATE_KEY'] }}
+    steps:
+      - name: Validate GitHub App configuration
+        run: |
+          if [[ -z "$RELEASE_PLEASE_APP_ID" ]]; then
+            echo "Missing Actions variable: RELEASE_PLEASE_APP_ID"
+            exit 1
+          fi
+          if [[ -z "$RELEASE_PLEASE_APP_PRIVATE_KEY" ]]; then
+            echo "Missing Actions secret: RELEASE_PLEASE_APP_PRIVATE_KEY"
+            exit 1
+          fi
+
+      - name: Create GitHub App token
+        id: app_token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ env.RELEASE_PLEASE_APP_ID }}
+          private-key: ${{ env.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+          target-branch: ${{ github.ref_name }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

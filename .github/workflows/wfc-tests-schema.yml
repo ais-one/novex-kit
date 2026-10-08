@@ -9,7 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: ./.github/actions/checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history for diff-based change detection
 
       - name: Detect touched paths
         id: touched

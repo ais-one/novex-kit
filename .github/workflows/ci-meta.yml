@@ -63,7 +63,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: ./.github/actions/checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history for diff-based change detection
 
       - name: Detect changed scope
         id: scope
@@ -79,7 +81,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: ./.github/actions/checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history for diff-based change detection
 
       - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install

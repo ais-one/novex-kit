@@ -129,12 +129,21 @@ For each pattern, enable:
 | **Require conversation resolution before merging** | Enable. |
 | **Include administrators** | Enable. Prevents bypass by repo admins. |
 
-### Code Scanning (CodeQL)
+### Code Scanning
 
-Enable via **Settings** → **Code security** → **Code scanning** → **CodeQL analysis** → **Set up** → **Default**.
+**Advanced Security**
+- On GitHub, go to Settings → Advanced Security
+- Enable Dependency graph, Dependabot alerts and Secret scanning (also turn on push protection).
+- Leave CodeQL **Default setup** off — code scanning is done by workflow (GitHub rejects workflow CodeQL uploads while default setup is on).
 
-- GitHub auto-detects JavaScript/TypeScript and runs scans on its own managed schedule — no workflow file needed in `.github/workflows/`.
-- This is separate from the `npm audit` step in the `security` job of [ci.yml](../.github/workflows/ci.yml): CodeQL is static analysis of this repo's own source code, `npm audit` checks for known CVEs in dependencies. Keep both.
+**Workflow ([ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml))**
+- **Semgrep** (`sast-private-repo-semgrep`, private/internal repos only) — static analysis on PRs to `main` and `rel/**` and on pushes to `main`. Fails the job on findings, so it blocks `Quality Gate Summary`. The SARIF report is kept as a build artifact, not uploaded to the Code scanning tab.
+- **CodeQL** (`sast-public-repo-codeql`, public repos only) — scans `javascript-typescript`, `python` and `actions` (workflow files) with the `security-extended` query suite, `build-mode: none`.
+  - Skipped on private repos (they need GitHub Code Security). If you have it, remove the `github.event.repository.visibility == 'public'` condition on the `sast-public-repo-codeql` job (and change the `sast-private-repo-semgrep` condition if you don't want both).
+  - The job succeeds even when it finds issues — results go to **Security** → **Code scanning**. To block merges on findings, add a **Require code scanning results** rule (tool: CodeQL) to the ruleset for `main` and `rel/**`.
+  - Results: **Security** → **Code scanning**. To block merges on new alerts, add a **Require code scanning results** rule to the branch ruleset.
+
+This is separate from the `NPM audit` job in the same workflow: Semgrep/CodeQL are static analysis of this repo's own source code, `npm audit` checks for known CVEs in dependencies. Keep both.
 
 ### Dependabot
 
@@ -143,9 +152,9 @@ Version-update PRs are already configured in [.github/dependabot.yml](../.github
 - `npm` — root directory (covers all workspaces via `apps/*`, `common/**`, `scripts/*`)
 - `github-actions` — `/` for workflow files plus `.github/actions/*` for composite actions (e.g. `checkout`, `setup-node-npm-install`)
 
-Both run weekly and need no workflow file — GitHub schedules them itself, same as CodeQL default setup.
+Both run weekly and need no workflow file — GitHub schedules them itself.
 
-Separately, enable **Dependabot alerts** via **Settings** → **Code security** → **Dependabot** — this flags known CVEs in dependencies as they're published, complementing (not replacing) the `npm audit` step in `ci.yml`.
+Separately, enable **Dependabot alerts** via **Settings** → **Code security** → **Dependabot** — this flags known CVEs in dependencies as they're published, complementing (not replacing) the `NPM audit` job in `ci-quality-gates.yml`.
 
 ---
 
@@ -179,7 +188,7 @@ When choosing a scope in `czg`:
 
 ## Release Automation
 
-Changelog and tag automation are handled by the [`release-please`](https://github.com/googleapis/release-please-action) job in [.github/workflows/ci.yml](../.github/workflows/ci.yml).
+Changelog and tag automation are handled by the [`release-please`](https://github.com/googleapis/release-please-action) job in [.github/workflows/release.yml](../.github/workflows/release.yml). It runs on every push to `main` and `rel/**` and does not re-run tests — branch protection already requires PR checks to pass before merge.
 
 - The workflow runs `release-please-action` in manifest mode using
   - [release-please-config.json](../release-please-config.json) and
@@ -272,3 +281,26 @@ Once configured:
 4. Push `chore/ci/<name>` to trigger [ci-meta.yml](./workflows/ci-meta.yml). This workflow only runs for changes under `.github/workflows/**` and `.github/actions/**`.
 5. Open a PR from `chore/ci/<name>` to `ci-staging` and confirm the workflow is green end-to-end.
 6. After validation, open a PR from `ci-staging` to `main`.
+
+### Quality Gates Workflow
+
+[ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) runs on PRs to `main` and `rel/**`, and on pushes to `main`:
+
+- **Gitleaks secret scan** — scans the git history for committed secrets.
+- **NPM audit** — `npm audit --omit=dev --audit-level=moderate` against the root lockfile (all workspaces), on every PR and push.
+- **Dependency vulnerability scan** — `dependency-review-action` blocks PRs that add dependencies with known vulnerabilities (PRs on public repos only; needs the dependency graph enabled).
+- **Security Scan - Semgrep** (private/internal repos) — security scan; on PRs only *new* findings fail the job. The SARIF report is kept as a build artifact.
+- **SAST CodeQL Analysis** (public repos) — security scan; results go to Security → Code scanning (see [Code Scanning](#code-scanning)).
+- **Test Coverage** — runs every workspace's `test:unit` script with an extra lcov reporter, merges the reports into `coverage/lcov.info` and uploads it to Codecov.
+- **Duplication Check (jscpd)** — fails if duplication exceeds 5% (optional; see the workflow header to drop it or make it advisory).
+
+Biome is not run here — [ci.yml](../.github/workflows/ci.yml) already covers it.
+
+Setup:
+
+1. Sign in to [Codecov](https://about.codecov.io/) with GitHub and add this repository.
+2. Copy the repository upload token and add it as Actions secret `CODECOV_TOKEN` (Settings → Secrets and variables → Actions). Without it the upload step fails (`fail_ci_if_error: true`).
+3. If the repository is owned by a GitHub **organization**, get a free license key from [gitleaks.io](https://gitleaks.io/) and add it as Actions secret `GITLEAKS_LICENSE`. Repos owned by a personal account don't need it.
+4. Enable the **Dependency graph** (Settings → Advanced Security) — `dependency-review-action` needs it. On private repos the job is skipped (it needs GitHub Code Security); if you have it, remove the visibility condition on the `dependency-audit` job.
+5. In the branch protection rules / ruleset for `main` and `rel/**`, add `Quality Gate Summary` as a required status check — it fails if any gate job fails, so it is the only check you need to require from this workflow.
+6. Public repos: in the same ruleset, add a **Require code scanning results** rule for CodeQL — the `sast-public-repo-codeql` job itself does not fail on findings, so without this rule CodeQL is report-only.

@@ -1,5 +1,5 @@
 # Runs on merge to main — deploys to production via Alibaba Cloud OIDC
-name: Deploy to production
+name: REFERENCE ONLY - Deploy to production
 on:
   workflow_dispatch:
   # push:

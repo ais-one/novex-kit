@@ -1,63 +1,126 @@
-name: Update Function
+# This manually triggered workflow deploys a container image (already pushed by deploy-cr.yml) to an Alibaba Cloud SAE application
+# Uses the Aliyun CLI (handles API request signing) instead of raw REST calls
+# https://www.alibabacloud.com/help/en/sae/serverless-app-engine-upgrade/developer-reference/api-sae-2019-05-06-deployapplication
+#
+# Setup the following secrets
+# - AK_ID: access key ID of a RAM user with SAE deploy permission (e.g. AliyunSAEFullAccess)
+# - AK_SECRET: access key secret of the RAM user
+# Setup the following vars
+# - CR_HOST: container registry host - use the VPC endpoint if SAE pulls over VPC (e.g. xxx-registry-vpc.ap-southeast-1.cr.aliyuncs.com)
+# - CR_NS: container registry namespace
+# - CR_IMAGENAME: The image name. If not specified, the repository name will be used
+# - SAE_APP_ID: SAE application ID
+# - SAE_REGION: SAE region, defaults to ap-southeast-1
+# - SAE_ACR_INSTANCE_ID: (optional) ACR Enterprise Edition instance ID, required if the image is in ACR EE
+# Specify the following inputs
+# - cr_imagename
+# - tag_ci
+# - sae_app_id
+# - timeout_s
+name: DEPLOY - Alibaba Cloud SAE
 
 on:
   workflow_dispatch:
     # Inputs the workflow accepts.
     inputs:
-      fn_csp:
-        description: 'Cloud Service Provider - aliyun, aws, digitalocean'
-        default: 'aliyun'
-        required: true
-      fn_servicename:
-        description: 'service name'
+      cr_imagename:
+        description: 'container image name - leave blank to use GITHUB variables (if specified) or repo name'
         default: ''
-        required: true
-      fn_functionname:
-        description: 'function name'
-        default: 'fc-test-api'
-        required: true
-      mode:
-        default: 'AK'
-        description: 'Aliyun CLI Authentication mode, valid vaules are [AK|StsToken] here'
-      region:
-        default: 'ap-southeast-1'
-        required: true
-        description: 'Region of your service, e.g. ap-southeast-1'
-      ak_id:
-        description: 'Access key ID of your account (optional)'
         required: false
-      ak_secret:
-        description: 'Access key Secret of your account (optional)'
+      tag_ci:
+        description: 'container image tag'
+        default: 'latest'
+        required: true
+      sae_app_id:
+        description: 'SAE application ID - leave blank to use GITHUB variables'
+        default: ''
         required: false
-      # sts-token:
-      #   description: 'StsToken, required in StsToken mode'
+      timeout_s:
+        description: 'max seconds to wait for deployment to complete'
+        default: '600'
+        required: true
+
 env:
-  AK_ID: ${{ github.event.inputs.ak_id || secrets.AK_ID }}
-  AK_SECRET: ${{ github.event.inputs.ak_secret || secrets.AK_SECRET }}
+  AK_ID: ${{ secrets.AK_ID }}
+  AK_SECRET: ${{ secrets.AK_SECRET }}
+  CR_IMAGENAME: ${{ github.event.inputs.cr_imagename || vars.CR_IMAGENAME || github.event.repository.name }}
+  CR_HOST: ${{ vars.CR_HOST }}
+  CR_NS: ${{ vars.CR_NS }}
+  SAE_APP_ID: ${{ github.event.inputs.sae_app_id || vars.SAE_APP_ID }}
+  SAE_REGION: ${{ vars.SAE_REGION || 'ap-southeast-1' }}
+  SAE_ACR_INSTANCE_ID: ${{ vars.SAE_ACR_INSTANCE_ID }}
+  TIMEOUT_S: ${{ github.event.inputs.timeout_s }}
+  POLL_S: 15
 jobs:
-  update_function:
-    #vif: vars.BUCKET_TYPE == 'oss'
-    # name: Deploying To Aliyun OSS - Node Version TODO
+  request-approval:
+    name: Request Deployment Approval
     runs-on: ubuntu-latest
-    name: Updating Function - Aliyun
+    environment:
+      # "production" is a GitHub Environment configured with required reviewers.
+      # Settings → Environments → production → Required reviewers
+      name: production
     steps:
-      - name: Service & Function Names
+      - name: Approval gate
         run: |
-          echo ${{ github.event.inputs.fn_servicename }}
-          echo ${{ github.event.inputs.fn_functionname }}
+          echo "✅ Approved — deploying $CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
+          echo "SAE app: $SAE_APP_ID ($SAE_REGION)"
+
+  deploy_to_sae:
+    runs-on: ubuntu-latest
+    name: Deploying SAE
+    needs: [request-approval]
+    steps:
       - name: Install Aliyun Cli
         uses: aliyun/setup-aliyun-cli-action@v1
-      - name: Update Function
+      - name: Configure Aliyun Cli
         run: |
-          which aliyun
           aliyun version
-          command="aliyun configure set \
-            --mode ${{ github.event.inputs.mode }} \
-            --region ${{ github.event.inputs.region }} \
+          aliyun configure set \
+            --mode AK \
+            --region $SAE_REGION \
             --access-key-id $AK_ID \
-            --access-key-secret $AK_SECRET"
-          if [ -n "${{ github.event.inputs.sts-token }}" ]; then
-            command="${command} --sts-token ${{ github.event.inputs.sts-token }}"
+            --access-key-secret $AK_SECRET
+      - name: Deploy Application
+        id: deploy
+        run: |
+          IMAGE_URL="$CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
+          echo "image: $IMAGE_URL"
+          args="--AppId $SAE_APP_ID --PackageType Image --ImageUrl $IMAGE_URL"
+          if [ -n "$SAE_ACR_INSTANCE_ID" ]; then
+            args="$args --AcrInstanceId $SAE_ACR_INSTANCE_ID"
           fi
-          $command
-          # aliyun fc-open PUT /2021-04-06/services/${{ github.event.inputs.fn_servicename }}/functions/${{ github.event.inputs.fn_functionname }} --body "{\"timeout\": \"62\"}"
+          RESP=$(aliyun sae POST /pop/v1/sam/app/deployApplication \
+            --endpoint sae.$SAE_REGION.aliyuncs.com \
+            $args) || { echo "$RESP"; exit 1; }
+          echo "$RESP" | jq .
+          CHANGE_ORDER_ID=$(echo "$RESP" | jq -r '.Data.ChangeOrderId // empty')
+          if [ -z "$CHANGE_ORDER_ID" ]; then
+            echo "::error::No ChangeOrderId returned"
+            exit 1
+          fi
+          if [ "$(echo "$RESP" | jq -r '.Data.IsNeedApproval')" = "true" ]; then
+            echo "::warning::Change order needs approval in SAE console before it executes"
+          fi
+          echo "change_order_id=$CHANGE_ORDER_ID" >> $GITHUB_OUTPUT
+      - name: Wait for Deployment
+        run: |
+          CHANGE_ORDER_ID=${{ steps.deploy.outputs.change_order_id }}
+          ELAPSED=0
+          while [ "$ELAPSED" -lt "$TIMEOUT_S" ]; do
+            RESP=$(aliyun sae GET /pop/v1/sam/changeorder/DescribeChangeOrder \
+              --endpoint sae.$SAE_REGION.aliyuncs.com \
+              --ChangeOrderId $CHANGE_ORDER_ID)
+            STATUS=$(echo "$RESP" | jq -r '.Data.Status')
+            echo "[${ELAPSED}s] change order $CHANGE_ORDER_ID status: $STATUS"
+            # 0 preparing, 1 executing, 2 success, 3 failed, 6 terminated, 8/9 awaiting confirmation,
+            # 10 system error, 11 pending approval, 12 approved pending execution
+            case "$STATUS" in
+              2) echo "✅ Deployment succeeded"; exit 0 ;;
+              3|6|10) echo "$RESP" | jq .; echo "::error::Deployment failed (status $STATUS)"; exit 1 ;;
+              8) echo "::warning::Batch awaiting manual confirmation in SAE console"; exit 0 ;;
+            esac
+            sleep $POLL_S
+            ELAPSED=$((ELAPSED + POLL_S))
+          done
+          echo "::error::Timed out after ${TIMEOUT_S}s waiting for change order $CHANGE_ORDER_ID"
+          exit 1

@@ -399,8 +399,11 @@ docker run -p 3000:3000 novex-kit
 
 | Workflow | Purpose |
 |---|---|
-| `.github/workflows/ci.yml` | Lint, test, security scan, automated releases |
+| `.github/workflows/ci.yml` | Lint, test (read-only token) |
+| `.github/workflows/release.yml` | release-please — workspace-scoped release PRs, changelogs, tags and GitHub releases on push to `main`/`rel/**` |
+| `.github/workflows/ci-quality-gates.yml` | PR quality gates — Gitleaks, npm audit, dependency review, SAST, test coverage (Codecov), jscpd duplication; `Quality Gate Summary` is the single required check. SAST is CodeQL (JS/TS, Python, Actions) on public repos and Semgrep on private/internal; dependency review runs on public repos only. CodeQL only blocks merges with a "Require code scanning results" ruleset. Code scanning is by workflow, not GitHub's CodeQL default setup |
 | `.github/workflows/deploy-cr.yml` | Build and push image to container registry |
+| `.github/workflows/deploy-sae.yml` | Deploy a pushed image to an Alibaba Cloud SAE application (Aliyun CLI) |
 | `.github/workflows/deploy-npm.yml` | Publish a package to npm |
 | `.github/workflows/deploy-bucket.yml` | Deploy Vue frontend to object store |
 | `.github/workflows/update-template.yml` | Sync upstream template changes into the repo |
@@ -411,9 +414,13 @@ Required GitHub Secrets:
 |---|---|---|
 | `CR_USERNAME` | deploy-cr | Container registry username |
 | `CR_PASSWORD` | deploy-cr | Container registry password |
-| `RELEASE_PLEASE_APP_PRIVATE_KEY` | ci | GitHub App private key for automated releases |
+| `AK_ID` | deploy-sae | Alibaba Cloud RAM access key ID with SAE deploy permission |
+| `AK_SECRET` | deploy-sae | Alibaba Cloud RAM access key secret |
+| `RELEASE_PLEASE_APP_PRIVATE_KEY` | release | GitHub App private key for automated releases |
 | `NPM_AUTH_TOKEN` | deploy-npm | npm publish token |
 | `SYNC_TOKEN` | update-template | GitHub PAT with `repo` + `workflow` scopes for template sync |
+| `CODECOV_TOKEN` | ci-quality-gates | Codecov repository upload token |
+| `GITLEAKS_LICENSE` | ci-quality-gates | Gitleaks license key — only required if the repo is owned by a GitHub organization |
 | `ACCESS_KEY_ID` | deploy-bucket | Alibaba Cloud access key (ossutil path) |
 | `ACCESS_KEY_SECRET` | deploy-bucket | Alibaba Cloud secret key (ossutil path) |
 | `OSS_ACCESS_KEY_ID` | deploy-bucket | Alibaba Cloud access key (AWS CLI path) |
@@ -424,10 +431,13 @@ Required GitHub Variables:
 
 | Variable | Used by | Description |
 |---|---|---|
-| `CR_HOST` | deploy-cr | Container registry host |
-| `CR_NS` | deploy-cr | Container registry namespace |
-| `CR_IMAGENAME` | deploy-cr | Image name (defaults to repo name) |
-| `RELEASE_PLEASE_APP_ID` | ci | GitHub App ID for automated releases |
+| `CR_HOST` | deploy-cr, deploy-sae | Container registry host (SAE may need the `-vpc` registry host) |
+| `CR_NS` | deploy-cr, deploy-sae | Container registry namespace |
+| `CR_IMAGENAME` | deploy-cr, deploy-sae | Image name (defaults to repo name) |
+| `SAE_APP_ID` | deploy-sae | SAE application ID (overridable by workflow input) |
+| `SAE_REGION` | deploy-sae | SAE region (defaults to `ap-southeast-1`) |
+| `SAE_ACR_INSTANCE_ID` | deploy-sae | ACR Enterprise instance ID — only if the image is in ACR EE |
+| `RELEASE_PLEASE_APP_ID` | release | GitHub App ID for automated releases |
 | `ENDPOINT` | deploy-bucket | Alibaba Cloud OSS endpoint (ossutil path) |
 
 > Secrets must never be stored in the repo — inject them via your deployment platform or CI/CD secrets store.
@@ -459,7 +469,7 @@ Route middleware available after `authUser`:
 |---|---|
 | `.github/CONTRIBUTING.md` | Contributor workflow, hooks, issue reporting, PR rules |
 | `docs/conventions.md` | Coding, tooling, commit, and runtime standards |
-| `docs/git-github.md` | Git workflow, branch/tag patterns, merge strategy, GitHub repo settings (branch protection, CodeQL) |
+| `docs/git-github.md` | Git workflow, branch/tag patterns, merge strategy, GitHub repo settings (branch protection, code scanning) |
 | `docs/install.md` | Backend, frontend setup, development guide, and workspace reference |
 | `docs/design/authn.md` | Authentication setup — SAML 2.0 and OIDC provider configuration |
 | `docs/design/authz.md` | Authorization — RBAC and FGA: setup, JWT payload, roles fallback chain, usage |
@@ -467,7 +477,7 @@ Route middleware available after `authUser`:
 | `.claude/skills/clean-architecture/SKILL.md` | Controller/service/repository layering and mocking conventions |
 | `.claude/skills/structured-logging/SKILL.md` | Per-layer logging, error handling, and request-ID tracing conventions |
 | `docs/cloud/` | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare |
-| `docs/release-troubleshooting.md` | Troubleshooting `release-please` CI job failures |
+| `docs/release-troubleshooting.md` | Troubleshooting `release-please` job failures (`release.yml`) |
 | `docs/NOTES.md` | Design decisions, caveats, open questions, TODOs |
 | `docs/housekeeping.md` | Dependency/Actions updates — Dependabot config plus the `/housekeeping-scan-actions` and `/housekeeping-update-packages` Claude Code commands |
 | `scripts/generators/README.md` | `generate-crud.ts` / `generate-openapi.ts` flags, config file, override recipes |
