@@ -25,7 +25,7 @@
 |CR_HOST|deploy-cr|Container registry host.|
 |CR_HOST_VPC|deploy-sae|Container registry host VPC.|
 |CR_IMAGENAME|deploy-cr,deploy-sae|Image name. Defaults to the repo name|
-|CR_NS|deploy-cr,deploy-sae|Container registry namespace|
+|CR_NAMESPACE|deploy-cr,deploy-sae|Container registry namespace|
 |SAE_APP_ID|deploy-sae|SAE application ID. A workflow input can override it|
 |SAE_REGION|deploy-sae|SAE region. Defaults to ap-southeast-1|
 |SAE_ACR_INSTANCE_ID|deploy-sae|ACR Enterprise instance ID. Only needed if the image is in ACR Enterprise Edition|

@@ -76,12 +76,12 @@ git push --no-verify
 - rel/<current release version>, rel/<next release version>
   - can add -rc.1, -beta.1 suffixes as needed
 - hotfix/<current release version>/<...>
-- tag/<patch version>
+- v<patch version> (tag)
 - main
 
 Examples:
 - release branch: rel/1.1
-- patch tags: tag/1.1.1
+- patch tags: v1.1.1
 - beta release: rel/1.1-beta.4
 
 ### Branch & Tag Summary & Flow
@@ -119,9 +119,7 @@ Match the following patterns:
 |Type|Pattern|
 |----|-------|
 |stable|`main`|
-|release|`rel/*`|
-|tags|`v[0-9]*.[0-9]*.[0-9]*`|
-
+|release|`rel/[0-9]*.[0-9]*`|
 
 For each pattern, enable:
 
@@ -134,10 +132,33 @@ For each pattern, enable:
 | **Require conversation resolution before merging** | Enable. |
 | **Include administrators** | Enable. Prevents bypass by repo admins. |
 
+### Tag Rulesets
+
+Branch protection rules don't apply to tags. To stop a published release tag from being moved or deleted, add a tag ruleset in **Settings** → **Rules** → **Rulesets** → **New ruleset** → **New tag ruleset**.
+
+Target tags matching the following patterns:
+
+|Type|Pattern|Example|
+|----|-------|-------|
+|template core release|`v[0-9]*.[0-9]*.[0-9]*`|`v1.2.3`|
+|workspace release|`*-v[0-9]*.[0-9]*.[0-9]*`|`apps-sample-api-v1.2.3`|
+
+Both tag formats are created by the `Release` workflow — see [Release Automation](#release-automation).
+
+Enable:
+
+| Setting | Action |
+|---------|--------|
+| **Enforcement status** | Active. |
+| **Restrict updates** | Enable. A pushed tag can't be moved to another commit — release a new patch version instead. |
+| **Restrict deletions** | Enable. |
+
+Leave **Restrict creations** off — the `Release` workflow creates tags with its own `GITHUB_TOKEN`.
+
 ### Repository Environment
 
 1. Settings → Environments → production (choose New environment if it doesn't exist yet).
-2. Under Environment secrets, add environment secrets in [../github/workflow/secrets-var.md#Environment-Workflow-Secrets]()
+2. Under Environment secrets, add the secrets listed in [Environment Workflow Secrets](../.github/workflows/secrets-vars.md#environment-workflow-secrets).
 3. On the same page, set up the rules:
   - Required reviewers: add the people or teams who may approve deploys.
   - Prevent self-review: optional; stops whoever started the run from approving it.

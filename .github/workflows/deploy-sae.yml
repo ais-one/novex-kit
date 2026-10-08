@@ -8,7 +8,7 @@
 # - ACCESS_KEY_SECRET: access key secret of the RAM user
 # Setup the following vars
 # - CR_HOST_VPC: container registry host - use the VPC endpoint if SAE pulls over VPC (e.g. xxx-registry-vpc.ap-southeast-1.cr.aliyuncs.com)
-# - CR_NS: container registry namespace
+# - CR_NAMESPACE: container registry namespace
 # - CR_IMAGENAME: The image name. If not specified, the repository name will be used
 # - SAE_APP_ID: SAE application ID
 # - SAE_REGION: SAE region, defaults to ap-southeast-1
@@ -44,7 +44,7 @@ on:
 env:
   CR_IMAGENAME: ${{ github.event.inputs.cr_imagename || vars.CR_IMAGENAME || github.event.repository.name }}
   CR_HOST_VPC: ${{ vars.CR_HOST_VPC }}
-  CR_NS: ${{ vars.CR_NS }}
+  CR_NAMESPACE: ${{ vars.CR_NAMESPACE }}
   SAE_APP_ID: ${{ github.event.inputs.sae_app_id || vars.SAE_APP_ID }}
   SAE_REGION: ${{ vars.SAE_REGION || 'ap-southeast-1' }}
   SAE_ACR_INSTANCE_ID: ${{ vars.SAE_ACR_INSTANCE_ID }}
@@ -65,7 +65,7 @@ jobs:
     steps:
       - name: Approved
         run: |
-          echo "✅ Approved — deploying $CR_HOST_VPC/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
+          echo "✅ Approved — deploying $CR_HOST_VPC/$CR_NAMESPACE/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
           echo "SAE app: $SAE_APP_ID ($SAE_REGION)"
       - name: Install Aliyun Cli
         uses: aliyun/setup-aliyun-cli-action@v1
@@ -80,7 +80,7 @@ jobs:
       - name: Deploy Application
         id: deploy
         run: |
-          IMAGE_URL="$CR_HOST_VPC/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
+          IMAGE_URL="$CR_HOST_VPC/$CR_NAMESPACE/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
           echo "image: $IMAGE_URL"
           args=(--AppId "$SAE_APP_ID" --PackageType Image --ImageUrl "$IMAGE_URL")
           if [ -n "$SAE_ACR_INSTANCE_ID" ]; then
