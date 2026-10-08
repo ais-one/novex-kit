@@ -58,7 +58,7 @@ Ask a single question: update Node to `<candidate>` and npm to `<candidate>` acr
 - **If approved**:
   - Edit every location from step 1 to the new version(s) — root `package.json` engines, the composite action's defaults, any hardcoded workflow overrides, and the prose mentions in `CLAUDE.md`/docs. Keep each file's existing style (e.g. matrix arrays, quoting) — change only the version values.
   - If a local version manager was found in step 5, install and switch to the candidate Node version, install the candidate npm globally, then run a real `npm ci` (not `--dry-run`) followed by `npm run test:workspaces`. Report pass/fail plainly — if something fails, identify what broke and let the user decide whether to keep the update or revert, don't silently revert on their behalf.
-  - If no local version manager was available, say so explicitly and note that CI (`ci.yml`) is the next real verification point, since this environment couldn't run the new version directly.
+  - If no local version manager was available, say so explicitly and note that CI (`ci-tests.yml`, plus the other `ci-*.yml` workflows) is the next real verification point, since this environment couldn't run the new version directly.
 
 ## 8. Summarize
 

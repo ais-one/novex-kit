@@ -24,20 +24,20 @@ on:
     # Inputs the workflow accepts.
     inputs:
       cr_imagename:
-        description: 'container image name - leave blank to use GITHUB variables (if specified) or repo name'
-        default: ''
+        description: "container image name - leave blank to use GITHUB variables (if specified) or repo name"
+        default: ""
         required: false
       tag_ci:
-        description: 'container image tag'
-        default: 'latest'
+        description: "container image tag"
+        default: "latest"
         required: true
       sae_app_id:
-        description: 'SAE application ID - leave blank to use GITHUB variables'
-        default: ''
+        description: "SAE application ID - leave blank to use GITHUB variables"
+        default: ""
         required: false
       timeout_s:
-        description: 'max seconds to wait for deployment to complete'
-        default: '600'
+        description: "max seconds to wait for deployment to complete"
+        default: "600"
         required: true
 
 env:
@@ -77,21 +77,21 @@ jobs:
           aliyun version
           aliyun configure set \
             --mode AK \
-            --region $SAE_REGION \
-            --access-key-id $AK_ID \
-            --access-key-secret $AK_SECRET
+            --region "$SAE_REGION" \
+            --access-key-id "$AK_ID" \
+            --access-key-secret "$AK_SECRET"
       - name: Deploy Application
         id: deploy
         run: |
           IMAGE_URL="$CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
           echo "image: $IMAGE_URL"
-          args="--AppId $SAE_APP_ID --PackageType Image --ImageUrl $IMAGE_URL"
+          args=(--AppId "$SAE_APP_ID" --PackageType Image --ImageUrl "$IMAGE_URL")
           if [ -n "$SAE_ACR_INSTANCE_ID" ]; then
-            args="$args --AcrInstanceId $SAE_ACR_INSTANCE_ID"
+            args+=(--AcrInstanceId "$SAE_ACR_INSTANCE_ID")
           fi
           RESP=$(aliyun sae POST /pop/v1/sam/app/deployApplication \
-            --endpoint sae.$SAE_REGION.aliyuncs.com \
-            $args) || { echo "$RESP"; exit 1; }
+            --endpoint "sae.$SAE_REGION.aliyuncs.com" \
+            "${args[@]}") || { echo "$RESP"; exit 1; }
           echo "$RESP" | jq .
           CHANGE_ORDER_ID=$(echo "$RESP" | jq -r '.Data.ChangeOrderId // empty')
           if [ -z "$CHANGE_ORDER_ID" ]; then
@@ -101,15 +101,15 @@ jobs:
           if [ "$(echo "$RESP" | jq -r '.Data.IsNeedApproval')" = "true" ]; then
             echo "::warning::Change order needs approval in SAE console before it executes"
           fi
-          echo "change_order_id=$CHANGE_ORDER_ID" >> $GITHUB_OUTPUT
+          echo "change_order_id=$CHANGE_ORDER_ID" >> "$GITHUB_OUTPUT"
       - name: Wait for Deployment
         run: |
           CHANGE_ORDER_ID=${{ steps.deploy.outputs.change_order_id }}
           ELAPSED=0
           while [ "$ELAPSED" -lt "$TIMEOUT_S" ]; do
             RESP=$(aliyun sae GET /pop/v1/sam/changeorder/DescribeChangeOrder \
-              --endpoint sae.$SAE_REGION.aliyuncs.com \
-              --ChangeOrderId $CHANGE_ORDER_ID)
+              --endpoint "sae.$SAE_REGION.aliyuncs.com" \
+              --ChangeOrderId "$CHANGE_ORDER_ID")
             STATUS=$(echo "$RESP" | jq -r '.Data.Status')
             echo "[${ELAPSED}s] change order $CHANGE_ORDER_ID status: $STATUS"
             # 0 preparing, 1 executing, 2 success, 3 failed, 6 terminated, 8/9 awaiting confirmation,
@@ -119,7 +119,7 @@ jobs:
               3|6|10) echo "$RESP" | jq .; echo "::error::Deployment failed (status $STATUS)"; exit 1 ;;
               8) echo "::warning::Batch awaiting manual confirmation in SAE console"; exit 0 ;;
             esac
-            sleep $POLL_S
+            sleep "$POLL_S"
             ELAPSED=$((ELAPSED + POLL_S))
           done
           echo "::error::Timed out after ${TIMEOUT_S}s waiting for change order $CHANGE_ORDER_ID"

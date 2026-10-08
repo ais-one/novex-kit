@@ -1,0 +1,122 @@
+## Lint workflow - commit message format, Biome lint/format, and workflow YAML (prettier + actionlint) checks.
+## Runs on pull requests and pushes on every branch, with no change-scope detection.
+## Biome is still limited to touched workspaces (detect-touched-workspaces);
+## the first push of a new branch checks everything.
+name: Lint
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  commit-lint:
+    name: Commit Message Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history for diff-based change detection
+
+      - name: Validate commit messages
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          PUSH_HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          PATTERN='^(feat|fix|chore)(\([^)]+\))?!?: .{1,}$'
+          FAILED=0
+
+          if [[ "$GITHUB_EVENT_NAME" == 'pull_request' ]]; then
+            RANGE="$PR_BASE_SHA..$PR_HEAD_SHA"
+            git log --format="%s" "$RANGE" > /tmp/commit_msgs.txt
+          elif [[ "$PUSH_BEFORE_SHA" == '0000000000000000000000000000000000000000' ]]; then
+            git log --format="%s" -n 1 "$PUSH_HEAD_SHA" > /tmp/commit_msgs.txt
+          else
+            RANGE="$PUSH_BEFORE_SHA..$PUSH_HEAD_SHA"
+            git log --format="%s" "$RANGE" > /tmp/commit_msgs.txt
+          fi
+
+          while IFS= read -r msg; do
+            case "$msg" in
+              Merge\ *|fixup!\ *|squash!\ *) continue ;;
+            esac
+            if ! echo "$msg" | grep -Eq "$PATTERN"; then
+              echo "::error::Non-conventional commit message: $msg"
+              echo "  Expected: type(scope): description"
+              echo "  Types:    feat|fix|chore"
+              echo "  Note:     use chore for docs|style|refactor|perf|test|build|ci|revert changes"
+              echo "  Tip:      use 'npx czg' locally to generate a valid message."
+              FAILED=1
+            fi
+          done < /tmp/commit_msgs.txt
+          exit $FAILED
+
+  format-lint:
+    name: Biome Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history for diff-based change detection
+
+      - name: Detect touched paths
+        id: touched
+        uses: ./.github/actions/detect-touched-workspaces
+
+      - name: Set up workspace
+        uses: ./.github/actions/setup-node-npm-install
+
+      - name: Biome CI for touched targets
+        if: steps.touched.outputs.has-biome-targets == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r target; do
+            [ -n "$target" ] || continue
+            echo "Running Biome CI for $target"
+            npx biome ci "$target"
+          done <<< "${{ steps.touched.outputs.biome-targets }}"
+
+      - name: No touched Biome targets
+        if: steps.touched.outputs.has-biome-targets != 'true'
+        run: echo "No touched Biome targets detected for ${{ steps.touched.outputs.diff-range }}"
+
+  lint-github-yaml:
+    name: Lint Workflow YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: ./.github/actions/setup-node-npm-install
+        with:
+          install: "false"
+
+      # todo/ holds drafts - GitHub does not run workflows in subfolders, so they are skipped
+      - name: Check workflow and action YAML formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx prettier@3 --check ".github/workflows/*.yml" ".github/actions/**/*.yml"
+
+      # Image bundles shellcheck, so run: scripts are checked too.
+      # Config (ignored false positives): .github/actionlint.yaml
+      - name: Lint workflows (actionlint)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color .github/workflows/*.yml

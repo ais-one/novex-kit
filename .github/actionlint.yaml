@@ -1,0 +1,11 @@
+# actionlint config - https://github.com/rhysd/actionlint/blob/main/docs/config.md
+paths:
+  .github/workflows/release.yml:
+    ignore:
+      # actionlint's bundled metadata for create-github-app-token@v3 predates the
+      # `client-id` input (app-id is deprecated in v3). Remove once actionlint catches up.
+      - 'missing input "app-id" which is required by action "actions/create-github-app-token@v3"'
+      - 'input "client-id" is not defined in action "actions/create-github-app-token@v3"'
+      # release-please is temporarily disabled with `if: false` until the GitHub App is set up.
+      # Remove this line together with the `if: false`.
+      - 'constant expression "false" in condition'

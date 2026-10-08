@@ -16,7 +16,7 @@
 # - cr_imagename
 # - tag_ci
 # - dockerfile_path
-# environment NOT needed as it is specified in the container orchestration platform. 
+# environment NOT needed as it is specified in the container orchestration platform.
 name: DEPLOY - Container Registry
 
 on:
@@ -24,20 +24,20 @@ on:
     # Inputs the workflow accepts.
     inputs:
       tag_gr:
-        description: 'git repo branch or tag'
-        default: 'main'
+        description: "git repo branch or tag"
+        default: "main"
         required: true
       cr_imagename:
-        description: 'container image name - leave blank to use GITHUB variables (if specified) or repo name'
-        default: ''
+        description: "container image name - leave blank to use GITHUB variables (if specified) or repo name"
+        default: ""
         required: false
       tag_ci:
-        description: 'container image tag'
-        default: 'latest'
+        description: "container image tag"
+        default: "latest"
         required: true
       dockerfile_path:
-        description: 'path to dockerfile'
-        default: '.'
+        description: "path to dockerfile"
+        default: "."
         required: false
 
 env:
@@ -71,7 +71,7 @@ jobs:
       name: production
     steps:
       - name: Approval gate
-        run: echo "✅ Approved — deploying ${{ needs.build.outputs.image_tag }}"
+        run: echo "✅ Approved — deploying ${{ github.event.inputs.tag_ci }}"
 
   deploy_to_cr:
     runs-on: ubuntu-latest
@@ -88,11 +88,11 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           # cat password.txt |
-          echo $CR_PASSWORD | docker login --username $CR_USERNAME --password-stdin $CR_HOST
-          docker build -f apps/$CR_IMAGENAME/Dockerfile \
-            -t $CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }} \
-            --target $DOCKERFILE_TARGET \
+          echo "$CR_PASSWORD" | docker login --username "$CR_USERNAME" --password-stdin "$CR_HOST"
+          docker build -f "apps/$CR_IMAGENAME/Dockerfile" \
+            -t "$CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}" \
+            --target "$DOCKERFILE_TARGET" \
             --build-arg ARG_API_PORT=3000 \
-            $DOCKERFILE_PATH || exit 1001
-          docker push $CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}
+            "$DOCKERFILE_PATH" || exit 1
+          docker push "$CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
           docker logout

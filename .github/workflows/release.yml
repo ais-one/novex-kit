@@ -21,6 +21,7 @@ concurrency:
 jobs:
   release-please:
     name: Release Please
+    if: false
     runs-on: ubuntu-latest
     env:
       RELEASE_PLEASE_APP_ID: ${{ vars['RELEASE_PLEASE_APP_ID'] }}

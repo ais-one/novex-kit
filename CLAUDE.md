@@ -399,7 +399,8 @@ docker run -p 3000:3000 novex-kit
 
 | Workflow | Purpose |
 |---|---|
-| `.github/workflows/ci.yml` | Lint, test (read-only token) |
+| `.github/workflows/ci-tests.yml` | Schema, unit, integration and e2e tests for touched workspaces (read-only token) |
+| `.github/workflows/ci-lint.yml` | Commit message format, Biome lint/format, workflow YAML lint (prettier + actionlint) — every branch, PR and push, no change-scope detection. Review of `.github/` changes is gated by `CODEOWNERS` |
 | `.github/workflows/release.yml` | release-please — workspace-scoped release PRs, changelogs, tags and GitHub releases on push to `main`/`rel/**` |
 | `.github/workflows/ci-quality-gates.yml` | PR quality gates — Gitleaks, npm audit, dependency review, SAST, test coverage (Codecov), jscpd duplication; `Quality Gate Summary` is the single required check. SAST is CodeQL (JS/TS, Python, Actions) on public repos and Semgrep on private/internal; dependency review runs on public repos only. CodeQL only blocks merges with a "Require code scanning results" ruleset. Code scanning is by workflow, not GitHub's CodeQL default setup |
 | `.github/workflows/deploy-cr.yml` | Build and push image to container registry |

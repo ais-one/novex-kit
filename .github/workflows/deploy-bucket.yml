@@ -24,28 +24,28 @@ on:
     # Inputs the workflow accepts.
     inputs:
       provider:
-        description: 'Cloud Provider - oss, s3'
+        description: "Cloud Provider - oss, s3"
         required: true
-        default: 'oss'
+        default: "oss"
         type: choice
         options:
-        - oss
-        - s3
+          - oss
+          - s3
       tag:
-        description: 'git repo branch or tag'
-        default: 'main'
+        description: "git repo branch or tag"
+        default: "main"
         required: true
       app:
-        description: 'application name e.g. sample'
-        default: ''
+        description: "application name e.g. sample"
+        default: ""
         required: true
       bucket:
-        description: 'bucket name e.g. test-www-dev'
-        default: ''
+        description: "bucket name e.g. test-www-dev"
+        default: ""
         required: true
       env:
-        description: 'environment: dev, uat, prd'
-        default: 'dev'
+        description: "environment: dev, uat, prd"
+        default: "dev"
         required: true
 # env:
 #   OSS_TYPE: ${{ github.event.inputs.tag || 'main' }}
@@ -88,7 +88,7 @@ jobs:
       name: production
     steps:
       - name: Approval gate
-        run: echo "✅ Approved — deploying ${{ needs.build.outputs.image_tag }}"
+        run: echo "✅ Approved — deploying ${{ github.event.inputs.app }}@${{ github.event.inputs.tag }} to ${{ github.event.inputs.bucket }}"
 
   deploy-oss: # aliyun OSS
     needs: request-approval
@@ -162,29 +162,29 @@ jobs:
         run: |
           git config user.name "Your username" && git config user.email "your email"
           git checkout --orphan gh-pages
-          npx vite build --mode ${{ github.event.inputs.environment }}
+          npx vite build --mode ${{ github.event.inputs.env }}
           git --work-tree dist add --all
           git --work-tree dist commit -m 'Deploy'
           git push origin HEAD:gh-pages --force
           rm -r dist
-          git checkout -f ${GITHUB_REF##*/}
+          git checkout -f "${GITHUB_REF##*/}"
           git branch -D gh-pages
   ghsp2-tocheck:
     needs: request-approval
     if: github.event.inputs.provider == 'ghp'
-    runs-on: ubuntu-latest 
-    permissions: 
+    runs-on: ubuntu-latest
+    permissions:
       contents: read
-      packages: write 
+      packages: write
     steps:
       - uses: actions/checkout@v7
       # Setup .npmrc file to publish to GitHub Packages
       - uses: ./.github/actions/setup-node-npm-install
         with:
-          node-version: '24.18.0'
-          registry-url: 'https://npm.pkg.github.com'
+          node-version: "24.18.0"
+          registry-url: "https://npm.pkg.github.com"
           # Defaults to the user or organization that owns the workflow file
-          scope: '@octocat'
+          scope: "@octocat"
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

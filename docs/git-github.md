@@ -124,8 +124,9 @@ For each pattern, enable:
 | Setting | Action |
 |---------|--------|
 | **Require a pull request before merging** | Enable. Require 1 approval. Dismiss stale approvals on new commits. |
+| **Require review from Code Owners** | Enable. Changes under `.github/` need approval from the owners in [CODEOWNERS](../.github/CODEOWNERS). |
 | **Require status checks to pass** | Enable. Require branches to be up to date. |
-| | Add required checks: `Commit Message Format`, `Biome Checks`, `Schema Validation Tests`, `Unit Tests`, `Integration Tests`, `E2E Tests` |
+| | Add required checks: `Commit Message Format` and `Biome Checks` (from `ci-lint.yml`), `Quality Gate Summary`, `Schema Validation Tests`, `Unit Tests`, `Integration Tests`, `E2E Tests` |
 | **Require conversation resolution before merging** | Enable. |
 | **Include administrators** | Enable. Prevents bypass by repo admins. |
 
@@ -247,13 +248,11 @@ This keeps release history predictable for `release-please` and matches the cont
 
 Please read the following scripts for information on the CI workflows
 
-1. CI Meta workflow [ci-meta.yml](../.github/workflows/ci-meta.yml)
+1. Lint workflow [ci-lint.yml](../.github/workflows/ci-lint.yml) — commit messages, Biome, workflow YAML
+2. Tests workflow [ci-tests.yml](../.github/workflows/ci-tests.yml) — schema, unit, integration, e2e
+3. Quality gates workflow [ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) — security scans, coverage, duplication
 
-Changes must be only to `.github/workflows` OR `.github/actions` folder
-
-2. CI workflow [ci.yml](../.github/workflows/ci.yml)
-
-Changes must not be to `.github/workflows` AND `.github/actions` folders
+Changes to `.github/` can go in the same PR as other code. Review of them is enforced by [CODEOWNERS](../.github/CODEOWNERS) (`/.github/` entry) — enable **Require review from Code Owners** in the branch protection rules / ruleset for `main` and `rel/**`.
 
 Once configured:
 - PRs show red X if any required check fails.
@@ -266,35 +265,33 @@ Once configured:
 
 1. PR submitted to main or release branches
 2. CI runs on PR submitted
-  - repo-wide format check, no autofix
-  - repo-wide lint check, no autofix
+  - format + lint check (Biome) and commit message check — in [ci-lint.yml](../.github/workflows/ci-lint.yml), on every branch
   - repo-wide schema check, no autofix
   - repo-wide testing, no autofix
   - repo-side package audit, no autofix?
 3. Only allow merge if all checks pass
 
-### CI Meta Workflow
+### Lint Workflow
 
-1. Make CI changes on a `chore/ci/<name>` branch.
-2. Use commit messages in Conventional Commit format, for example `chore(ci): tighten workflow validation`.
-3. Run `act` locally to validate before pushing.
-4. Push `chore/ci/<name>` to trigger [ci-meta.yml](./workflows/ci-meta.yml). This workflow only runs for changes under `.github/workflows/**` and `.github/actions/**`.
-5. Open a PR from `chore/ci/<name>` to `ci-staging` and confirm the workflow is green end-to-end.
-6. After validation, open a PR from `ci-staging` to `main`.
+[ci-lint.yml](../.github/workflows/ci-lint.yml) runs on PRs and pushes on **every** branch, with no change-scope detection:
+
+- **Commit Message Format** — every commit in the PR / push must follow Conventional Commits (`feat|fix|chore`).
+- **Biome Checks** — `biome ci` on touched workspaces only (the first push of a new branch checks everything).
+- **Lint Workflow YAML** — `prettier --check` on `.github/workflows/*.yml` and `.github/actions/**/*.yml`, then `actionlint` (with shellcheck for `run:` scripts) on `.github/workflows/*.yml`. Drafts in `.github/workflows/todo/` are skipped (GitHub does not run workflows in subfolders). Known false positives are ignored in [.github/actionlint.yaml](../.github/actionlint.yaml). Fix formatting locally with `npx prettier@3 --write ".github/workflows/*.yml" ".github/actions/**/*.yml"`.
+
+A push to a branch with an open PR triggers both a push and a PR run.
 
 ### Quality Gates Workflow
 
 [ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) runs on PRs to `main` and `rel/**`, and on pushes to `main`:
 
 - **Gitleaks secret scan** — scans the git history for committed secrets.
-- **NPM audit** — `npm audit --omit=dev --audit-level=moderate` against the root lockfile (all workspaces), on every PR and push.
+- **NPM audit** — `npm audit --omit=dev --audit-level=moderate` against the root lockfile (all workspaces).
 - **Dependency vulnerability scan** — `dependency-review-action` blocks PRs that add dependencies with known vulnerabilities (PRs on public repos only; needs the dependency graph enabled).
 - **Security Scan - Semgrep** (private/internal repos) — security scan; on PRs only *new* findings fail the job. The SARIF report is kept as a build artifact.
 - **SAST CodeQL Analysis** (public repos) — security scan; results go to Security → Code scanning (see [Code Scanning](#code-scanning)).
 - **Test Coverage** — runs every workspace's `test:unit` script with an extra lcov reporter, merges the reports into `coverage/lcov.info` and uploads it to Codecov.
 - **Duplication Check (jscpd)** — fails if duplication exceeds 5% (optional; see the workflow header to drop it or make it advisory).
-
-Biome is not run here — [ci.yml](../.github/workflows/ci.yml) already covers it.
 
 Setup:
 

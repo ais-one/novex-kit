@@ -5,11 +5,11 @@ inputs:
   ref:
     description: Branch, tag, or SHA to check out. Defaults to the ref that triggered the workflow.
     required: false
-    default: ''
+    default: ""
   fetch-depth:
     description: Number of commits to fetch. 0 fetches full history.
     required: false
-    default: '0'
+    default: "0"
 runs:
   using: composite
   steps:
