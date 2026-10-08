@@ -34,8 +34,8 @@ This document is for
 - use zod for validation and openapi generation...
 - automation
   - commit messages - czg
-  - changelog - release-please workflow
-  - release - release-please workflow
+  - changelog - git-cliff (release notes on the GitHub release)
+  - release - manual Release workflow (release.yml)
   - code review AI - TODO
   - api documentation
   - unit and integration test generation

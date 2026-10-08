@@ -401,7 +401,7 @@ docker run -p 3000:3000 novex-kit
 |---|---|
 | `.github/workflows/ci-tests.yml` | Schema, unit, integration and e2e tests for touched workspaces (read-only token) |
 | `.github/workflows/ci-lint.yml` | Commit message format, Biome lint/format, workflow YAML lint (prettier + actionlint) — every branch, PR and push, no change-scope detection. Review of `.github/` changes is gated by `CODEOWNERS` |
-| `.github/workflows/release.yml` | release-please — workspace-scoped release PRs, changelogs, tags and GitHub releases on push to `main`/`rel/**` |
+| `.github/workflows/release.yml` | Manual release (`workflow_dispatch`) — git-cliff (`cliff.toml`) computes the next version + notes from Conventional Commits for `.` (tag `v1.2.3`) or one workspace (tag `apps-sample-api-v1.2.3`), then creates the tag and GitHub release with `GITHUB_TOKEN`. Tags are the version source of truth — nothing is committed back |
 | `.github/workflows/ci-quality-gates.yml` | PR quality gates — Gitleaks, npm audit, dependency review, SAST, test coverage (Codecov), jscpd duplication; `Quality Gate Summary` is the single required check. SAST is CodeQL (JS/TS, Python, Actions) on public repos and Semgrep on private/internal; dependency review runs on public repos only. CodeQL only blocks merges with a "Require code scanning results" ruleset. Code scanning is by workflow, not GitHub's CodeQL default setup |
 | `.github/workflows/deploy-cr.yml` | Build and push image to container registry |
 | `.github/workflows/deploy-sae.yml` | Deploy a pushed image to an Alibaba Cloud SAE application (Aliyun CLI) |
@@ -417,7 +417,6 @@ Required GitHub Secrets:
 | `CR_PASSWORD` | deploy-cr | Container registry password |
 | `AK_ID` | deploy-sae | Alibaba Cloud RAM access key ID with SAE deploy permission |
 | `AK_SECRET` | deploy-sae | Alibaba Cloud RAM access key secret |
-| `RELEASE_PLEASE_APP_PRIVATE_KEY` | release | GitHub App private key for automated releases |
 | `NPM_AUTH_TOKEN` | deploy-npm | npm publish token |
 | `SYNC_TOKEN` | update-template | GitHub PAT with `repo` + `workflow` scopes for template sync |
 | `CODECOV_TOKEN` | ci-quality-gates | Codecov repository upload token |
@@ -438,7 +437,6 @@ Required GitHub Variables:
 | `SAE_APP_ID` | deploy-sae | SAE application ID (overridable by workflow input) |
 | `SAE_REGION` | deploy-sae | SAE region (defaults to `ap-southeast-1`) |
 | `SAE_ACR_INSTANCE_ID` | deploy-sae | ACR Enterprise instance ID — only if the image is in ACR EE |
-| `RELEASE_PLEASE_APP_ID` | release | GitHub App ID for automated releases |
 | `ENDPOINT` | deploy-bucket | Alibaba Cloud OSS endpoint (ossutil path) |
 
 > Secrets must never be stored in the repo — inject them via your deployment platform or CI/CD secrets store.
@@ -478,7 +476,7 @@ Route middleware available after `authUser`:
 | `.claude/skills/clean-architecture/SKILL.md` | Controller/service/repository layering and mocking conventions |
 | `.claude/skills/structured-logging/SKILL.md` | Per-layer logging, error handling, and request-ID tracing conventions |
 | `docs/cloud/` | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare |
-| `docs/release-troubleshooting.md` | Troubleshooting `release-please` job failures (`release.yml`) |
+| `docs/release-troubleshooting.md` | Troubleshooting the manual `Release` workflow (`release.yml`, git-cliff) |
 | `docs/NOTES.md` | Design decisions, caveats, open questions, TODOs |
 | `docs/housekeeping.md` | Dependency/Actions updates — Dependabot config plus the `/housekeeping-scan-actions` and `/housekeeping-update-packages` Claude Code commands |
 | `scripts/generators/README.md` | `generate-crud.ts` / `generate-openapi.ts` flags, config file, override recipes |

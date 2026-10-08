@@ -1,61 +1,142 @@
-## Release workflow - runs release-please on pushes to main and release branches.
-## Opens/updates workspace-scoped release PRs; merging one creates the tags and GitHub releases.
+## Release workflow - manually triggered; tags one component and publishes a GitHub release.
+## Version and release notes come from Conventional Commits via git-cliff (config: cliff.toml).
+## Tags are the source of truth for versions - nothing is committed back, so no branch-protection
+## bypass, GitHub App or PAT is needed; the workflow's own GITHUB_TOKEN creates the tag + release.
 ## Tests are not re-run here: branch protection already requires PR checks to pass before merge.
-## Writes go through a short-lived GitHub App token, so the workflow token stays read-only.
+##
+## Components and tags:
+##   workspace "."               -> v1.2.3                  (template core, all commits)
+##   workspace "apps/sample-api" -> apps-sample-api-v1.2.3  (only commits touching that path)
+## A component's first release uses the version in its package.json as-is.
 name: Release
 
 on:
-  push:
-    branches:
-      - main
-      - rel/**
   workflow_dispatch:
+    inputs:
+      workspace:
+        description: 'Component to release: "." for the template core, or a workspace path such as apps/sample-api'
+        required: true
+        default: "."
+      bump:
+        description: "Version bump - auto derives it from commits (feat = minor, fix/chore = patch, ! = major)"
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+      dry-run:
+        description: "Only print the next version and release notes - create nothing"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false # never cancel a release run part-way
 
+env:
+  GIT_CLIFF_VERSION: "2.14.2"
+
 jobs:
-  release-please:
-    name: Release Please
-    if: false
+  release:
+    name: Release ${{ inputs.workspace }}
     runs-on: ubuntu-latest
-    env:
-      RELEASE_PLEASE_APP_ID: ${{ vars['RELEASE_PLEASE_APP_ID'] }}
-      RELEASE_PLEASE_APP_PRIVATE_KEY: ${{ secrets['RELEASE_PLEASE_APP_PRIVATE_KEY'] }}
+    permissions:
+      contents: write # create the tag and the GitHub release
     steps:
-      - name: Validate GitHub App configuration
+      - name: Check branch
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          if [[ -z "$RELEASE_PLEASE_APP_ID" ]]; then
-            echo "Missing Actions variable: RELEASE_PLEASE_APP_ID"
-            exit 1
-          fi
-          if [[ -z "$RELEASE_PLEASE_APP_PRIVATE_KEY" ]]; then
-            echo "Missing Actions secret: RELEASE_PLEASE_APP_PRIVATE_KEY"
+          if [[ "$REF_NAME" != 'main' && "$REF_NAME" != rel/* ]]; then
+            echo "::error::Releases are only cut from main or rel/* (got: $REF_NAME)"
             exit 1
           fi
 
-      - name: Create GitHub App token
-        id: app_token
-        uses: actions/create-github-app-token@v3
+      - name: Checkout
+        uses: actions/checkout@v7
         with:
-          client-id: ${{ env.RELEASE_PLEASE_APP_ID }}
-          private-key: ${{ env.RELEASE_PLEASE_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: |
-            ${{ github.event.repository.name }}
-          permission-contents: write
-          permission-issues: write
-          permission-pull-requests: write
+          fetch-depth: 0 # full history + tags for git-cliff
 
-      - name: Run release-please
-        id: release
-        uses: googleapis/release-please-action@v5
+      - name: Set up Node.js
+        uses: ./.github/actions/setup-node-npm-install
         with:
-          token: ${{ steps.app_token.outputs.token }}
-          target-branch: ${{ github.ref_name }}
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
+          install: "false"
+
+      - name: Resolve component
+        id: component
+        env:
+          WORKSPACE: ${{ inputs.workspace }}
+        run: |
+          set -euo pipefail
+          ws="${WORKSPACE%/}"
+          ws="${ws#./}"
+          [[ -z "$ws" ]] && ws='.'
+          if [[ "$ws" == *..* || "$ws" == /* || ! -f "$ws/package.json" ]]; then
+            echo "::error::'$WORKSPACE' is not a workspace with a package.json"
+            exit 1
+          fi
+
+          if [[ "$ws" == '.' ]]; then
+            prefix='v'
+            include=''
+          else
+            prefix="${ws//\//-}-v" # apps/sample-api -> apps-sample-api-v
+            include="$ws/**"
+          fi
+          pkg_version=$(node -p "require('./$ws/package.json').version")
+
+          {
+            echo "prefix=$prefix"
+            echo "include=$include"
+            echo "pkg-version=$pkg_version"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Compute version and notes
+        id: version
+        env:
+          PREFIX: ${{ steps.component.outputs.prefix }}
+          INCLUDE: ${{ steps.component.outputs.include }}
+          PKG_VERSION: ${{ steps.component.outputs.pkg-version }}
+          BUMP: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+          pattern="^${PREFIX//./\\.}[0-9]+\\.[0-9]+\\.[0-9]+\$"
+          args=(--tag-pattern "$pattern")
+          [[ -n "$INCLUDE" ]] && args+=(--include-path "$INCLUDE")
+          # first release of a component: use the package.json version as-is
+          export GIT_CLIFF__BUMP__INITIAL_TAG="${PREFIX}${PKG_VERSION}"
+
+          cliff() { npx --yes "git-cliff@$GIT_CLIFF_VERSION" "${args[@]}" "$@"; }
+
+          tag=$(cliff --bump "$BUMP" --bumped-version)
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error::$tag already exists - no new commits for this component since its last release"
+            exit 1
+          fi
+          cliff --unreleased --strip all > "$RUNNER_TEMP/notes.md"
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          {
+            echo "## $tag"
+            cat "$RUNNER_TEMP/notes.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create tag and GitHub release
+        if: ${{ !inputs.dry-run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          LATEST: ${{ steps.component.outputs.prefix == 'v' }} # only the template core is "Latest"
+        run: |
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            --latest="$LATEST"

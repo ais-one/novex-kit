@@ -182,4 +182,4 @@ jobs:
         run: echo "No impacted workspaces detected - skipping e2e tests"
 
 # Security checks (npm audit, secret scanning, SAST) run in ci-quality-gates.yml
-# release-please runs in release.yml
+# releases are cut manually via release.yml

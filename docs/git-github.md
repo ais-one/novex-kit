@@ -189,45 +189,40 @@ When choosing a scope in `czg`:
 
 ## Release Automation
 
-Changelog and tag automation are handled by the [`release-please`](https://github.com/googleapis/release-please-action) job in [.github/workflows/release.yml](../.github/workflows/release.yml). It runs on every push to `main` and `rel/**` and does not re-run tests — branch protection already requires PR checks to pass before merge.
+Releases are cut manually by the `Release` workflow ([.github/workflows/release.yml](../.github/workflows/release.yml), `workflow_dispatch`). It uses [git-cliff](https://git-cliff.org) ([cliff.toml](../cliff.toml)) to work out the next version and the release notes from Conventional Commits, then creates the tag and a GitHub release. Tests are not re-run — branch protection already requires PR checks to pass before merge.
 
-- The workflow runs `release-please-action` in manifest mode using
-  - [release-please-config.json](../release-please-config.json) and
-  - [.release-please-manifest.json](../.release-please-manifest.json)
-- Releases are tracked per workspace for `apps/*`.
-- The workflow requires a GitHub App installation token [setup](#GitHub-App-Token-Setup).
+- **Tags are the source of truth for versions.** Nothing is committed back to the branch (no version bump in `package.json`, no `CHANGELOG.md`), so the workflow needs no branch-protection bypass, GitHub App or PAT — its own `GITHUB_TOKEN` is enough.
+- Run it from `main` or a `rel/*` branch; any other branch fails fast.
 - Troubleshooting lives in [release-troubleshooting.md](./release-troubleshooting.md).
 
-### How It Works
+### Components and tags
 
-1. A commit lands on `main` or `rel/*`.
-2. The `release-please` job scans merged Conventional Commits for each configured workspace.
-3. If [releasable commits](#releasable-commits) exist for one or more workspaces, it opens or updates workspace-scoped release PRs.
-4. When release PRs are merged, `release-please` updates changelogs, creates workspace-scoped tags, and publishes GitHub releases.
+| `workspace` input | Tag | Commits considered |
+|---|---|---|
+| `.` (default) | `v1.2.3` | all commits — the template core; marked as the repo's "Latest" release |
+| `apps/sample-api` (any workspace path) | `apps-sample-api-v1.2.3` | only commits touching that path |
 
-### Releasable Commits
+A component's **first** release (no matching tag yet) uses the version already in its `package.json` as-is. Set that version before the first run if it isn't what you want.
 
-- `feat`, `fix`, and `deps` trigger a release PR.
-- `chore` can appear in the changelog if a release is already happening, but `chore` by itself does not trigger a release PR.
-- To force a release version manually, add a `Release-As: x.y.z` footer to the commit body.
+### Inputs
 
-### GitHub App Token Setup
+- `workspace` — `.` or a workspace path with a `package.json`.
+- `bump` — `auto` (default) derives it from commits since the component's last tag: breaking change (`!`) → major, `feat` → minor, anything else (`fix`, `chore`) → patch. Or force `patch`/`minor`/`major`.
+- `dry-run` — print the next version and notes to the job summary without creating anything.
 
-Use a GitHub App instead of a PAT if you want release PRs and release-created events to trigger downstream workflows.
+The run fails if the computed tag already exists, i.e. there are no new commits for that component since its last release.
 
-1. Create the GitHub App under GitHub Settings → Developer settings → GitHub Apps → New GitHub App.
-2. Disable webhooks and grant these repository permissions:
-   - `Contents`: Read and write
-   - `Pull requests`: Read and write
-   - `Issues`: Read and write
-   - `Metadata`: Read-only
-3. Install the app on this repository.
-4. Add the app ID to variable `RELEASE_PLEASE_APP_ID` and the PEM private key to secret `RELEASE_PLEASE_APP_PRIVATE_KEY`.
-5. If your repository or organization restricts workflow-created PRs, enable the setting that allows GitHub Actions to create and approve pull requests.
+### Previewing locally
 
-Once configured, the workflow step uses [actions/create-github-app-token](https://github.com/actions/create-github-app-token) to mint a short-lived installation token and passes it to `release-please`.
+```bash
+npx git-cliff --tag-pattern '^v[0-9]+\.[0-9]+\.[0-9]+$' --bumped-version          # next template-core version
+npx git-cliff --tag-pattern '^v[0-9]+\.[0-9]+\.[0-9]+$' --unreleased --strip all  # its release notes
+# a workspace: add --include-path 'apps/sample-api/**' and use '^apps-sample-api-v[0-9]+\.[0-9]+\.[0-9]+$'
+```
 
-If the variable or secret is missing, the workflow fails early instead of falling back to `GITHUB_TOKEN`.
+### Using the version at deploy time
+
+Because `package.json` versions aren't bumped in the repo, a deploy job that needs the version should read it from the tag it checked out, e.g. `npm version "${TAG##*v}" --no-git-tag-version --workspace=<path>` before building or publishing.
 
 ---
 
@@ -240,7 +235,7 @@ Use the repo workflow rather than a per-team merge style.
 - Reserve `hotfix/*` branches for urgent fixes that start from `main`, merge to `main`, and are then backported to active `rel/*` branches.
 - Use cherry-pick for hotfix backports when the same fix must land in multiple release branches.
 
-This keeps release history predictable for `release-please` and matches the contributor workflow in [.github/CONTRIBUTING.md](../.github/CONTRIBUTING.md).
+This keeps the commit history git-cliff reads clean and matches the contributor workflow in [.github/CONTRIBUTING.md](../.github/CONTRIBUTING.md).
 
 ---
 

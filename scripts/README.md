@@ -1,6 +1,6 @@
 ## Scripts
 
-Repository release automation is handled by the `release-please` job in [release.yml](../.github/workflows/release.yml), not by local scripts.
+Releases are cut by the manual `Release` workflow in [release.yml](../.github/workflows/release.yml) (git-cliff), not by local scripts.
 
 This folder keeps repository utility scripts.
 
