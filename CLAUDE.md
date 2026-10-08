@@ -409,35 +409,7 @@ docker run -p 3000:3000 novex-kit
 | `.github/workflows/deploy-bucket.yml` | Deploy Vue frontend to object store |
 | `.github/workflows/update-template.yml` | Sync upstream template changes into the repo |
 
-Required GitHub Secrets:
-
-| Secret | Used by | Description |
-|---|---|---|
-| `CR_USERNAME` | deploy-cr | Container registry username |
-| `CR_PASSWORD` | deploy-cr | Container registry password |
-| `AK_ID` | deploy-sae | Alibaba Cloud RAM access key ID with SAE deploy permission |
-| `AK_SECRET` | deploy-sae | Alibaba Cloud RAM access key secret |
-| `NPM_AUTH_TOKEN` | deploy-npm | npm publish token |
-| `SYNC_TOKEN` | update-template | GitHub PAT with `repo` + `workflow` scopes for template sync |
-| `CODECOV_TOKEN` | ci-quality-gates | Codecov repository upload token |
-| `GITLEAKS_LICENSE` | ci-quality-gates | Gitleaks license key — only required if the repo is owned by a GitHub organization |
-| `ACCESS_KEY_ID` | deploy-bucket | Alibaba Cloud access key (ossutil path) |
-| `ACCESS_KEY_SECRET` | deploy-bucket | Alibaba Cloud secret key (ossutil path) |
-| `OSS_ACCESS_KEY_ID` | deploy-bucket | Alibaba Cloud access key (AWS CLI path) |
-| `OSS_ACCESS_KEY_SECRET` | deploy-bucket | Alibaba Cloud secret key (AWS CLI path) |
-| `OSS_ENDPOINT` | deploy-bucket | Alibaba Cloud OSS endpoint (AWS CLI path) |
-
-Required GitHub Variables:
-
-| Variable | Used by | Description |
-|---|---|---|
-| `CR_HOST` | deploy-cr, deploy-sae | Container registry host (SAE may need the `-vpc` registry host) |
-| `CR_NS` | deploy-cr, deploy-sae | Container registry namespace |
-| `CR_IMAGENAME` | deploy-cr, deploy-sae | Image name (defaults to repo name) |
-| `SAE_APP_ID` | deploy-sae | SAE application ID (overridable by workflow input) |
-| `SAE_REGION` | deploy-sae | SAE region (defaults to `ap-southeast-1`) |
-| `SAE_ACR_INSTANCE_ID` | deploy-sae | ACR Enterprise instance ID — only if the image is in ACR EE |
-| `ENDPOINT` | deploy-bucket | Alibaba Cloud OSS endpoint (ossutil path) |
+Required GitHub Secrets and Variables (names, which workflow uses each, and what they hold) are listed in [`.github/workflows/secrets-vars.md`](.github/workflows/secrets-vars.md) — keep that file in sync when a workflow adds or drops a `secrets.*` / `vars.*` reference.
 
 > Secrets must never be stored in the repo — inject them via your deployment platform or CI/CD secrets store.
 
@@ -476,6 +448,7 @@ Route middleware available after `authUser`:
 | `.claude/skills/clean-architecture/SKILL.md` | Controller/service/repository layering and mocking conventions |
 | `.claude/skills/structured-logging/SKILL.md` | Per-layer logging, error handling, and request-ID tracing conventions |
 | `docs/cloud/` | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare |
+| `.github/workflows/secrets-vars.md` | GitHub Secrets and Variables required by the workflows |
 | `docs/release-troubleshooting.md` | Troubleshooting the manual `Release` workflow (`release.yml`, git-cliff) |
 | `docs/NOTES.md` | Design decisions, caveats, open questions, TODOs |
 | `docs/housekeeping.md` | Dependency/Actions updates — Dependabot config plus the `/housekeeping-scan-actions` and `/housekeeping-update-packages` Claude Code commands |

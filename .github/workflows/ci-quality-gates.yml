@@ -38,14 +38,22 @@ jobs:
   secret-scan:
     name: Gitleaks secret scan
     runs-on: ubuntu-latest
+    env:
+      # `secrets` can't be used in a step `if:` - expose it via env instead.
+      # The scan is skipped when there's no license (or on fork PRs, which get no secrets).
+      GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # only required for repos owned by a GitHub organization
     steps:
+      - name: Skip Gitleaks (no GITLEAKS_LICENSE)
+        if: env.GITLEAKS_LICENSE == ''
+        run: echo "::notice title=Gitleaks skipped::GITLEAKS_LICENSE secret not set - secret scan not run"
       - uses: actions/checkout@v7
+        if: env.GITLEAKS_LICENSE != ''
         with:
           fetch-depth: 0 # full history needed for diff scan
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        if: env.GITLEAKS_LICENSE != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # only required for repos owned by a GitHub organization
 
   # ── SOC2 - 2. SCA — npm audit ────────────────────────────────────────────
   # Checks the root package-lock.json (covers all workspaces) for known CVEs
@@ -189,6 +197,10 @@ jobs:
   coverage:
     name: Test Coverage
     runs-on: ubuntu-latest
+    env:
+      # `secrets` can't be used in a step `if:` - expose it via env instead.
+      # Empty when the secret isn't set (or on fork PRs), so the upload is skipped.
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -222,10 +234,15 @@ jobs:
         # coverage always matches what the workspace itself runs. Workspaces
         # whose test:unit is a stub (no --test-reporter=spec) are skipped.
 
+      - name: Skip Codecov upload (no CODECOV_TOKEN)
+        if: env.CODECOV_TOKEN == ''
+        run: echo "::notice title=Codecov skipped::CODECOV_TOKEN secret not set - coverage report not uploaded"
+
       - name: Upload coverage to Codecov
+        if: env.CODECOV_TOKEN != ''
         uses: codecov/codecov-action@v7
         with:
-          token: ${{ secrets.CODECOV_TOKEN }} # required even for public repos now
+          token: ${{ env.CODECOV_TOKEN }} # required even for public repos now
           files: ./coverage/lcov.info
           disable_search: true # only upload the merged report, not coverage/workspaces/*.lcov too
           fail_ci_if_error: true

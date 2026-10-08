@@ -3,8 +3,8 @@
 # https://www.alibabacloud.com/help/en/sae/serverless-app-engine-upgrade/developer-reference/api-sae-2019-05-06-deployapplication
 #
 # Setup the following secrets
-# - AK_ID: access key ID of a RAM user with SAE deploy permission (e.g. AliyunSAEFullAccess)
-# - AK_SECRET: access key secret of the RAM user
+# - ACCESS_KEY_ID: access key ID of a RAM user with SAE deploy permission (e.g. AliyunSAEFullAccess)
+# - ACCESS_KEY_SECRET: access key secret of the RAM user
 # Setup the following vars
 # - CR_HOST: container registry host - use the VPC endpoint if SAE pulls over VPC (e.g. xxx-registry-vpc.ap-southeast-1.cr.aliyuncs.com)
 # - CR_NS: container registry namespace
@@ -41,8 +41,8 @@ on:
         required: true
 
 env:
-  AK_ID: ${{ secrets.AK_ID }}
-  AK_SECRET: ${{ secrets.AK_SECRET }}
+  ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
+  ACCESS_KEY_SECRET: ${{ secrets.ACCESS_KEY_SECRET }}
   CR_IMAGENAME: ${{ github.event.inputs.cr_imagename || vars.CR_IMAGENAME || github.event.repository.name }}
   CR_HOST: ${{ vars.CR_HOST }}
   CR_NS: ${{ vars.CR_NS }}
@@ -78,8 +78,8 @@ jobs:
           aliyun configure set \
             --mode AK \
             --region "$SAE_REGION" \
-            --access-key-id "$AK_ID" \
-            --access-key-secret "$AK_SECRET"
+            --access-key-id "$ACCESS_KEY_ID" \
+            --access-key-secret "$ACCESS_KEY_SECRET"
       - name: Deploy Application
         id: deploy
         run: |
