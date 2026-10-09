@@ -24,7 +24,7 @@ Before doing any version lookups, show the user the full inventory of what was d
 ## 3. Classify the current ref
 
 For each occurrence, `REF` is one of:
-- **A full 40-char commit SHA**, usually with a trailing `# vX.Y.Z` comment (the convention already used in this repo, e.g. `.github/workflows/soc2-security-checks.yml` and `soc2-deploy-to-production.yml`).
+- **A full 40-char commit SHA**, usually with a trailing `# vX.Y.Z` comment (the convention already used in this repo, e.g. the gitleaks action in `.github/workflows/ci-quality-gates.yml` and `ref-soc2-deploy-to-production.yml`).
 - **A floating tag** (`@v4`, `@v2`) or **exact semver tag** (`@v1.2.0`) — not SHA-pinned yet.
 
 ## 4. Resolve the latest version upstream

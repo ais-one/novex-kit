@@ -1,11 +1,11 @@
 ## Apps to install for development (MacOS)
 
 ```bash
-# homwbrew
+# homebrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
 eval "$(/opt/homebrew/bin/brew shellenv)"
-brew –version
+brew --version
 
 # XCode Select - installs git
 xcode-select --install
@@ -14,7 +14,7 @@ xcode-select --version
 # Podman
 brew install podman
 podman machine init && podman machine start && podman info
-sudo /opt/homebrew/Cellar/podman/5.8.1/bin/podman-mac-helper install
+sudo "$(brew --prefix podman)/bin/podman-mac-helper" install
 podman machine stop; podman machine start
 
 # nvm, node and npm
@@ -25,18 +25,21 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
 
 # VS Code
 brew install --cask visual-studio-code
-brew uninstall --cask --zap visual-studio-code
-$HOME/Library/Application\ Support/Code
-~/.vscode
-~/Library/Caches/com.microsoft.VSCode
-brew list visual-studio-code 
-brew autoremove
+
+# optional: full uninstall / cleanup — do not paste with the install line above
+# brew uninstall --cask --zap visual-studio-code
+# leftover folders to delete manually if needed:
+#   $HOME/Library/Application\ Support/Code
+#   ~/.vscode
+#   ~/Library/Caches/com.microsoft.VSCode
+# brew list visual-studio-code
+# brew autoremove
 ```
 
-VS Code extensions are found in [.vscode/extensions.json](). Manually maintained. Copilot chat already built into latest VS Code.
+VS Code extensions are found in [.vscode/extensions.json](../.vscode/extensions.json). Manually maintained. Copilot chat already built into latest VS Code.
 
 ```bash
-# command line install of extenisions
+# command line install of extensions
 code --install-extension <extension id>
 ```
 
@@ -52,7 +55,7 @@ npm i
 
 2. Create and populate file-based pglite (serve as pg) database
 
-If sample database at `db/dev.db` folder is not present, see [Quick Create DB](../db/README.md#quick-create-db) to generate one. Due to size, the DB is not commited to git.
+If sample database at `db/dev.db` folder is not present, see [Quick Start](../db/README.md#quick-start-local-dev) to generate one. Due to size, the DB is not committed to git.
 
 For local development, run `npm run serve` command in `scripts/db-mocks` folder to serve the database.
 
@@ -65,7 +68,7 @@ npm run start
 
 4. Visit the following URLs
 
-- http://127.0.0.1:3000/api/healthcheck - API is running normally
+- http://127.0.0.1:3000/health - API is running normally
 - http://127.0.0.1:3000 - Website served by Express with functional samples and demos
 - http://127.0.0.1:3000/native/index.html - unbundled Vue website sample
 
@@ -73,7 +76,7 @@ npm run start
 
 - No bundler frontend
   - Imports only `vue` and `vue-router` in `index.html`, with plain JavaScript and no bundler.
-  - Uses `export const store = reactive({})` [instead of Vuex](https://pinia.vuejs.org/introduction.html#Why-should-I-use-Pinia).
+  - Uses `export const statex = reactive({})` [instead of Vuex](https://pinia.vuejs.org/introduction.html#Why-should-I-use-Pinia).
 
 
 5. Running Using Docker/Podman
@@ -81,15 +84,15 @@ npm run start
 For running with Docker or Podman:
 
 ```bash
-docker build -t novex-kit --target runtime --build-arg APP_NAME=sample-api --build-arg API_PORT=3000 .
+docker build -t novex-kit --target runtime --build-arg APP_NAME=sample-api --build-arg API_PORT=3000 -f apps/sample-api/Dockerfile .
 docker run -p 3000:3000 novex-kit
 ```
 
-Features include SAML, OIDC, OAuth, FIDO2 login, and push notifications.
+Features include FIDO2 login and push notifications. SAML/OIDC/OAuth login lives in [`apps/base-iam`](../apps/base-iam).
 
 ## Create New Backend App Or Service
 
-- Make a copy of the `sample-api` folder in the `apps` folder and rename it using kebab-case.
+- Either run `npm run create:app --workspace=apps/sample-common` to scaffold from a clean-architecture template (`sample-rest-app-v2` or `sample-queue-consumer`) — see [README](../README.md) — or make a copy of the `sample-api` folder in the `apps` folder and rename it using kebab-case.
 - Edit the `.env` and `.env.json` files as needed. For production, inject secrets from environment variables or a secret manager.
 
 
@@ -104,11 +107,11 @@ cd apps/sample-vue-minimal
 npm run dev
 ```
 
-Visit `http://127.0.0.1:8080` on browser to view application
+Visit `http://127.0.0.1:8081` on browser to view application
 
 ## Install & Run Sample Vue Application
 
-Run a more extensive sample, in `apps/sample-vue-full`, and view on `http://127.0.0.1:8081`
+Run a more extensive sample, in `apps/sample-vue-full`, and view on `http://127.0.0.1:8080`
 
 **Note For Login**
 
@@ -116,27 +119,26 @@ Login using one of the following:
 - Faked Login: [NOTE: API calls to protected Endpoints WILL FAIL!]:
   - Login: fake a user and login, no backend needed, just click button
   - Login Callback: fake a callback and set fake user and login, no backend needed, just click button
-- Login: normal login with OTP, express server needs to be run
+- Login: normal login with OTP — run `apps/base-iam` (port 3001, `VITE_AUTH_URL` in `.env.development`)
   - Details are already **prefilled** with the following values; just click the Login button.
   - Username and password: `test`
   - OTP (if enabled, for example `USE_OTP=TEST`): use `111111`; it is already prefilled.
-- Enterprise SSO (SAML2, OIDC) is available in the sample app.
+- Enterprise SSO (SAML2, OIDC) is served by `apps/base-iam` (see [docs/design/authn.md](design/authn.md)).
 
 ### E2E Tests
 
 ```bash
+cd apps/sample-vue-full
 npx playwright install chromium
 npx playwright test --browser=chromium
-
-cd apps/sample-vue-full
-npm run test:e2e
+# note: `npm run test:e2e` is only a reminder stub (run frontend + backend first) — it runs no tests
 ```
 
 ### Run With Mock Service Worker
 
 ```bash
-# TODO
-npm run local:mocked # run locally with mock service worker (many other API calls will fail because they are not mocked)
+# TODO: currently broken — the script points at apps/vite.config.js, which doesn't exist
+npm run dev:mocked # run locally with mock service worker (many other API calls will fail because they are not mocked)
 ```
 ---
 
@@ -152,28 +154,26 @@ npm run local:mocked # run locally with mock service worker (many other API call
     - only up to 1 submenu level
       - /first-level
       - /submenu/second-level
-    - Paths:
-      - `'~/xxx.js'` from the **<project>/src** folder
-      - `'/xxx.js'` from the **<project>** folder
+    - Component paths: relative to `setups/` (e.g. `'../views/SignIn.vue'`) or via the `@common/vue` alias (e.g. `'@common/vue/views/...'`)
 
 ---
 
-## Common Workspaces Install
+## Common Folders
 
-The `common` workspaces contain reusable shared code and schemas for use across applications in this monorepo.
+The `common` folders contain reusable shared code and schemas for use across applications in this monorepo. Only `common/compiled/*` and `common/vanilla/*` folders with their own `package.json` are npm workspaces; the others are imported by path or Vite alias.
 
 - [common/vanilla/iso](../common/vanilla/iso) - isomorphic utilities that can run across multiple JavaScript runtimes
 - [common/compiled/node](../common/compiled/node) - Node.js runtime modules, including Express-specific middleware and services
-- [common/schemas](../common/schemas) - shared schemas written in `zod`
-- [common/vanilla/web](../common/vanilla/web) - browser-only utilities and web components
+- [common/schemas](../common/schemas) - shared schemas written in `zod` (not a workspace — imported by path; has its own `docs:*` scripts)
+- [common/vanilla/web](../common/vanilla/web) - browser-only utilities and web components (not a workspace — imported via the `@common/web` alias)
 - [common/compiled/vue](../common/compiled/vue) - Vue-specific shared modules
-- [scripts](../scripts) - repository scripts for database deployment, OpenAPI generation, and related tooling
+- [scripts](../scripts) - code/OpenAPI generation tooling (`generators`), local DB and service mocks (`db-mocks`, `service-mocks`), and schema tests
 
 
 ### Workspace Command Reference
 
 - List workspaces: `npm ls -ws`
-- Install by workspace: `npm i @node-saml/node-saml@latest --workspace=common/node`
+- Install by workspace: `npm i @node-saml/node-saml@latest --workspace=common/compiled/node`
 - Check outdated packages: `npm outdated -ws`
 - Update packages: `npm update --save`
 
@@ -193,7 +193,7 @@ Or publish using GitHub Actions with [.github/workflows/deploy-npm.yml](../.gith
 ### Sample Deployment
 
 1. Configure `.env.prd`.
-2. Run the workflow [.github/workflows/deploy-bucket.yml](../.github/workflows/deploy-bucket.yml) and select the production environment.
+2. Run the workflow [.github/workflows/deploy-bucket.yml](../.github/workflows/deploy-bucket.yml) and set the `env` input to `prd`.
 
 ### References
 - https://ideas.digitalocean.com/storage/p/deploy-static-sites-to-spacescdn

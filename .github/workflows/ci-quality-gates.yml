@@ -1,0 +1,292 @@
+# .github/workflows/ci-quality-gates.yml
+#
+# Wires together 7 quality/security checks, summarised by one required PR status check:
+#   1. Gitleaks          - secret scanning
+#   2. npm audit         - known CVEs in production npm dependencies
+#   2B. Dependency review - blocks PRs that introduce vulnerable dependencies (PRs, public repos only)
+#   3. Semgrep CE        - SAST, blocking (private/internal repos only)
+#   3B. CodeQL           - SAST via code scanning (public repos only; blocks merges
+#                          only with a "Require code scanning results" ruleset)
+#   4. Coverage          - test coverage via Codecov
+#   5. jscpd             - copy-paste/duplication detection (OPTIONAL - see toggle below)
+#
+# To leave out jscpd entirely: delete the `duplication` job below, and remove
+# it from the `needs:` list on `quality-gate-summary`. Alternatively, keep it
+# but make it non-blocking by setting `continue-on-error: true` on the job
+# (see commented option inline).
+#
+# SOC2 security jobs are: secret-scan, npm-audit, dependency-audit, sast-private-repo-semgrep, sast-public-repo-codeql.
+
+# Called by ci-lint.yml after lint passes (PRs into / pushes to main and rel/x.y) -
+# no triggers of its own. Concurrency is handled by the caller.
+
+name: Quality Gates
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # ── SOC2 - 1. Secret scanning ────────────────────────────────────────────
+  secret-scan:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-latest
+    env:
+      # `secrets` can't be used in a step `if:` - expose it via env instead.
+      # The scan is skipped when there's no license (or on fork PRs, which get no secrets).
+      GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # only required for repos owned by a GitHub organization
+    steps:
+      - name: Skip Gitleaks (no GITLEAKS_LICENSE)
+        if: env.GITLEAKS_LICENSE == ''
+        run: echo "::notice title=Gitleaks skipped::GITLEAKS_LICENSE secret not set - secret scan not run"
+      - uses: actions/checkout@v7
+        if: env.GITLEAKS_LICENSE != ''
+        with:
+          fetch-depth: 0 # full history needed for diff scan
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        if: env.GITLEAKS_LICENSE != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── SOC2 - 2. SCA — npm audit ────────────────────────────────────────────
+  # Checks the root package-lock.json (covers all workspaces) for known CVEs
+  # in production dependencies. Runs on every PR and push - no scope detection.
+  npm-audit:
+    name: NPM audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up workspace
+        uses: ./.github/actions/setup-node-npm-install
+
+      - name: Run NPM audit
+        shell: bash
+        # set --audit-level=high for more leniency
+        run: |
+          set -euo pipefail
+          npm audit --omit=dev --audit-level=high
+
+  # ── SOC2 - 2B. SCA — dependency review ───────────────────────────────────
+  # Complements npm-audit: blocks PRs that *introduce* vulnerable dependencies.
+  # This job only works on pull_request events, and needs the dependency graph
+  # enabled. It runs on public repos only - private repos need GitHub Code
+  # Security; if you have it, drop the visibility check.
+  dependency-audit:
+    name: Dependency vulnerability scan
+    if: github.event_name == 'pull_request' && github.event.repository.visibility == 'public'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/dependency-review-action@v5
+        # Compares base vs head — blocks PRs that introduce new vulns
+
+  # ── SOC2 - 3. SAST Semgrep CE - private/internal repos only
+  # Public repos use CodeQL (3B) instead, which is free there. Semgrep fails
+  # the job on findings (--error), so it blocks quality-gate-summary.
+  # Runs in the official Semgrep container, so no license or login is needed.
+  # Results are NOT uploaded to the GitHub code scanning tab (that needs
+  # GitHub Code Security on private repos); the SARIF report is kept as a
+  # build artifact instead, which also works as audit evidence.
+  sast-private-repo-semgrep:
+    name: Security Scan - Semgrep
+    if: github.event.repository.visibility != 'public'
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:latest # pin to a specific version/digest for reproducibility
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # needed for --baseline-commit on PRs
+      # - name: "Run Semgrep PAID version"
+      #   run: semgrep ci --config auto --severity ERROR
+      #   env:
+      #     SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+      - name: "Run Semgrep (PRs: only fail on NEW findings)"
+        if: github.event_name == 'pull_request'
+        env:
+          SEMGREP_BASELINE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          semgrep scan \
+            --config p/default \
+            --config p/typescript \
+            --config p/nodejs \
+            --config p/owasp-top-ten \
+            --baseline-commit "$SEMGREP_BASELINE" \
+            --metrics=off \
+            --error \
+            --sarif --output semgrep.sarif
+
+      - name: "Run Semgrep (pushes: full scan)"
+        if: github.event_name != 'pull_request'
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          semgrep scan \
+            --config p/default \
+            --config p/typescript \
+            --config p/nodejs \
+            --config p/owasp-top-ten \
+            --metrics=off \
+            --error \
+            --sarif --output semgrep.sarif
+        # --error makes the job exit non-zero when findings exist, which is
+        # what turns Semgrep into a blocking gate. --metrics=off disables
+        # telemetry, which is useful for SOC2/HIPAA data-flow documentation.
+
+      - name: Upload SARIF report as artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+          retention-days: 90
+
+  # ── SOC2 - 3B. CodeQL - public repos only
+  # Code scanning is free on public repos; private repos need GitHub Code
+  # Security, so the job is skipped there (a skipped job does not fail
+  # quality-gate-summary). If you have Code Security, drop the visibility check.
+  # Results appear under Security > Code scanning. Do NOT also enable CodeQL
+  # "default setup" in repo settings - GitHub rejects workflow uploads while
+  # default setup is on.
+  # For a weekly full scan, add to `on:` above:
+  #   schedule:
+  #     - cron: '23 3 * * 1' # weekly, Monday 03:23 UTC
+  sast-public-repo-codeql:
+    name: SAST CodeQL Analysis (${{ matrix.language }})
+    if: github.event.repository.visibility == 'public'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write # upload SARIF results
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, actions]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none # JS/TS, Python and Actions need no build
+          queries: security-extended
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # ---------------------------------------------------------------------
+  # 2. Test coverage - Codecov
+  # ---------------------------------------------------------------------
+  coverage:
+    name: Test Coverage
+    runs-on: ubuntu-latest
+    env:
+      # `secrets` can't be used in a step `if:` - expose it via env instead.
+      # Empty when the secret isn't set (or on fork PRs), so the upload is skipped.
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up workspace
+        uses: ./.github/actions/setup-node-npm-install
+
+      - name: Run unit tests with coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$PWD/coverage/workspaces"
+          mkdir -p "$out"
+          workspaces=$(npm query .workspace | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).map(w=>w.location).join("\n")))')
+          while IFS= read -r ws; do
+            [ -n "$ws" ] || continue
+            script=$(node -p "require('./$ws/package.json').scripts?.['test:unit'] ?? ''")
+            if [[ "$script" != *"--test-reporter=spec"* ]]; then
+              echo "No node --test unit tests in $ws - skipping"
+              continue
+            fi
+            dest="$out/${ws//\//-}.lcov"
+            echo "Running unit tests with coverage for workspace: $ws"
+            (cd "$ws" && sh -c "${script/--test-reporter=spec/--test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=$dest}")
+            # lcov SF: paths are relative to the workspace - rewrite them relative to the repo root
+            node -e 'const fs=require("fs"),p=require("path");const [f,ws]=process.argv.slice(1);fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace(/^SF:(.*)$/gm,(_,s)=>"SF:"+p.relative(process.cwd(),p.resolve(ws,s))))' "$dest" "$ws"
+          done <<< "$workspaces"
+          cat "$out"/*.lcov > coverage/lcov.info
+        # Re-runs each workspace's own `test:unit` script (node --test) with an
+        # extra lcov reporter injected next to the existing spec reporter, so
+        # coverage always matches what the workspace itself runs. Workspaces
+        # whose test:unit is a stub (no --test-reporter=spec) are skipped.
+
+      - name: Skip Codecov upload (no CODECOV_TOKEN)
+        if: env.CODECOV_TOKEN == ''
+        run: echo "::notice title=Codecov skipped::CODECOV_TOKEN secret not set - coverage report not uploaded"
+
+      - name: Upload coverage to Codecov
+        if: env.CODECOV_TOKEN != ''
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ env.CODECOV_TOKEN }} # required even for public repos now
+          files: ./coverage/lcov.info
+          disable_search: true # only upload the merged report, not coverage/workspaces/*.lcov too
+          fail_ci_if_error: true
+
+  # ---------------------------------------------------------------------
+  # 3. jscpd - duplication detection (OPTIONAL)
+  # ---------------------------------------------------------------------
+  duplication:
+    name: Duplication Check (jscpd)
+    runs-on: ubuntu-latest
+    continue-on-error: true # advisory-only: duplication over threshold does not block the gate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up workspace
+        uses: ./.github/actions/setup-node-npm-install
+
+      - name: Run jscpd
+        run: |
+          npm run quality:dup -- --reporters "console,github"
+        # jscpd is pinned in root devDependencies (bumped by Dependabot).
+        # Threshold and ignore list live in .jscpd.json at the repo root (shared with local runs).
+        # threshold 5 fails the build if duplication exceeds 5%.
+        # Tune per-repo; migrations/generated code often need higher tolerance.
+
+  # ---------------------------------------------------------------------
+  # Summary gate - use this single job as your one required branch-protection check
+  # ---------------------------------------------------------------------
+  quality-gate-summary:
+    name: Quality Gate Summary
+    runs-on: ubuntu-latest
+    needs: [
+        secret-scan,
+        npm-audit,
+        dependency-audit,
+        sast-private-repo-semgrep,
+        sast-public-repo-codeql,
+        coverage,
+        duplication,
+      ] # remove `duplication` here if you drop that job
+    # dependency-audit and the two sast-* jobs may be `skipped` (pushes / repo visibility) - only `failure` fails the gate
+    if: always()
+    steps:
+      - name: Check all jobs succeeded
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "One or more quality gate jobs failed."
+            exit 1
+          fi
+          echo "All quality gates passed."

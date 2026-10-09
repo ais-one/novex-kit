@@ -23,7 +23,7 @@ run_biome_check() {
   print_info "  npx biome check $DIR"
   npx biome check "$DIR"
   if [ $? -ne 0 ]; then
-    print_error "Biome check failed for $DIR. Run 'npm run check --write' to auto-fix, then re-stage."
+    print_error "Biome check failed for $DIR. Run 'npm run check:write' to auto-fix, then re-stage."
     BIOME_FAILED=1
   else
     print_success "  $DIR ✓"

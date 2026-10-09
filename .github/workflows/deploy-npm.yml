@@ -13,12 +13,12 @@ on:
     # Inputs the workflow accepts.
     inputs:
       pkg:
-        description: 'Project To Publish (jslib, esm or node). Ensure version is updated & tagged'
-        default: 'jslib'
+        description: "Project To Publish (jslib, esm or node). Ensure version is updated & tagged"
+        default: "jslib"
         required: true
       tag:
-        description: 'Branch or tag'
-        default: 'main'
+        description: "Branch or tag"
+        default: "main"
         required: true
 jobs:
   # COMMENTED BECAUSE: cannot push to protected branch
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [ '24' ] # lts?
+        node: ["24"] # lts?
     steps:
       - uses: actions/checkout@v7
         with:
@@ -51,10 +51,10 @@ jobs:
       - uses: ./.github/actions/setup-node-npm-install
         with:
           node-version: ${{ matrix.node }}
-          install: 'false'
-          registry-url: 'https://registry.npmjs.org'
+          install: "false"
+          registry-url: "https://registry.npmjs.org"
       # Setup .npmrc file to publish to npm
-      - run: echo checking out branch/tag ${GITHUB_REF##*/}
+      - run: echo "checking out branch/tag ${GITHUB_REF##*/}"
       # - run: npm install --production --workspace=libs/${{ github.event.inputs.pkg }} # NOT NEEDED CURRENTLY
       - run: npm publish --access public --workspace=common/${{ github.event.inputs.pkg }}
         env:

@@ -5,11 +5,11 @@ inputs:
   base-sha:
     description: Optional base commit SHA to compare from.
     required: false
-    default: ''
+    default: ""
   head-sha:
     description: Optional head commit SHA to compare to.
     required: false
-    default: ''
+    default: ""
   diff-filter:
     description: Git diff filter passed to git diff --diff-filter.
     required: false

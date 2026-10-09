@@ -1,0 +1,19 @@
+{
+  "threshold": 8,
+  "reporters": ["console"],
+  "gitignore": true,
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/*.test.ts",
+    "**/*.md",
+    ".claude/**",
+    "**/package-lock.json",
+    "apps/sample-a2a-rag-mcp-aaron/**",
+    "apps/*/public/**",
+    "db/*/drizzle/**",
+    "db/*/crud/*/generated/**",
+    "db/*/openapi/**",
+    "common/schemas/docs/openapi/**"
+  ]
+}

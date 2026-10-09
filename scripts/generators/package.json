@@ -4,7 +4,6 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "docs:generate:api": "node api-generator-route.ts"
   }
 }

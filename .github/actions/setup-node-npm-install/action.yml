@@ -5,11 +5,11 @@ inputs:
   node-version:
     description: Node.js version to install.
     required: false
-    default: '24.18.0'
+    default: "24.18.0"
   npm-version:
     description: npm version to install globally.
     required: false
-    default: '11.18.0'
+    default: "11.18.0"
   install-command:
     description: Dependency install command to run.
     required: false
@@ -21,15 +21,15 @@ inputs:
   registry-url:
     description: Optional registry URL passed to actions/setup-node.
     required: false
-    default: ''
+    default: ""
   scope:
     description: Optional npm scope passed to actions/setup-node.
     required: false
-    default: ''
+    default: ""
   install:
     description: Whether to run the install command.
     required: false
-    default: 'true'
+    default: "true"
 
 runs:
   using: composite

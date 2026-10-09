@@ -8,11 +8,11 @@ inputs:
   disallowed-paths-regex:
     description: Regex for explicitly disallowed paths. Files matching this fail before the allowed-paths check.
     required: false
-    default: ''
+    default: ""
   fail-on-invalid:
     description: If true, fail the step when any changed file is outside allowed scope.
     required: false
-    default: 'false'
+    default: "false"
   invalid-scope-message:
     description: Error message shown when fail-on-invalid is true and invalid files are found.
     required: false

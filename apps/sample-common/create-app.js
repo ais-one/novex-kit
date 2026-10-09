@@ -10,7 +10,7 @@ const ROOT_DIR = path.resolve(__dirname, '..', '..');
 const APPS_DIR = path.join(ROOT_DIR, 'apps');
 
 const templates = {
-  'vision-rest-app': 'sample-rest-app',
+  'vision-rest-app': 'sample-rest-app-v2',
   'vision-queue-consumer': 'sample-queue-consumer',
 };
 
@@ -43,7 +43,7 @@ function updatePackageJson(appDir, appName) {
 
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 
-  packageJson.name = appName;
+  packageJson.name = `@apps/${appName}`;
 
   fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
 }
@@ -118,7 +118,7 @@ Created:
   apps/${appName}
 
 Run:
-  npm run dev --workspace apps/${appName}
+  npm run start --workspace apps/${appName}
 `);
 }
 

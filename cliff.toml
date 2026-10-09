@@ -1,0 +1,39 @@
+# git-cliff config - https://git-cliff.org/docs/configuration
+# Used by .github/workflows/release.yml to compute the next version and the release notes.
+# Tag pattern, include paths and initial version are passed on the command line per component.
+
+[changelog]
+header = ""
+body = """
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}\
+{% if commit.breaking %}[**breaking**] {% endif %}\
+{{ commit.message | upper_first }} ({{ commit.id | truncate(length=7, end="") }})\
+{% endfor %}
+{% endfor %}
+"""
+footer = ""
+trim = true
+
+[git]
+conventional_commits = true
+# keep pre-convention history (merge commits etc.) out of the notes
+filter_unconventional = true
+split_commits = false
+protect_breaking_commits = true
+filter_commits = true
+topo_order = false
+sort_commits = "newest"
+commit_parsers = [
+  { message = "^feat", group = "<!-- 0 -->Features" },
+  { message = "^fix", group = "<!-- 1 -->Fixes" },
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "^chore", group = "<!-- 2 -->Chores" },
+  { message = ".*", skip = true },
+]
+
+[bump]
+features_always_bump_minor = true
+breaking_always_bump_major = true

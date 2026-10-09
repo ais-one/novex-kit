@@ -1,7 +1,7 @@
 ## Digital Ocean CR
 # username and password is same api token generated in DO dashboard
 # CR_HOST=registry.digitalocean.com
-# CR_NS=ais-one
+# CR_NAMESPACE=ais-one
 
 ## Digital Ocean App Platform:
 # set liveness probe
@@ -10,7 +10,7 @@
 # option to use dedicated (extra fee) or static egress IPs
 
 # docker login --username $CR_USERNAME --password-stdin $CR_HOST
-# docker build -t $CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }} \
+# docker build -t $CR_HOST/$CR_NAMESPACE/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }} \
 #  --target $DOCKERFILE_TARGET \
 #  --build-arg ARG_API_PORT=3000 \
 #  $DOCKERFILE_PATH || exit 1001
@@ -80,6 +80,15 @@ RUN apk update && apk upgrade --no-cache \
 
 WORKDIR /app
 
+# Doppler CLI: copy the static binary from Doppler's official image.
+# Pin an exact tag (e.g. dopplerhq/cli:3.75.1) for reproducible builds.
+COPY --from=dopplerhq/cli:3 /bin/doppler /bin/doppler
+
+# USE command below to check if has CA certs so CLI can reach api.doppler.com over TLS
+# docker run --rm node:24-alpine ls -l /etc/ssl/certs/ca-certificates.crt
+# INCLUDE command below for Alpine images that don't have CA certs
+# RUN apk add --no-cache ca-certificates
+
 # Copy production node_modules (hoisted by npm workspaces) and source
 COPY --from=deps  /app/node_modules                    ./node_modules/
 COPY --from=build /app/common/compiled/node            ./common/compiled/node/
@@ -106,4 +115,10 @@ EXPOSE ${API_PORT}
 # HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 #   CMD wget -qO- http://localhost:${API_PORT}/health || exit 1
 
-CMD ["node", "src/index.js"]
+# CMD ["node", "src/index.ts"]
+
+# DOPPLER_TOKEN is NOT set here. Provide it at runtime
+# (SAE app environment config / namespace secret).
+# `doppler run` fetches secrets, exports them as env vars, then execs node.
+# Exec form (JSON array) so SIGTERM reaches the process during SAE deploys/scale-in.
+CMD ["doppler", "run", "--", "node", "src/index.ts"]

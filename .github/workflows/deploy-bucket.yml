@@ -4,7 +4,8 @@
 # - AWS S3 [TOTEST]
 # - Github Pages [TOTEST]
 #
-# Setup the following github action repo secrets
+# Setup the following secrets as environment secrets on the "production" environment
+# (Settings → Environments → production → Environment secrets) - not repository secrets
 # - ACCESS_KEY_ID
 # - ACCESS_KEY_SECRET
 # Setup the following github action repo vars
@@ -24,28 +25,28 @@ on:
     # Inputs the workflow accepts.
     inputs:
       provider:
-        description: 'Cloud Provider - oss, s3'
+        description: "Cloud Provider - oss, s3"
         required: true
-        default: 'oss'
+        default: "oss"
         type: choice
         options:
-        - oss
-        - s3
+          - oss
+          - s3
       tag:
-        description: 'git repo branch or tag'
-        default: 'main'
+        description: "git repo branch or tag"
+        default: "main"
         required: true
       app:
-        description: 'application name e.g. sample'
-        default: ''
+        description: "application name e.g. sample"
+        default: ""
         required: true
       bucket:
-        description: 'bucket name e.g. test-www-dev'
-        default: ''
+        description: "bucket name e.g. test-www-dev"
+        default: ""
         required: true
       env:
-        description: 'environment: dev, uat, prd'
-        default: 'dev'
+        description: "environment: dev, uat, prd"
+        default: "dev"
         required: true
 # env:
 #   OSS_TYPE: ${{ github.event.inputs.tag || 'main' }}
@@ -76,22 +77,12 @@ jobs:
           name: my-build
           path: ${{ github.workspace }}/apps/${{ github.event.inputs.app }}/dist
 
-  request-approval:
-    name: Request Deployment Approval
-    needs: [build]
-    runs-on: ubuntu-latest
-    environment:
-      # "production" is a GitHub Environment configured with required reviewers.
-      # Add your authorized users/teams there in:
-      #   Settings → Environments → production → Required reviewers
-      # ← configure required reviewers here in GitHub Settings
-      name: production
-    steps:
-      - name: Approval gate
-        run: echo "✅ Approved — deploying ${{ needs.build.outputs.image_tag }}"
-
   deploy-oss: # aliyun OSS
-    needs: request-approval
+    needs: build
+    # "production" is a GitHub Environment configured with required reviewers - the job waits
+    # for approval, and only then receives the environment secrets (ACCESS_KEY_ID/SECRET).
+    # Settings → Environments → production → Required reviewers / Environment secrets
+    environment: production
     if: github.event.inputs.provider == 'oss'
     name: Deploying To Aliyun OSS - Node Version TODO
     runs-on: ubuntu-latest
@@ -108,7 +99,8 @@ jobs:
       - name: Upload the web folder to the chosen OSS bucket
         run: ./ossutil64 --config-file .ossutilconfig cp ${{ github.workspace }}/apps/${{ github.event.inputs.app }}/dist oss://${{ github.event.inputs.bucket }} -r -f
   deploy-s3: # AWS S3
-    needs: request-approval
+    needs: build
+    environment: production # see deploy-oss for setup
     if: github.event.inputs.provider == 's3'
     runs-on: ubuntu-latest
     steps:
@@ -127,7 +119,8 @@ jobs:
         run: |
           aws s3 sync dist s3://${{ github.event.inputs.bucket }} --delete
   deploy-oss2: # Alibaba Cloud OSS via AWS CLI
-    needs: request-approval
+    needs: build
+    environment: production # see deploy-oss for setup
     if: github.event.inputs.provider == 'oss2'
     runs-on: ubuntu-latest
     steps:
@@ -139,16 +132,17 @@ jobs:
       - name: Configure AWS CLI for OSS
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.OSS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+          aws-access-key-id: ${{ secrets.ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ACCESS_KEY_SECRET }}
           aws-region: ap-southeast-1
       - name: Sync files to OSS bucket
         run: |
           aws s3 sync dist s3://${{ github.event.inputs.bucket }} \
             --delete \
-            --endpoint-url https://${{ secrets.OSS_ENDPOINT }}
+            --endpoint-url https://${{ vars.ENDPOINT }}
   deploy-ghp: # Alibaba Cloud OSS via AWS CLI
-    needs: request-approval
+    needs: build
+    environment: production # see deploy-oss for setup
     if: github.event.inputs.provider == 'ghp'
     runs-on: ubuntu-latest
     steps:
@@ -162,29 +156,30 @@ jobs:
         run: |
           git config user.name "Your username" && git config user.email "your email"
           git checkout --orphan gh-pages
-          npx vite build --mode ${{ github.event.inputs.environment }}
+          npx vite build --mode ${{ github.event.inputs.env }}
           git --work-tree dist add --all
           git --work-tree dist commit -m 'Deploy'
           git push origin HEAD:gh-pages --force
           rm -r dist
-          git checkout -f ${GITHUB_REF##*/}
+          git checkout -f "${GITHUB_REF##*/}"
           git branch -D gh-pages
   ghsp2-tocheck:
-    needs: request-approval
+    needs: build
+    environment: production # see deploy-oss for setup
     if: github.event.inputs.provider == 'ghp'
-    runs-on: ubuntu-latest 
-    permissions: 
+    runs-on: ubuntu-latest
+    permissions:
       contents: read
-      packages: write 
+      packages: write
     steps:
       - uses: actions/checkout@v7
       # Setup .npmrc file to publish to GitHub Packages
       - uses: ./.github/actions/setup-node-npm-install
         with:
-          node-version: '24.18.0'
-          registry-url: 'https://npm.pkg.github.com'
+          node-version: "24.18.0"
+          registry-url: "https://npm.pkg.github.com"
           # Defaults to the user or organization that owns the workflow file
-          scope: '@octocat'
+          scope: "@octocat"
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

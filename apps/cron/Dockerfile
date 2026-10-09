@@ -1,7 +1,7 @@
 ## Digital Ocean CR
 # username and password is same api token generated in DO dashboard
 # CR_HOST=registry.digitalocean.com
-# CR_NS=ais-one
+# CR_NAMESPACE=ais-one
 
 ## Digital Ocean App Platform:
 # set liveness probe
@@ -10,7 +10,7 @@
 # option to use dedicated (extra fee) or static egress IPs
 
 # docker login --username $CR_USERNAME --password-stdin $CR_HOST
-# docker build -t $CR_HOST/$CR_NS/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }} \
+# docker build -t $CR_HOST/$CR_NAMESPACE/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }} \
 #  --target $DOCKERFILE_TARGET \
 #  --build-arg ARG_API_PORT=3000 \
 #  $DOCKERFILE_PATH || exit 1001
