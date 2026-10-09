@@ -4,11 +4,15 @@
 ## the first push of a new branch checks everything.
 ## Entry point for CI: once every lint job passes, it calls ci-tests.yml and
 ## ci-quality-gates.yml (reusable workflows) in parallel, on main and rel/x.y only.
+## Pushes to main and rel/x.y are skipped entirely - they arrive via already-checked PRs.
 name: Lint
 
 on:
   pull_request:
   push:
+    branches-ignore: # protected branches - already checked on the PR
+      - main
+      - "rel/[0-9]*.[0-9]*"
 
 permissions:
   contents: read
@@ -123,7 +127,7 @@ jobs:
 
   # ---------------------------------------------------------------------
   # Downstream workflows - run in parallel after lint passes, only for
-  # PRs into / pushes to main or rel/[0-9]*.[0-9]* (same as their old triggers).
+  # PRs into main or rel/[0-9]*.[0-9]* (pushes to those are filtered out by `on:`).
   # ---------------------------------------------------------------------
   branch-scope:
     name: Check Target Branch

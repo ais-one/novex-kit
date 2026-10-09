@@ -64,7 +64,7 @@ jobs:
       - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
 
-      - name: NPM audit
+      - name: Run NPM audit
         shell: bash
         # set --audit-level=high for more leniency
         run: |
