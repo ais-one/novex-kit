@@ -130,7 +130,7 @@ For each pattern, enable:
 | **Require a pull request before merging** | Enable. Require 1 approval. Dismiss stale approvals on new commits. |
 | **Require review from Code Owners** | Enable. Changes under `.github/` need approval from the owners in [CODEOWNERS](../.github/CODEOWNERS). |
 | **Require status checks to pass** | Enable. Require branches to be up to date. |
-| | Add required checks: `Commit Message Format` and `Biome Checks` (from `ci-lint.yml`), `Quality Gate Summary`, `Schema Validation Tests`, `Unit Tests`, `Integration Tests`, `E2E Tests` (the last four are from `ci-tests.yml`, which is **currently disabled** — a skipped job reports as passing, so they don't block anything until it's re-enabled) |
+| | Add required checks: `Commit Message Format` and `Biome Checks` (from `ci-lint.yml`), `Quality Gates / Quality Gate Summary`, `Tests / Schema Validation Tests`, `Tests / Unit Tests`, `Tests / Integration Tests`, `Tests / E2E Tests` (the last four are from `ci-tests.yml`, which is **currently disabled** — a skipped job reports as passing, so they don't block anything until it's re-enabled). `ci-tests.yml` and `ci-quality-gates.yml` are called from `ci-lint.yml`, so their checks are prefixed with the calling job's name |
 | **Require conversation resolution before merging** | Enable. |
 | **Include administrators** | Enable. Prevents bypass by repo admins. |
 
@@ -282,6 +282,8 @@ Please read the following scripts for information on the CI workflows
 2. Tests workflow [ci-tests.yml](../.github/workflows/ci-tests.yml) — schema, unit, integration, e2e (**currently disabled**: every job is gated `if: false && …`)
 3. Quality gates workflow [ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) — security scans, coverage, duplication
 
+`ci-lint.yml` is the only workflow with its own triggers. Once all its lint jobs pass, it calls `ci-tests.yml` and `ci-quality-gates.yml` (reusable workflows, `on: workflow_call`) in parallel, for PRs into and pushes to `main` and ``rel/[0-9]*.[0-9]*``. If lint fails, neither runs — their required checks stay pending, so the PR is still blocked.
+
 Changes to `.github/` can go in the same PR as other code. Review of them is enforced by [CODEOWNERS](../.github/CODEOWNERS) (`/.github/` entry) — enable **Require review from Code Owners** in the branch protection rules / ruleset for `main` and ``rel/[0-9]*.[0-9]*``.
 
 Once configured:
@@ -307,13 +309,13 @@ Once configured:
 
 - **Commit Message Format** — every commit in the PR / push must follow Conventional Commits (`feat|fix|chore`).
 - **Biome Checks** — `biome ci` on touched workspaces only (the first push of a new branch checks everything).
-- **Lint Workflow YAML** — `prettier --check` on `.github/workflows/*.yml` and `.github/actions/**/*.yml`, then `actionlint` (with shellcheck for `run:` scripts) on `.github/workflows/*.yml`. Drafts in `.github/workflows/todo/` are skipped (GitHub does not run workflows in subfolders). Known false positives are ignored in [.github/actionlint.yaml](../.github/actionlint.yaml). Fix formatting locally with `npx prettier@3 --write ".github/workflows/*.yml" ".github/actions/**/*.yml"`.
+- **Lint Workflow YAML** — `prettier --check` on `.github/workflows/*.yml` and `.github/actions/**/*.yml`, then `actionlint` (with shellcheck for `run:` scripts) on `.github/workflows/*.yml`. Drafts in `.github/workflows/todo/` are skipped (GitHub does not run workflows in subfolders). Known false positives are ignored in [.github/actionlint.yaml](../.github/actionlint.yaml). Check locally with `npm run quality:lint`; fix with `npx prettier --write ".github/workflows/*.yml" ".github/actions/**/*.yml"` (prettier is a pinned root devDependency).
 
 A push to a branch with an open PR triggers both a push and a PR run.
 
 ### Quality Gates Workflow
 
-[ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) runs on PRs and pushes to `main` and ``rel/[0-9]*.[0-9]*``:
+[ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) is called by `ci-lint.yml` after lint passes, on PRs and pushes to `main` and ``rel/[0-9]*.[0-9]*``:
 
 - **Gitleaks secret scan** — scans the git history for committed secrets.
 - **NPM audit** — `npm audit --omit=dev --audit-level=moderate` against the root lockfile (all workspaces).
@@ -329,5 +331,5 @@ Setup:
 2. Copy the repository upload token and add it as Actions secret `CODECOV_TOKEN` (Settings → Secrets and variables → Actions). Optional — without it the Codecov upload is skipped (unit tests still run); with it, an upload error fails the job (`fail_ci_if_error: true`).
 3. If the repository is owned by a GitHub **organization**, get a free license key from [gitleaks.io](https://gitleaks.io/) and add it as Actions secret `GITLEAKS_LICENSE`. Every Gitleaks step is gated on this secret, so **without it the scan is skipped on any repo** — personal-account repos don't need a real license, but must still set the secret (any value) to enable the scan.
 4. Enable the **Dependency graph** (Settings → Advanced Security) — `dependency-review-action` needs it. On private repos the job is skipped (it needs GitHub Code Security); if you have it, remove the visibility condition on the `dependency-audit` job.
-5. In the branch protection rules / ruleset for `main` and ``rel/[0-9]*.[0-9]*``, add `Quality Gate Summary` as a required status check — it fails if any gate job fails, so it is the only check you need to require from this workflow.
+5. In the branch protection rules / ruleset for `main` and ``rel/[0-9]*.[0-9]*``, add `Quality Gates / Quality Gate Summary` as a required status check — it fails if any gate job fails, so it is the only check you need to require from this workflow.
 6. Public repos: in the same ruleset, add a **Require code scanning results** rule for CodeQL — the `sast-public-repo-codeql` job itself does not fail on findings, so without this rule CodeQL is report-only.

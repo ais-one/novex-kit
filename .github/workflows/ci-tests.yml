@@ -1,12 +1,10 @@
 ## Test workflow - schema, unit, integration and e2e tests for touched workspaces.
 ## Changes to .github/** may be mixed in the same PR - ci-lint.yml lints them, CODEOWNERS gates review.
+## Called by ci-lint.yml after lint passes (PRs into / pushes to main and rel/x.y) - no triggers of its own.
 name: Tests
 
 on:
-  pull_request:
-    branches: [main, "rel/[0-9]*.[0-9]*"]
-  push:
-    branches: [main, "rel/[0-9]*.[0-9]*"]
+  workflow_call:
 
 permissions:
   contents: read

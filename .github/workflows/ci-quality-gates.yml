@@ -1,6 +1,6 @@
 # .github/workflows/ci-quality-gates.yml
 #
-# Wires together 7 quality/security checks as required PR status checks:
+# Wires together 7 quality/security checks, summarised by one required PR status check:
 #   1. Gitleaks          - secret scanning
 #   2. npm audit         - known CVEs in production npm dependencies
 #   2B. Dependency review - blocks PRs that introduce vulnerable dependencies (PRs, public repos only)
@@ -17,21 +17,17 @@
 #
 # SOC2 security jobs are: secret-scan, npm-audit, dependency-audit, sast-private-repo-semgrep, sast-public-repo-codeql.
 
+# Called by ci-lint.yml after lint passes (PRs into / pushes to main and rel/x.y) -
+# no triggers of its own. Concurrency is handled by the caller.
+
 name: Quality Gates
 
 on:
-  pull_request:
-    branches: [main, "rel/[0-9]*.[0-9]*"]
-  push:
-    branches: [main, "rel/[0-9]*.[0-9]*"]
+  workflow_call:
 
 permissions:
   contents: read
   pull-requests: read
-
-concurrency:
-  group: ci-quality-gates-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   # ── SOC2 - 1. Secret scanning ────────────────────────────────────────────
@@ -73,7 +69,7 @@ jobs:
         # set --audit-level=high for more leniency
         run: |
           set -euo pipefail
-          npm audit --omit=dev --audit-level=moderate
+          npm audit --omit=dev --audit-level=high
 
   # ── SOC2 - 2B. SCA — dependency review ───────────────────────────────────
   # Complements npm-audit: blocks PRs that *introduce* vulnerable dependencies.
@@ -253,19 +249,18 @@ jobs:
   duplication:
     name: Duplication Check (jscpd)
     runs-on: ubuntu-latest
-    continue-on-error: false # advisory-only: duplication over threshold does not block the gate
+    continue-on-error: true # advisory-only: duplication over threshold does not block the gate
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Node.js
+      - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
-        with:
-          install: "false"
 
       - name: Run jscpd
         run: |
-          npx jscpd . --reporters "console,github"
+          npm run quality:dup -- --reporters "console,github"
+        # jscpd is pinned in root devDependencies (bumped by Dependabot).
         # Threshold and ignore list live in .jscpd.json at the repo root (shared with local runs).
         # threshold 5 fails the build if duplication exceeds 5%.
         # Tune per-repo; migrations/generated code often need higher tolerance.

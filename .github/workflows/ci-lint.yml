@@ -2,6 +2,8 @@
 ## Runs on pull requests and pushes on every branch, with no change-scope detection.
 ## Biome is still limited to touched workspaces (detect-touched-workspaces);
 ## the first push of a new branch checks everything.
+## Entry point for CI: once every lint job passes, it calls ci-tests.yml and
+## ci-quality-gates.yml (reusable workflows) in parallel, on main and rel/x.y only.
 name: Lint
 
 on:
@@ -101,17 +103,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Node.js
+      - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
-        with:
-          install: "false"
 
       # todo/ holds drafts - GitHub does not run workflows in subfolders, so they are skipped
       - name: Check workflow and action YAML formatting
         shell: bash
         run: |
           set -euo pipefail
-          npx prettier@3 --check ".github/workflows/*.yml" ".github/actions/**/*.yml"
+          npm run quality:lint # prettier pinned in root devDependencies
 
       # Image bundles shellcheck, so run: scripts are checked too.
       # Config (ignored false positives): .github/actionlint.yaml
@@ -120,3 +120,51 @@ jobs:
         run: |
           set -euo pipefail
           docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color .github/workflows/*.yml
+
+  # ---------------------------------------------------------------------
+  # Downstream workflows - run in parallel after lint passes, only for
+  # PRs into / pushes to main or rel/[0-9]*.[0-9]* (same as their old triggers).
+  # ---------------------------------------------------------------------
+  branch-scope:
+    name: Check Target Branch
+    runs-on: ubuntu-latest
+    outputs:
+      protected: ${{ steps.scope.outputs.protected }}
+    steps:
+      - name: Match target branch against main / rel/[0-9]*.[0-9]*
+        id: scope
+        shell: bash
+        env:
+          # PR: the base branch; push: the pushed branch
+          TARGET: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          # regex form of the old `branches:` glob - `*` there matches anything except `/`
+          if [[ "$TARGET" =~ ^(main|rel/[0-9][^/]*\.[0-9][^/]*)$ ]]; then
+            echo "protected=true" >> "$GITHUB_OUTPUT"
+            echo "$TARGET: running tests and quality gates"
+          else
+            echo "protected=false" >> "$GITHUB_OUTPUT"
+            echo "$TARGET: not main or rel/x.y - skipping tests and quality gates"
+          fi
+
+  tests:
+    name: Tests
+    needs: [branch-scope, commit-lint, format-lint, lint-github-yaml]
+    if: needs.branch-scope.outputs.protected == 'true'
+    uses: ./.github/workflows/ci-tests.yml
+    permissions:
+      contents: read
+
+  quality-gates:
+    name: Quality Gates
+    needs: [branch-scope, commit-lint, format-lint, lint-github-yaml]
+    if: needs.branch-scope.outputs.protected == 'true'
+    uses: ./.github/workflows/ci-quality-gates.yml
+    secrets: inherit # GITLEAKS_LICENSE, CODECOV_TOKEN
+    # a called workflow can't exceed these - union of what its jobs request
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      security-events: write

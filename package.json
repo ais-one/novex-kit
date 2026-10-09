@@ -1,7 +1,7 @@
 {
   "name": "novex-kit",
   "description": "Monorepo template for Express backends, Vue frontends, shared JS modules, schemas, and deployment tooling.",
-  "version": "0.6.11",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "author": "aaronjxz@gmail.com",
@@ -34,6 +34,8 @@
     "check": "biome check",
     "check:write": "biome check --write .",
     "ci": "biome ci .",
+    "quality:dup": "jscpd .",
+    "quality:lint": "prettier --check \".github/workflows/*.yml\" \".github/actions/**/*.yml\"",
     "prepare": "git config core.hooksPath .githooks && chmod +x .githooks/pre-commit .githooks/pre-push || echo 'Can not set git hooks'",
     "test:schemas": "node scripts/test-schemas.ts",
     "test:workspaces": "npm run test --workspaces --if-present",
@@ -47,10 +49,17 @@
     "@redocly/cli": "^2.55.0",
     "@types/express": "^5.0.6",
     "@vitejs/plugin-vue": "^6.0.9",
+    "jscpd": "5.4.0",
     "msw": "^3.0.0",
+    "prettier": "3.9.9",
     "start-server-and-test": "^3.0.12",
     "typescript": "^7.0.2",
     "vite": "^8.3.1"
+  },
+  "overrides": {
+    "@openfga/sdk": {
+      "axios": "^1.20.0"
+    }
   },
   "workspaces": [
     "apps/*",
