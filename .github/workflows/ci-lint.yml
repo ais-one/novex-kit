@@ -5,7 +5,7 @@
 ## Entry point for CI: once every lint job passes, it calls ci-tests.yml and
 ## ci-quality-gates.yml (reusable workflows) in parallel, on main and rel/x.y only.
 ## Pushes to main and rel/x.y are skipped entirely - they arrive via already-checked PRs.
-name: Lint
+name: CI Lint
 
 on:
   pull_request:

@@ -423,7 +423,7 @@ docker run -p 3000:3000 novex-kit
 | `.github/workflows/update-template.yml` | Sync upstream template changes into the repo |
 | `.github/workflows/maintenance.yml` | Manual (`workflow_dispatch`) cleanup of old workflow artifacts |
 
-Required GitHub Secrets and Variables (names, which workflow uses each, and what they hold) are listed in [`.github/workflows/secrets-vars.md`](.github/workflows/secrets-vars.md) — keep that file in sync when a workflow adds or drops a `secrets.*` / `vars.*` reference.
+Required GitHub Secrets and Variables (names, which workflow uses each, and what they hold) are listed in [`docs/secrets-vars.md`](docs/secrets-vars.md) — keep that file in sync when a workflow adds or drops a `secrets.*` / `vars.*` reference.
 
 > Secrets must never be stored in the repo — inject them via your deployment platform or CI/CD secrets store.
 
@@ -463,7 +463,7 @@ Route middleware available after `authUser`:
 | `.claude/skills/structured-logging/SKILL.md` | Per-layer logging, error handling, and request-ID tracing conventions |
 | `.claude/skills/openapi-docs/SKILL.md` | Per-app OpenAPI 3.1 spec from zod DTOs (`src/openapi.ts` → `docs/openapi/<app>.yaml`) |
 | `docs/cloud/` | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare |
-| `.github/workflows/secrets-vars.md` | GitHub Secrets and Variables required by the workflows |
+| `docs/secrets-vars.md` | GitHub Secrets and Variables required by the workflows |
 | `docs/release-troubleshooting.md` | Troubleshooting the manual `Release` workflow (`release.yml`, git-cliff) |
 | `docs/NOTES.md` | Design decisions, caveats, open questions, TODOs |
 | `docs/housekeeping.md` | Dependency/Actions updates — Dependabot config plus the `/housekeeping-scan-actions`, `/housekeeping-update-packages`, `/housekeeping-update-node-npm` and `/housekeeping-check-tsconfig` Claude Code commands |

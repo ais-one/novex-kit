@@ -160,7 +160,7 @@ Leave **Restrict creations** off — the `Release` workflow creates tags with it
 ### Repository Environment
 
 1. Settings → Environments → production (choose New environment if it doesn't exist yet).
-2. Under Environment secrets, add the secrets listed in [Environment Workflow Secrets](../.github/workflows/secrets-vars.md#environment-workflow-secrets).
+2. Under Environment secrets, add the secrets listed in [Environment Workflow Secrets](secrets-vars.md#environment-workflow-secrets).
 3. On the same page, set up the rules:
   - Required reviewers: add the people or teams who may approve deploys.
   - Prevent self-review: optional; stops whoever started the run from approving it.

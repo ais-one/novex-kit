@@ -68,7 +68,9 @@ jobs:
           echo "✅ Approved — deploying $CR_HOST_VPC/$CR_NAMESPACE/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
           echo "SAE app: $SAE_APP_ID ($SAE_REGION)"
       - name: Install Aliyun Cli
-        uses: aliyun/setup-aliyun-cli-action@v1
+        uses: aliyun/setup-aliyun-cli-action@09a5f86915bb556e27bf050e9a5e339aeb073df5 # v1
+        with:
+          version: 3.5.1 # Aliyun CLI release - the action defaults to latest
       - name: Configure Aliyun Cli
         run: |
           aliyun version
