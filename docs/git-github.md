@@ -59,7 +59,7 @@ Runs automatically on every `git push`:
 
 | Check | Details |
 |-------|---------|
-| **Unit tests** | Runs `npm run test --workspace=<ws>` for each touched workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test` script. |
+| **Workspace tests** | Runs `npm run test --workspace=<ws>` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test` script, touched or not. Unit + integration only — e2e is disabled for now. |
 | **Schema validation tests** | Runs `npm run test:schemas` for `common/schemas` and every `apps/*/schemas` directory (touched or not), if the root script exists. |
 | **Security audit** | Runs `npm audit --omit=dev --audit-level=moderate`; on findings, prompts `y/n` to continue the push. |
 
@@ -291,7 +291,7 @@ Once configured:
 - Merges are blocked until all checks pass and approvals are met.
 - The branch protection rules apply uniformly across day-to-day work (`rel/[0-9]*.[0-9]*` branches), production merges (`main`), and emergency hotfixes.
 
-> **Note:** tests (unit, integration, e2e) are run for touched workspaces only, identified by the `detect-touched-workspaces` action; a workspace without the matching npm script is skipped. Integration and E2E tests run on `pull_request` only, not on push.
+> **Note:** tests (unit, integration) run in every workspace that has the matching npm script (`npm run <script> --workspaces --if-present`); others are skipped. Integration tests run on `pull_request` only, not on push. The e2e job is commented out for now.
 
 ### CI Workflow
 
@@ -299,7 +299,7 @@ Once configured:
 2. CI runs on PR submitted
   - format + lint check (Biome) and commit message check — in [ci-lint.yml](../.github/workflows/ci-lint.yml), on every branch
   - repo-wide schema check, no autofix
-  - testing of touched workspaces, no autofix
+  - testing of all workspaces, no autofix
   - repo-wide package audit (`npm audit`), no autofix
 3. Only allow merge if all checks pass
 
@@ -308,7 +308,7 @@ Once configured:
 [ci-lint.yml](../.github/workflows/ci-lint.yml) runs on PRs and pushes on **every** branch, with no change-scope detection:
 
 - **Commit Message Format** — every commit in the PR / push must follow Conventional Commits (`feat|fix|chore`).
-- **Biome Checks** — `biome ci` on touched workspaces only (the first push of a new branch checks everything).
+- **Biome Checks** — `biome ci .` on the whole repository.
 - **Lint Workflow YAML** — `prettier --check` on `.github/workflows/*.yml` and `.github/actions/**/*.yml`, then `actionlint` (with shellcheck for `run:` scripts) on `.github/workflows/*.yml`. Drafts in `.github/workflows/todo/` are skipped (GitHub does not run workflows in subfolders). Known false positives are ignored in [.github/actionlint.yaml](../.github/actionlint.yaml). Check locally with `npm run quality:lint`; fix with `npx prettier --write ".github/workflows/*.yml" ".github/actions/**/*.yml"` (prettier is a pinned root devDependency).
 
 A push to a branch with an open PR triggers both a push and a PR run.

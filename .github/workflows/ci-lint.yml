@@ -1,7 +1,6 @@
 ## Lint workflow - commit message format, Biome lint/format, and workflow YAML (prettier + actionlint) checks.
 ## Runs on pull requests and pushes on every branch, with no change-scope detection.
-## Biome is still limited to touched workspaces (detect-touched-workspaces);
-## the first push of a new branch checks everything.
+## Biome checks the whole repository (fast enough that change-scoping isn't worth it).
 ## Entry point for CI: once every lint job passes, it calls ci-tests.yml and
 ## ci-quality-gates.yml (reusable workflows) in parallel, on main and rel/x.y only.
 ## Pushes to main and rel/x.y are skipped entirely - they arrive via already-checked PRs.
@@ -75,30 +74,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # full history for diff-based change detection
-
-      - name: Detect touched paths
-        id: touched
-        uses: ./.github/actions/detect-touched-workspaces
 
       - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
 
-      - name: Biome CI for touched targets
-        if: steps.touched.outputs.has-biome-targets == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS= read -r target; do
-            [ -n "$target" ] || continue
-            echo "Running Biome CI for $target"
-            npx biome ci "$target"
-          done <<< "${{ steps.touched.outputs.biome-targets }}"
-
-      - name: No touched Biome targets
-        if: steps.touched.outputs.has-biome-targets != 'true'
-        run: echo "No touched Biome targets detected for ${{ steps.touched.outputs.diff-range }}"
+      - name: Biome CI (whole repository)
+        run: npm run ci # biome ci .
 
   lint-github-yaml:
     name: Lint Workflow YAML
