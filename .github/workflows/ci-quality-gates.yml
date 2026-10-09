@@ -223,10 +223,23 @@ jobs:
             dest="$out/${ws//\//-}.lcov"
             echo "Running unit tests with coverage for workspace: $ws"
             (cd "$ws" && sh -c "${script/--test-reporter=spec/--test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=$dest}")
+            # a stubbed script (e.g. `exit 0 || node --test ...`) writes no report
+            if [ ! -s "$dest" ]; then
+              echo "No coverage produced for $ws (test:unit disabled?) - skipping"
+              rm -f "$dest"
+              continue
+            fi
             # lcov SF: paths are relative to the workspace - rewrite them relative to the repo root
             node -e 'const fs=require("fs"),p=require("path");const [f,ws]=process.argv.slice(1);fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace(/^SF:(.*)$/gm,(_,s)=>"SF:"+p.relative(process.cwd(),p.resolve(ws,s))))' "$dest" "$ws"
           done <<< "$workspaces"
-          cat "$out"/*.lcov > coverage/lcov.info
+          shopt -s nullglob
+          files=("$out"/*.lcov)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No coverage reports produced"
+            : > coverage/lcov.info
+          else
+            cat "${files[@]}" > coverage/lcov.info
+          fi
         # Re-runs each workspace's own `test:unit` script (node --test) with an
         # extra lcov reporter injected next to the existing spec reporter, so
         # coverage always matches what the workspace itself runs. Workspaces
