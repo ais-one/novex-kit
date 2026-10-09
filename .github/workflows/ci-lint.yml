@@ -46,7 +46,9 @@ jobs:
           if [[ "$GITHUB_EVENT_NAME" == 'pull_request' ]]; then
             RANGE="$PR_BASE_SHA..$PR_HEAD_SHA"
             git log --format="%s" "$RANGE" > /tmp/commit_msgs.txt
-          elif [[ "$PUSH_BEFORE_SHA" == '0000000000000000000000000000000000000000' ]]; then
+          elif [[ "$PUSH_BEFORE_SHA" == '0000000000000000000000000000000000000000' ]] \
+            || ! git cat-file -e "${PUSH_BEFORE_SHA}^{commit}" 2>/dev/null; then
+            # new branch, or force-push (old tip no longer in history) - check the head commit only
             git log --format="%s" -n 1 "$PUSH_HEAD_SHA" > /tmp/commit_msgs.txt
           else
             RANGE="$PUSH_BEFORE_SHA..$PUSH_HEAD_SHA"

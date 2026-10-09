@@ -61,3 +61,17 @@ uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
 ```
 
 This survives upstream tag moves and force-pushes — a floating tag (`@v2`) can be repointed to different code after review; a commit SHA cannot. `/housekeeping-scan-actions` maintains this convention automatically as it updates versions.
+
+## npm version ranges: `^` by default, exact pins for lint/format tooling
+
+Dependencies in every `package.json` use a caret range (`^1.64.0`), with the floor kept at the version `package-lock.json` actually resolves. Reproducibility comes from the lockfile — CI and Docker install with `npm ci`, which installs exactly what is locked — so `^` doesn't make builds drift. It does let npm dedupe a package shared across workspaces (e.g. `express`) and lets `npm update` pick up patch/security fixes without editing every `package.json`.
+
+The exception is root devDependencies whose **output** is what CI checks — they are pinned exact (no `^`):
+
+| Package | Why exact |
+|---|---|
+| `@biomejs/biome` | Formatter/linter — a patch or minor release can change formatting or add/adjust lint rules, so `biome ci .` (CI and pre-commit) can start failing on unchanged code. Its version is also repeated in the `$schema` URL in `biome.json`, which must match. |
+| `prettier` | Formats `.github/**/*.yml`; checked by `npm run quality:lint` in CI. Prettier documents that even patch releases may change formatting and recommends pinning exact. |
+| `jscpd` | Duplication gate in `ci-quality-gates.yml` — a detection change in a new release can move the duplication percentage and flip the gate on unchanged code. |
+
+Bump these deliberately, one at a time: update the version (and, for Biome, the `biome.json` `$schema` URL), then run `npm run check:write` / `npx prettier --write ".github/workflows/*.yml" ".github/actions/**/*.yml"` and commit the reformat together with the bump.
