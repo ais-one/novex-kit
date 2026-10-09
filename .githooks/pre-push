@@ -1,6 +1,6 @@
 #!/bin/sh
 # .githooks/pre-push
-# Pre-push hook: runs unit tests and schema validation tests before allowing a push.
+# Pre-push hook: runs workspace tests (unit + integration, no e2e) and schema validation tests before allowing a push.
 #
 # Install: run .githooks/setup.sh (or: git config core.hooksPath .githooks)
 # Skip:    git push --no-verify
@@ -9,60 +9,30 @@ HOOK_NAME=pre-push
 # shellcheck source=.githooks/_common.sh
 . "$(dirname "$0")/_common.sh"
 
-# ── 1. Unit tests for impacted workspaces ─────────────────────────────────────
-print_info "Detecting impacted workspaces…"
-
-EMPTY_TREE="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
-CHANGED_FILES=""
-
-while read -r local_ref local_sha remote_ref remote_sha; do
-  # Deleting a branch – nothing to test
-  [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
-  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
-    FILES=$(git diff --name-only "$EMPTY_TREE" "$local_sha" 2>/dev/null)
-  else
-    FILES=$(git diff --name-only "$remote_sha" "$local_sha" 2>/dev/null)
-  fi
-  CHANGED_FILES=$(printf '%s\n%s' "$CHANGED_FILES" "$FILES")
-done
-
-CHANGED_FILES=$(printf '%s\n' "$CHANGED_FILES" | sort -u | grep -v '^$')
-
-IMPACTED_WS=""
-for WS_DIR in apps/* common/compiled/* common/vanilla/* db/* scripts/*; do
-  [ -d "$WS_DIR" ] || continue
-  [ -f "$WS_DIR/package.json" ] || continue
-  if printf '%s\n' "$CHANGED_FILES" | grep -q "^${WS_DIR}/"; then
-    IMPACTED_WS="$IMPACTED_WS $WS_DIR"
-  fi
-done
-
-if [ -z "$IMPACTED_WS" ]; then
-  print_warning "No workspace files changed – skipping unit tests."
-else
-  TEST_EXIT=0
-  for WS in $IMPACTED_WS; do
-    if node -e "const p=require('./${WS}/package.json'); process.exit(p.scripts&&p.scripts['test']?0:1)" 2>/dev/null; then
-      print_info "Running tests for workspace: $WS"
-      npm run test --workspace="$WS"
-      if [ $? -ne 0 ]; then
-        print_error "Tests failed for workspace: $WS"
-        TEST_EXIT=1
-      else
-        print_success "Tests passed for workspace: $WS"
-      fi
+# ── 1. Tests for every workspace ──────────────────────────────────────────────
+# Runs each workspace's `test` script (unit + integration; no e2e), touched or not.
+# TODO: e2e tests disabled for now - to re-enable, also run `test:e2e` per workspace below.
+TEST_EXIT=0
+for WS in apps/* common/compiled/* common/vanilla/* db/* scripts/*; do
+  [ -f "$WS/package.json" ] || continue
+  if node -e "const p=require('./${WS}/package.json'); process.exit(p.scripts&&p.scripts['test']?0:1)" 2>/dev/null; then
+    print_info "Running tests for workspace: $WS"
+    npm run test --workspace="$WS"
+    if [ $? -ne 0 ]; then
+      print_error "Tests failed for workspace: $WS"
+      TEST_EXIT=1
     else
-      print_warning "No 'test' script in $WS – skipping."
+      print_success "Tests passed for workspace: $WS"
     fi
-  done
-
-  if [ $TEST_EXIT -ne 0 ]; then
-    print_error "Fix failing tests before pushing. Use 'git push --no-verify' to bypass."
-    exit 1
   fi
+done
+
+if [ $TEST_EXIT -ne 0 ]; then
+  print_error "Fix failing tests before pushing. Use 'git push --no-verify' to bypass."
+  exit 1
 fi
 
-print_success "Unit tests passed."
+print_success "Workspace tests passed."
 
 # ── 2. Schema validation tests ────────────────────────────────────────────────
 # Run schema tests for all known schema directories that exist in the repo.

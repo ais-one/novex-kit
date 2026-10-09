@@ -337,7 +337,7 @@ Hooks live in `.githooks/` and are activated by `npm install` (via `npm prepare`
 - Validates the message against Conventional Commits — only `feat`, `fix`, `chore` (see [Commit conventions](#commit-conventions))
 
 **Pre-push** (runs on `git push`):
-- `npm run test` for each touched workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test` script
+- `npm run test` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test` script, touched or not — unit + integration only, e2e is disabled for now
 - Schema validation tests
 - `npm audit --omit=dev --audit-level=moderate` (prompts to continue on findings)
 
@@ -412,8 +412,8 @@ docker run -p 3000:3000 novex-kit
 
 | Workflow | Purpose |
 |---|---|
-| `.github/workflows/ci-tests.yml` | Schema, unit, integration and e2e tests for touched workspaces (read-only token). Reusable (`workflow_call`) — called by `ci-lint.yml` after lint passes. **Currently disabled** — every job is gated `if: false && …`; remove the `false &&` to turn them back on |
-| `.github/workflows/ci-lint.yml` | Commit message format, Biome lint/format, workflow YAML lint (prettier + actionlint) — every branch, PR and push; Biome is limited to touched workspaces. The CI entry point: once lint passes, it calls `ci-tests.yml` and `ci-quality-gates.yml` in parallel for PRs into / pushes to `main` and `rel/x.y`. Review of `.github/` changes is gated by `CODEOWNERS` |
+| `.github/workflows/ci-tests.yml` | Schema, unit and integration tests for every workspace that has the matching script (read-only token). Reusable (`workflow_call`) — called by `ci-lint.yml` after lint passes. **Currently disabled** — every job is gated `if: false` / `if: false && …`; remove the `false` to turn them back on. The e2e job is commented out for now |
+| `.github/workflows/ci-lint.yml` | Commit message format, Biome lint/format (whole repo), workflow YAML lint (prettier + actionlint) — every branch, PR and push. The CI entry point: once lint passes, it calls `ci-tests.yml` and `ci-quality-gates.yml` in parallel for PRs into / pushes to `main` and `rel/x.y`. Review of `.github/` changes is gated by `CODEOWNERS` |
 | `.github/workflows/release.yml` | Manual release (`workflow_dispatch`) — git-cliff (`cliff.toml`) computes the next version + notes from Conventional Commits for `.` (tag `v1.2.3`) or one workspace (tag `apps-sample-api-v1.2.3`), then creates the tag and GitHub release with `GITHUB_TOKEN`. Tags are the version source of truth — nothing is committed back |
 | `.github/workflows/ci-quality-gates.yml` | PR quality gates — Gitleaks, npm audit, dependency review, SAST, test coverage (Codecov), jscpd duplication; reusable (`workflow_call`), called by `ci-lint.yml` after lint passes; `Quality Gates / Quality Gate Summary` is the single required check. SAST is CodeQL (JS/TS, Python, Actions) on public repos and Semgrep on private/internal; dependency review runs on public repos only. CodeQL only blocks merges with a "Require code scanning results" ruleset. Code scanning is by workflow, not GitHub's CodeQL default setup |
 | `.github/workflows/deploy-cr.yml` | Build and push image to container registry |

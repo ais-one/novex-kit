@@ -1,5 +1,4 @@
-## Test workflow - schema, unit, integration and e2e tests for touched workspaces.
-## Changes to .github/** may be mixed in the same PR - ci-lint.yml lints them, CODEOWNERS gates review.
+## Test workflow - schema, unit and integration tests for every workspace that has the matching script.
 ## Called by ci-lint.yml after lint passes (PRs into / pushes to main and rel/x.y) - no triggers of its own.
 name: CI Tests
 
@@ -10,174 +9,72 @@ permissions:
   contents: read
 
 jobs:
-  detect-scope:
-    name: Detect Change Scope
-    runs-on: ubuntu-latest
-    outputs:
-      has-common-scripts: ${{ steps.scope.outputs.has_common_scripts }}
-      has-apps: ${{ steps.scope.outputs.has_apps }}
-      has-supported-scope: ${{ steps.scope.outputs.has_supported_scope }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # full history for diff-based change detection
-
-      - name: Detect changed scope
-        id: scope
-        uses: ./.github/actions/detect-change-scope
-        with:
-          allowed-paths-regex: ^([^/]+$|apps/|common/|scripts/)
-          fail-on-invalid: "false" # files outside allowed paths (e.g. .github/, docs/) no longer fail the run
-
   schema-tests:
     name: Schema Validation Tests
-    needs: detect-scope
-    if: false && needs.detect-scope.outputs.has-supported-scope == 'true'
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # full history for diff-based change detection
-
-      - name: Detect touched paths
-        id: touched
-        uses: ./.github/actions/detect-touched-workspaces
 
       - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
 
-      - name: Schema tests for touched schema directories
-        if: steps.touched.outputs.has-schema-dirs == 'true'
+      - name: Schema tests for common/schemas and apps/*/schemas
         shell: bash
         run: |
           set -euo pipefail
-          while IFS= read -r dir; do
-            [ -n "$dir" ] || continue
+          shopt -s nullglob
+          for dir in common/schemas apps/*/schemas; do
+            [ -d "$dir" ] || continue
             echo "Running schema tests for $dir"
             npm run test:schemas -- "$dir"
-          done <<< "${{ steps.touched.outputs.schema-dirs }}"
-
-      - name: No touched schema directories
-        if: steps.touched.outputs.has-schema-dirs != 'true'
-        run: echo "No touched schema directories detected for ${{ steps.touched.outputs.diff-range }}"
+          done
 
   unit-tests:
     name: Unit Tests
-    needs: detect-scope
-    if: false && needs.detect-scope.outputs.has-apps == 'true'
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # full history for diff-based change detection
-
-      - name: Detect touched paths
-        id: touched
-        uses: ./.github/actions/detect-touched-workspaces
 
       - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
 
-      - name: Run unit tests for touched workspaces
-        if: steps.touched.outputs.has-impacted-workspaces == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS= read -r workspace; do
-            [ -n "$workspace" ] || continue
-            if node -e "const p=require('./${workspace}/package.json'); process.exit(p.scripts&&p.scripts['test:unit']?0:1)" 2>/dev/null; then
-              echo "Running unit tests for workspace: $workspace"
-              npm run test:unit --workspace="$workspace"
-            else
-              echo "No test:unit script in workspace: $workspace - skipping"
-            fi
-          done <<< "${{ steps.touched.outputs.impacted-workspaces }}"
-
-      - name: No impacted workspaces
-        if: steps.touched.outputs.has-impacted-workspaces != 'true'
-        run: echo "No impacted workspaces detected – skipping unit tests"
+      - name: Run unit tests in every workspace that has test:unit
+        run: npm run test:unit --workspaces --if-present
 
   integration-tests:
     name: Integration Tests
-    needs:
-      - detect-scope
-      - unit-tests
-    if: false && needs.detect-scope.outputs.has-apps == 'true' && github.event_name == 'pull_request'
+    needs: unit-tests
+    if: false && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # full history for diff-based change detection
-
-      - name: Detect touched paths
-        id: touched
-        uses: ./.github/actions/detect-touched-workspaces
 
       - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
 
-      - name: Run integration tests for touched workspaces
-        if: steps.touched.outputs.has-impacted-workspaces == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS= read -r workspace; do
-            [ -n "$workspace" ] || continue
-            if node -e "const p=require('./${workspace}/package.json'); process.exit(p.scripts&&p.scripts['test:integration']?0:1)" 2>/dev/null; then
-              echo "Running integration tests for workspace: $workspace"
-              npm run test:integration --workspace="$workspace"
-            else
-              echo "No test:integration script in workspace: $workspace - skipping"
-            fi
-          done <<< "${{ steps.touched.outputs.impacted-workspaces }}"
+      - name: Run integration tests in every workspace that has test:integration
+        run: npm run test:integration --workspaces --if-present
 
-      - name: No impacted workspaces
-        if: steps.touched.outputs.has-impacted-workspaces != 'true'
-        run: echo "No impacted workspaces detected – skipping integration tests"
-
-  e2e-tests:
-    name: E2E Tests
-    needs:
-      - detect-scope
-      - integration-tests
-    if: false && needs.detect-scope.outputs.has-apps == 'true' && github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # full history for diff-based change detection
-
-      - name: Detect touched paths
-        id: touched
-        uses: ./.github/actions/detect-touched-workspaces
-
-      - name: Set up workspace
-        uses: ./.github/actions/setup-node-npm-install
-
-      - name: Run e2e tests for touched web workspaces
-        if: steps.touched.outputs.has-impacted-workspaces == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          while IFS= read -r workspace; do
-            [ -n "$workspace" ] || continue
-            if node -e "const p=require('./${workspace}/package.json'); process.exit(p.scripts&&p.scripts['test:e2e']?0:1)" 2>/dev/null; then
-              echo "Running e2e tests for workspace: $workspace"
-              npm run test:e2e --workspace="$workspace"
-            else
-              echo "No test:e2e script in workspace: $workspace - skipping"
-            fi
-          done <<< "${{ steps.touched.outputs.impacted-workspaces }}"
-
-      - name: No impacted workspaces
-        if: steps.touched.outputs.has-impacted-workspaces != 'true'
-        run: echo "No impacted workspaces detected - skipping e2e tests"
+  # TODO: e2e tests disabled for now - restore this job to re-enable them.
+  # e2e-tests:
+  #   name: E2E Tests
+  #   needs: integration-tests
+  #   if: github.event_name == 'pull_request'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v7
+  #
+  #     - name: Set up workspace
+  #       uses: ./.github/actions/setup-node-npm-install
+  #
+  #     - name: Run e2e tests in every workspace that has test:e2e
+  #       run: npm run test:e2e --workspaces --if-present
 
 # Security checks (npm audit, secret scanning, SAST) run in ci-quality-gates.yml
 # releases are cut manually via release.yml

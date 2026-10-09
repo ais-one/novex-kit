@@ -1,2 +1,7 @@
 # actionlint config - https://github.com/rhysd/actionlint/blob/main/docs/config.md
 # Add per-file `paths.<glob>.ignore` entries here for known false positives.
+paths:
+  .github/workflows/ci-tests.yml:
+    ignore:
+      # jobs are temporarily disabled with `if: false` - remove when re-enabled
+      - 'constant expression "false" in condition'

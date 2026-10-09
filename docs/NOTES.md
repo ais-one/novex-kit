@@ -69,6 +69,7 @@ This document is for
 - **BACKLOG**
   - safeJSON
   - remove barrel index.js files...
+  - re-enable E2E tests — uncomment the `e2e-tests` job in `.github/workflows/ci-tests.yml` and add a `test:e2e` step to `.githooks/pre-push` (both marked `TODO`); needs servers/ports handled in CI (e.g. `sample-api` / `sample-common` start on 8080)
 - **REVIEW**
   - visualize package sizes with rollup-plugin-visualizer
   - revisit biome when vueJS support is available
