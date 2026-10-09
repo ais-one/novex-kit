@@ -8,9 +8,9 @@ Use this guide when the manual `Release` workflow does not behave as expected.
 
 Tip: run with `dry-run` checked first — the job summary shows the computed tag and release notes without creating anything.
 
-## Symptom: "Releases are only cut from main or rel/*"
+## Symptom: "Releases are only cut from rel/<major>.<minor> branches"
 
-The workflow was dispatched from another branch. Re-run it and pick `main` or the active `rel/*` branch in the "Use workflow from" dropdown.
+The workflow was dispatched from another branch. Re-run it and pick the active `rel/<major>.<minor>` branch (e.g. `rel/1.0`) in the "Use workflow from" dropdown.
 
 ## Symptom: "... is not a workspace with a package.json"
 

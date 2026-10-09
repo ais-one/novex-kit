@@ -15,7 +15,7 @@ Dependabot opens one PR per bump. It doesn't research breaking changes, doesn't 
 
 ## On-demand: Claude Code housekeeping commands
 
-Two custom slash commands cover the gaps Dependabot leaves — interactive, researched, and batched where it's safe to do so. Both live in `.claude/commands/` and are triggered manually.
+Four custom slash commands cover the gaps Dependabot leaves — interactive, researched, and batched where it's safe to do so. All four live in `.claude/commands/` and are triggered manually.
 
 ### `/housekeeping-scan-actions`
 
@@ -38,23 +38,23 @@ Runs `npm outdated -ws --json` across all workspaces, splits results into a **sa
 Audits every `tsconfig.json` in the repo against the TypeScript version that actually resolves for its workspace (a workspace's own `typescript` devDependency, if declared, takes precedence over the repo root's):
 
 - Resolves the real installed `typescript` package per workspace and reads its `ScriptTarget` enum (from `lib/typescript.d.ts`) to determine the newest `target`/`lib` that compiler actually supports — never a remembered feature set, since new targets (`ES2023`, `ES2024`, `ES2025`, ...) ship across TypeScript releases.
-- Follows `"extends"` chains (e.g. `db/sample/tsconfig.json` → `db/tsconfig.base.json`) to compute each file's effective `target` before comparing.
+- Follows `"extends"` chains (e.g. `db/tsconfig.json` → `tsconfig.base.json`, `apps/<app>/tsconfig.json` → `apps/tsconfig.base.json`) to compute each file's effective `target` before comparing.
 - Reports two tables — a tsconfig audit (current vs. newest-supported target, in sync / behind / ahead-invalid) and a `typescript` devDependency drift list (workspaces overriding root's pinned version).
-- **Read-only**: unlike the other two commands, it never edits anything or asks for approval to apply a change — it stops at the report and leaves the decision to the user.
+- **Read-only**: unlike the other three commands, it never edits anything or asks for approval to apply a change — it stops at the report and leaves the decision to the user.
 
 ### `/housekeeping-update-node-npm`
 
 Resolves the current Active LTS Node.js release and its matching npm version live (via `nodejs.org`/`nodejs/Release` schedule data and the npm registry), screens both for called-out regressions or security issues in their release notes, and confirms the repo's CI (`actions/setup-node` version manifest) and workspaces (`engines` fields, installed dependencies' own `engines.node` ranges) can actually run on the candidate before proposing anything:
 
-- Discovers every place a Node/npm version is currently pinned: root `package.json` `engines`, `.github/actions/setup-node-npm-install/action.yml` defaults, any hardcoded `node-version`/matrix overrides in workflows, `CLAUDE.md`/docs prose, and any `.nvmrc`/`Dockerfile`/workspace-level `engines` override.
+- Discovers every place a Node/npm version is currently pinned: root `package.json` `engines`, `.github/actions/setup-node-npm-install/action.yml` defaults, any hardcoded `node-version`/matrix overrides in workflows, `CLAUDE.md`/docs prose, any `.nvmrc`, every `apps/*/Dockerfile` (`ARG NODE_VERSION` / `FROM node:…`), and any workspace-level `engines` override.
 - Reports the full inventory plus the candidate versions and why they were chosen (e.g. stepping back from the single newest npm release if its own follow-up release notes flag a regression) before asking anything.
 - Asks once whether to update Node + npm across every pinned location; on approval, edits all of them and — if a local version manager (`nvm`/`volta`/`fnm`) is available — installs and switches to the candidate, then runs a real `npm ci` and `npm run test:workspaces` to verify, deferring to CI if no local switch is possible.
 
-Both commands follow the same hard rule: every version, SHA, and breaking-change claim must come from a live lookup made during that run, not training knowledge. Package versions and their breaking changes can be hours old — recalling what a major version "usually" changes is not a substitute for checking.
+All four commands follow the same hard rule: every version, SHA, and breaking-change claim must come from a live lookup made during that run, not training knowledge. Package versions and their breaking changes can be hours old — recalling what a major version "usually" changes is not a substitute for checking.
 
 ## GitHub Actions: commit-SHA pinning convention
 
-External (non-local) Actions are pinned to a full 40-character commit SHA with the version as a trailing comment, e.g.:
+The convention is to pin external (non-local) Actions to a full 40-character commit SHA with the version as a trailing comment. Currently only `gitleaks/gitleaks-action` follows it — the rest still use floating tags (`@v7`, `@v4`, …); run `/housekeeping-scan-actions` to pin them. Example:
 
 ```yaml
 uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0

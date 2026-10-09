@@ -1,6 +1,6 @@
 ---
 name: clean-architecture
-description: Guidance and copy-paste templates for this repo's controller → service → repository layering (single-responsibility, separation of concerns), the repository layer's internal data/ vs external/ split, DTO boundaries (never let a DB row or a third-party response shape reach a service, never send a domain model directly as an HTTP response), zod validation at every input and external-response boundary, the standard `{ message, data }` API response envelope, and making service + repository layers mockable for Node's built-in test runner via mock.module() or constructor injection. Use when adding a new endpoint, MCP tool, or feature to any app under apps/*, when a route handler or tool handler mixes HTTP/MCP parsing with business logic with direct DB/fetch calls, when introducing a repository for a database or a third-party API client, when shaping an API response or validating input/output, or when writing a unit test for a service or repository that needs a mocked dependency. Not for generic code review, styling, or unrelated refactors — see the clean-architecture-reviewer subagent for auditing existing code against these rules.
+description: Templates for this repo's controller → service → repository layering, the repository data/ vs external/ split, DTO boundaries (no DB row or third-party response shape reaches a service; no domain model sent as an HTTP response), zod validation at every input and external-response boundary, the `{ message, data }` response envelope, and mockable services/repositories for Node's test runner (mock.module() or constructor injection). Use when adding an endpoint, MCP tool, or feature to an app under apps/*, when a handler mixes HTTP/MCP parsing with business logic and DB/fetch calls, when adding a repository for a database or third-party API, when shaping a response or validating input/output, or when unit-testing a service or repository with mocked dependencies. Not for generic code review or unrelated refactors — use the clean-architecture-reviewer subagent to audit existing code.
 ---
 
 # Clean architecture: controller → service → repository
@@ -17,12 +17,12 @@ For what each layer logs, how errors propagate with their stack intact, and how 
 
 Every controller, service, repository, and consumer built under this pattern is **TypeScript with `strict: true`** — no exceptions, even though this repo generally allows plain JS+JSDoc (`common/vanilla/*`) and most existing tsconfig.json files here (`common/compiled/node`) run with `strict: false`. This architecture is stricter than the repo default on purpose: a repository/service boundary is exactly where a silent `any` or an unchecked `null` does the most damage, since it's the layer everything else is mocked against.
 
-Give the app its own `tsconfig.json` — this is the one actually used (and verified against real strict-mode output, not just written and assumed to work) in `apps/sample-common` and `apps/sample-queue-consumer`:
+Give the app its own `tsconfig.json` — this is the one actually used (and verified against real strict-mode output, not just written and assumed to work) in `apps/sample-queue-consumer` and `apps/sample-rest-app-v2` (`apps/sample-common` uses the same options with `include: ["**/*.ts", "**/*.d.ts"]`):
 
 ```json
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ES2025",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
@@ -40,7 +40,7 @@ Also copy that app's `global.d.ts` (ambient `logger` / `__config` / `Express.Req
 Two things strict mode surfaces that `strict: false` hides, both hit while building the reference example in `apps/sample-common`/`apps/sample-queue-consumer`:
 
 - **`noNonNullAssertion` (biome) and strict nullability (tsc) can pull in opposite directions.** When narrowing an optional value — e.g. a mock's captured callback in a test — don't reach for `!`; biome forbids it repo-wide. Destructure into a local and use `assert.ok(value, 'message')` instead: it's a real runtime check (fails loudly if the assumption is wrong, unlike a silently-no-op `?.`), and TypeScript narrows through it the same way.
-- **This repo's existing apps have a `tsconfig.json` but no wired-up `typecheck` npm script**, so nothing catches type errors in CI today — that's how a real `SASLOptions` mismatch and a real nullability bug both made it past "it looks right" during this skill's own reference implementation. Run `npx tsc --noEmit -p <app>/tsconfig.json` yourself after writing new code. Don't assume clean; verify.
+- **The strict-mode apps (`sample-common`, `sample-queue-consumer`, `sample-rest-app-v2`) have a `tsconfig.json` but no `typecheck` npm script, and CI runs no `tsc`**, so nothing catches type errors today — that's how a real `SASLOptions` mismatch and a real nullability bug both made it past "it looks right" during this skill's own reference implementation. Run `npx tsc --noEmit -p <app>/tsconfig.json` yourself after writing new code. Don't assume clean; verify. One known baseline error is expected until it's fixed: `common/compiled/node/logger.ts(1,30): TS7016 Could not find a declaration file for module '@common/iso/util'` — ignore that one, fix anything else.
 
 This requirement applies going forward, to new code written under this skill. It does not retroactively migrate non-strict tsconfigs (`common/compiled/node`) — that would be a separate, larger effort.
 
@@ -85,10 +85,10 @@ Four distinct shapes exist in any feature, and code in this repo must not let th
 
 ### Validation with zod — where it applies and where it doesn't
 
-- **Controller (mandatory)**: validate every request input (`body`/`params`/`query`) with zod before it reaches the service. Use the existing `common/compiled/node/errors/validate.ts` middleware — `validate(target, schema)` parses `req[target]` and calls `next(ValidationError)` on failure, wired into `common/node/errors/AppError.ts`'s hierarchy — rather than hand-rolling `schema.parse()` inside every handler.
+- **Controller (mandatory)**: validate every request input (`body`/`params`/`query`) with zod before it reaches the service. Use the existing `common/compiled/node/errors/validate.ts` middleware — `validate(target, schema)` parses `req[target]` and calls `next(ValidationError)` on failure, wired into `common/compiled/node/errors/AppError.ts`'s hierarchy — rather than hand-rolling `schema.parse()` inside every handler.
 - **Repository — external (mandatory)**: parse a third-party or other-service response with zod immediately on receipt, before mapping it to the domain shape. An external system can change its response shape without warning; catching that at the repository boundary as a clear, typed failure beats an `undefined` silently propagating three layers up into a service.
 - **Repository — data (not required)**: a DB row already has a trusted, statically-typed shape from your own `schema.ts` (drizzle) or query definition — re-validating it with zod is usually redundant work. The discipline here is mapping to the domain shape, not re-validation.
-- **Response DTO (recommended)**: define it as a zod schema too, with `.meta({ id: '...' })` — the exact pattern already used in `common/schemas/{auth,payment,notification}.schema.ts`. It plugs directly into that package's own OpenAPI generation (`cd common/schemas && npm run docs:generate`, which runs `scripts/generators/generate-openapi.ts` and builds `common/schemas/docs/openapi/openapi.merged.yaml`) — one schema is both the runtime shape and the documentation, nothing to keep in sync by hand.
+- **Response DTO (recommended)**: define it as a zod schema too, with `.meta({ id: '...' })` — the exact pattern already used in `common/schemas/{auth,payment,notification}.schema.ts`. For an app's own endpoints it plugs into that app's `src/openapi.ts` (`createDocument()`) — see the `openapi-docs` skill; don't route app DTOs through `common/schemas`' `docs:generate` / `generate-openapi.ts`, which is for the shared cross-cutting schemas only. One schema is both the runtime shape and the documentation, nothing to keep in sync by hand.
 
 ### API response envelope
 
@@ -108,7 +108,7 @@ type ApiResponse<T> = { message: string; data: T | null };
 { "error": { "code": "VALIDATION_ERROR", "message": "email and password are required" } }
 ```
 
-— produced automatically by `common/compiled/node/errors/error.middleware.ts`'s `errorHandler`, documented by `common/schemas/error.schema.js`'s `ErrorResponseSchema`. A controller only ever constructs the success envelope; the error envelope is the error middleware's job, not something a controller builds by hand.
+— produced automatically by `common/compiled/node/errors/error.middleware.ts`'s `errorHandler`, documented by `common/schemas/error.schema.ts`'s `ErrorResponseSchema`. A controller only ever constructs the success envelope; the error envelope is the error middleware's job, not something a controller builds by hand.
 
 The success envelope is defined once, shared, next to the existing error schema — real, in `common/schemas/api-response.schema.ts`:
 
@@ -121,7 +121,7 @@ export const ApiResponseSchema = (dataSchema: ZodTypeAny, id: string) =>
   z.object({ message: z.string(), data: dataSchema.nullable() }).meta({ id });
 ```
 
-`apps/sample-rest-app-v2` constructs the envelope directly as a plain object in its controllers (`res.json({ message: 'Order created', data: toOrderResponseData(order) })`) rather than parsing through `ApiResponseSchema` at runtime — the schema's real value is feeding `common/schemas`'s own OpenAPI generation (documenting the shape) with the same `.meta({ id })` pattern `common/schemas/auth.schema.ts` already uses, not re-validating your own output. Wire `ApiResponseSchema(OrderResponseDataSchema, 'OrderResponse')` into that generator when this app's endpoints get documented.
+`apps/sample-rest-app-v2` constructs the envelope directly as a plain object in its controllers (`res.status(201).json({ message: 'Order created', data: toOrderResponseData(order) })`) rather than parsing through `ApiResponseSchema` at runtime — the schema's real value is documenting the shape (same `.meta({ id })` pattern `common/schemas/auth.schema.ts` already uses), not re-validating your own output. Wire `ApiResponseSchema(orderResponseDataSchema, 'OrderResponse')` into the app's `src/openapi.ts` when its endpoints get documented — see the `openapi-docs` skill.
 
 **Existing gap this convention doesn't retroactively fix**: `common/schemas/auth.schema.ts`'s `MessageResponseSchema` (`{ message }`, no `data` field) is sample/template content for a demo scaffold that isn't wired to any real app. That doesn't need to change for this skill to be usable — a new feature built under this skill uses `{ message, data }` regardless of what neighboring sample or pre-existing code does.
 
@@ -150,68 +150,106 @@ A controller must be testable without a real service; a service must be testable
 
 Matches the repo-wide "named exports preferred, no barrel files" convention (`docs/conventions.md`) and the existing precedent at `common/compiled/node/auth/store.ts` (a repository in every sense: `findUser`, `updateUser`, `setRefreshToken`, etc., as plain named exports, with the underlying drizzle/keyv instance injected via a `setup()` call rather than hardcoded).
 
+Shapes below follow the real reference app — `apps/sample-rest-app-v2/src/repositories/data/orders.repository.ts` (Knex passed in, row → domain mapper) and `repositories/external/exchange-rate.repository.ts` (zod-parsed provider response, `requestId` forwarded):
+
 ```ts
 // repositories/data/reports.repository.ts
-import { db } from '@common/node/services/db/knex.ts';
+import type { Knex } from 'knex';
+import type { Report } from '../../dto/report.dto.ts';
 
-export async function findReportRecord(id: number) {
-  return db()('reports').where({ id }).first();
-}
+type ReportRow = { id: number; title: string; created_at: Date };
+
+const toDomain = (row: ReportRow): Report => ({
+  id: row.id,
+  title: row.title,
+  createdAt: row.created_at.toISOString(),
+});
+
+/** Finds a report by id, or `null` if it doesn't exist — never throws for a missing row. */
+export const findReportById = async (db: Knex, id: number): Promise<Report | null> => {
+  const row = await db<ReportRow>('reports').where({ id }).first();
+  return row ? toDomain(row) : null;
+};
 ```
 
 ```ts
 // repositories/external/pdf-provider.repository.ts
-export async function renderPdf(record: Record<string, unknown>): Promise<string> {
-  const res = await fetch('https://pdf-provider.example.com/render', {
-    method: 'POST',
-    body: JSON.stringify(record),
-  });
-  const { url } = await res.json();
-  return url;
-}
+import { AppError } from '@common/node/errors/AppError';
+import { REQUEST_ID_HEADER } from '@common/node/express/requestId';
+import type { ContextLogger } from '@common/node/logging/context';
+import { z } from 'zod';
+import type { Report } from '../../dto/report.dto.ts';
+
+const renderResponseSchema = z.object({ url: z.url() });
+
+export const renderPdf = async (report: Report, log: ContextLogger): Promise<string> => {
+  try {
+    const res = await fetch('https://pdf-provider.example.com/render', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', [REQUEST_ID_HEADER]: log.context.requestId },
+      body: JSON.stringify(report),
+    });
+    if (!res.ok) throw new Error(`pdf provider responded ${res.status}`);
+    return renderResponseSchema.parse(await res.json()).url;
+  } catch (cause) {
+    throw new AppError('PDF rendering failed', 502, 'PDF_PROVIDER_ERROR', null, { cause });
+  }
+};
 ```
 
 ```ts
 // services/reports.service.ts
-import { findReportRecord } from '../repositories/data/reports.repository.ts';
+import { NotFoundError } from '@common/node/errors/AppError';
+import type { ContextLogger } from '@common/node/logging/context';
+import type { Knex } from 'knex';
+import type { Report } from '../dto/report.dto.ts';
+import { findReportById } from '../repositories/data/reports.repository.ts';
 import { renderPdf } from '../repositories/external/pdf-provider.repository.ts';
 
-export async function buildReport(id: number) {
-  const record = await findReportRecord(id);
-  if (!record) throw new Error(`report ${id} not found`);
-  const pdfUrl = await renderPdf(record);
-  return { ...record, pdfUrl };
-}
+export const buildReport = async (db: Knex, id: number, log: ContextLogger): Promise<Report & { pdfUrl: string }> => {
+  const report = await findReportById(db, id);
+  if (!report) throw new NotFoundError(`Report ${id}`);
+  const pdfUrl = await renderPdf(report, log);
+  log.info('report.generated', { reportId: id });
+  return { ...report, pdfUrl };
+};
 ```
 
-Test — mock both repositories, then dynamically import the service **after** the mocks are registered:
+Test — mock both repositories **once**, then dynamically import the service **after** the mocks are registered. `mock.module()` can't be called twice for the same specifier (`ERR_INVALID_STATE: … already mocked`), so vary behaviour per test through a mutable variable the mock closes over — the same approach as `apps/sample-rest-app-v2/src/__tests__/unit/orders.service.test.ts`:
 
 ```ts
-// __tests__/reports.service.test.ts
+// __tests__/unit/reports.service.test.ts
 import assert from 'node:assert/strict';
-import { describe, it, mock } from 'node:test';
+import { beforeEach, describe, it, mock } from 'node:test';
+import type { Knex } from 'knex';
 
-mock.module('../repositories/data/reports.repository.ts', {
-  namedExports: { findReportRecord: async () => ({ id: 1, title: 'Q1' }) },
+let foundReport: { id: number; title: string; createdAt: string } | null;
+
+mock.module('../../repositories/data/reports.repository.ts', {
+  namedExports: { findReportById: async () => foundReport },
 });
-mock.module('../repositories/external/pdf-provider.repository.ts', {
+mock.module('../../repositories/external/pdf-provider.repository.ts', {
   namedExports: { renderPdf: async () => 'https://example.com/q1.pdf' },
 });
 
-const { buildReport } = await import('../services/reports.service.ts');
+const { buildReport } = await import('../../services/reports.service.ts');
+
+const db = {} as Knex; // never touched — the repository is mocked
+const log = { info: () => {}, warn: () => {}, error: () => {}, context: { requestId: 'test' } } as never;
 
 describe.only('reports.service', () => {
+  beforeEach(() => {
+    foundReport = { id: 1, title: 'Q1', createdAt: '2026-01-01T00:00:00.000Z' };
+  });
+
   it.only('attaches a pdfUrl from the external provider', async () => {
-    const report = await buildReport(1);
+    const report = await buildReport(db, 1, log);
     assert.equal(report.pdfUrl, 'https://example.com/q1.pdf');
   });
 
-  it.only('throws when the record does not exist', async () => {
-    mock.module('../repositories/data/reports.repository.ts', {
-      namedExports: { findReportRecord: async () => null },
-    });
-    const { buildReport: buildReportNotFound } = await import('../services/reports.service.ts?not-found');
-    await assert.rejects(() => buildReportNotFound(999));
+  it.only('throws NotFoundError when the record does not exist', async () => {
+    foundReport = null;
+    await assert.rejects(() => buildReport(db, 999, log), { code: 'NOT_FOUND' });
   });
 });
 ```
@@ -221,7 +259,7 @@ Two rules that silently break this pattern if missed (both already called out in
 1. **`mock.module()` must run before the module under test is imported.** Put the `mock.module()` calls at the top of the file, before any static `import` of the service, and use a dynamic `await import()` for the service itself — as above. A static `import` at the top of the test file loads (and caches) the real repository before the mock is registered.
 2. **The `.ts`-extension rule depends on *how* the specifier resolves — get this wrong and you get `Cannot find module`, not a clear error:**
    - A **relative path** (`'../repositories/data/reports.repository.ts'`) needs the extension, exactly like a normal `import` — there's no package `exports` map involved, so Node's plain relative resolution requires an exact filename match.
-   - A specifier that resolves **through a package's `exports` map wildcard** — e.g. `@common/node/auth/store`, matched by `common/compiled/node/package.json`'s `"./**/*": "./**/*.ts"` — must **omit** the extension. The wildcard pattern itself appends `.ts`; typing it yourself produces `store.ts.ts`.
+   - A specifier that resolves **through a package's `exports` map wildcard** — e.g. `@common/node/auth/store`, matched by `common/compiled/node/package.json`'s `"./*": "./*.ts"` — must **omit** the extension. The wildcard pattern itself appends `.ts`; typing it yourself produces `store.ts.ts`.
    - `apps/sample-common` has the same kind of wildcard export (`"./*": "./*.ts"`), so deep imports from it (`@apps/sample-common/services/mq/kafka`) also omit the extension. An app with no `exports` map at all resolves deep imports the same way a relative path does — extension required.
    - When in doubt, match whatever a normal `import` of that same specifier already looks like elsewhere in the codebase — `mock.module()` follows the same resolution rules, it doesn't invent its own.
 
@@ -258,8 +296,8 @@ Either idiom must satisfy the same rule: **a service never imports a concrete DB
 
 ### Test tiers
 
-- **Unit tests** (`*.test.ts`, run by the default `test` script): mock every repository a service depends on; mock the underlying driver (`fetch`, the DB client) for any repository test that has non-trivial mapping/error-handling logic worth covering. Never touch a real DB or network.
-- **Integration tests** (`__tests__/integration/*.test.ts` — matches the `test:integration` script pattern already used in `apps/sample-rest-app-v2` and `apps/sample-queue-consumer`): allowed to hit a real or sandboxed dependency. Use `@common/node/tests/http-request` for real HTTP calls and `@common/node/tests/http-mocks` for Express req/res stubs when you want a unit-style test of a controller without spinning up a server.
+- **Unit tests** (`__tests__/unit/*.test.ts` — copy `apps/sample-rest-app-v2`'s layout and `test:unit`/`test:integration` scripts specifically; `sample-queue-consumer` keeps tests flat in `src/__tests__/` and its `test:unit` glob would not pick up a `unit/` subfolder): mock every repository a service depends on; mock the underlying driver (`fetch`, the DB client) for any repository test that has non-trivial mapping/error-handling logic worth covering. Never touch a real DB or network.
+- **Integration tests** (`__tests__/integration/*.test.ts` — matches the `test:integration` script pattern already used in `apps/sample-rest-app-v2`): allowed to hit a real or sandboxed dependency. Use `@common/node/tests/http-request` for real HTTP calls and `@common/node/tests/http-mocks` for Express req/res stubs when you want a unit-style test of a controller without spinning up a server.
 - All tests use `describe.only()` / `it.only()` — see root `CLAUDE.md` → Testing. A test written without `.only()` silently never runs.
 
 ## Directory layout template
@@ -278,8 +316,11 @@ apps/<app>/src/
     external/
       <provider>.repository.ts
   __tests__/
-    <feature>.service.test.ts
-    <feature>.controller.test.ts
+    unit/
+      <feature>.service.test.ts
+      <feature>.controller.test.ts
+    integration/
+      <feature>.data.repository.test.ts
 ```
 
 Naming: `kebab-case` files, one export family per file, `*.routes.ts` / `*.controller.ts` / `*.service.ts` / `*.repository.ts` suffixes so the layer is obvious from the filename alone.
@@ -296,7 +337,7 @@ Naming: `kebab-case` files, one export family per file, `*.routes.ts` / `*.contr
 - Split `repositories/` into `data/` and `external/` even when only one currently has content.
 - Export services and repositories as named functions, or as a class with constructor-injected dependencies — never as a function that reaches for a hardcoded singleton client inline.
 - Write the service unit test against mocked repositories; save real DB/network coverage for an explicitly named integration test.
-- Reuse an existing shared client (`@common/node/comms/telegram2`, `@common/node/services/db/*`, `@common/node/services/oss-files/*`) from inside a repository rather than reimplementing the call.
+- Reuse an existing shared client (`@common/node/comms/telegram2/outbound`, `@common/node/services/db/*`, `@common/node/services/oss-files/*`) from inside a repository rather than reimplementing the call.
 - Map a repository's raw DB row or external-provider response into the domain shape before returning it — never let either raw shape reach the service.
 - Give every success response the `{ message, data }` envelope; let the existing error middleware own the error envelope.
 - Validate a third-party response with zod the moment it's received, inside the repository.
@@ -319,7 +360,7 @@ No app in this repo currently has an open rollout entry against this pattern —
 
 ### `sample-common` — shared home for cross-app repositories
 
-Hosts `services/mq/` (the Kafka-backed `QueueDriver` — see its `README.md`) and `express/audit/` (the Knex-based `auditContext()`/`hardDelete()` middleware — see its `README.md`), alongside the RAG/document-ingestion helpers this workspace was originally created for. Its documented role (see its own `README.md`) is shared backend code for `apps/*`. Once a repository is needed by more than one app, that's the signal to move it here instead of duplicating it — mirroring how `common/compiled/node` hosts cross-app infrastructure for every app in the repo, except scoped to `apps/*`-level concerns (a specific ORM/query-builder choice, a specific queue backend) rather than template-wide ones. `apps/sample-queue-consumer` and `apps/sample-rest-app-v2` are its first real consumers — copy their shape for the next one.
+Hosts `services/mq/` (the Kafka-backed `QueueDriver` — see its `README.md`) and `express/audit/` (the Knex-based `auditContext()`/`hardDelete()` middleware — see its `README.md`). Its documented role (see its own `README.md`) is shared backend code for `apps/*`. Once a repository is needed by more than one app, that's the signal to move it here instead of duplicating it — mirroring how `common/compiled/node` hosts cross-app infrastructure for every app in the repo, except scoped to `apps/*`-level concerns (a specific ORM/query-builder choice, a specific queue backend) rather than template-wide ones. `apps/sample-queue-consumer` and `apps/sample-rest-app-v2` are its first real consumers — copy their shape for the next one (for test layout, follow `sample-rest-app-v2`).
 
 ## References
 

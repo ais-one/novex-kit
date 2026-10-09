@@ -29,7 +29,7 @@ done
 CHANGED_FILES=$(printf '%s\n' "$CHANGED_FILES" | sort -u | grep -v '^$')
 
 IMPACTED_WS=""
-for WS_DIR in apps/* common/*; do
+for WS_DIR in apps/* common/compiled/* common/vanilla/* db/* scripts/*; do
   [ -d "$WS_DIR" ] || continue
   [ -f "$WS_DIR/package.json" ] || continue
   if printf '%s\n' "$CHANGED_FILES" | grep -q "^${WS_DIR}/"; then

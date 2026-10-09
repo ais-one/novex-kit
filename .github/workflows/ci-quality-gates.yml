@@ -21,9 +21,9 @@ name: Quality Gates
 
 on:
   pull_request:
-    branches: [main, "rel/**"]
+    branches: [main, "rel/[0-9]*.[0-9]*"]
   push:
-    branches: [main, "rel/**"]
+    branches: [main, "rel/[0-9]*.[0-9]*"]
 
 permissions:
   contents: read
@@ -129,7 +129,7 @@ jobs:
             --error \
             --sarif --output semgrep.sarif
 
-      - name: "Run Semgrep (pushes to main: full scan)"
+      - name: "Run Semgrep (pushes: full scan)"
         if: github.event_name != 'pull_request'
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"

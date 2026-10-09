@@ -14,15 +14,15 @@ Invoke bare (`/structured-logging`) for the full mechanism. This assumes the con
 This repo already has real, working pieces of this. The job here is to close the gaps between them and make the result consistent, not to introduce a new logging stack.
 
 - **`common/compiled/node/logger.ts`** — the transport. A hand-rolled structured JSON logger (`error`/`warn`/`info`/`debug`), already stamping every entry with `timestamp` (ISO string), `level`, `message`, and `service` (`name@version`), filtered by the `LOG_LEVEL` env var. Set as the global `logger` — this document changes *how it's accessed* (injected, not global — see below), not what it is. Also exports `loggerMiddleware`, which already logs "request received" / "request completed" (with status + duration) for Express routes.
-- **`common/compiled/node/errors/{AppError,error.middleware,types}.ts`** — the error hierarchy. `AppError` (base: `statusCode`, `code`, `details`, `isOperational`, calls `Error.captureStackTrace`) plus `NotFoundError`/`ValidationError`/`UnauthorizedError`. `errorHandler` is the central Express error middleware — already wired into every real app via `postRoute()` (see `apps/sample-api/src/app.ts`) — normalizes any thrown value, logs 5xx errors with `stack` and `requestId: req.headers['x-request-id']`, and hides internals from the client in production.
-- **`common/compiled/node/express/requestId.ts`** — `requestIdMiddleware` and the canonical `REQUEST_ID_HEADER` (`'x-request-id'`) constant. Generates one if the caller didn't send it, echoes it on the response, wired into `preRoute.ts` before `loggerMiddleware`. This closes what used to be a real gap: `error.middleware.ts` and `db-audit.ts` both already *read* `req.headers['x-request-id']` (the latter forwards it into a Postgres session variable for audit triggers — `app.session_id`), but nothing generated it if the client didn't send one. Always use `REQUEST_ID_HEADER`, never a variant like `x-correlation-id`.
+- **`common/compiled/node/errors/{AppError,error.middleware,types}.ts`** — the error hierarchy. `AppError` (base: `statusCode`, `code`, `details`, `isOperational`, calls `Error.captureStackTrace`) plus `NotFoundError`/`ValidationError`/`UnauthorizedError`. `errorHandler` is the central Express error middleware — already wired into every real app, via `postRoute()` (see `apps/sample-api/src/app.ts`) or registered directly (see `apps/sample-rest-app-v2/src/index.ts`) — normalizes any thrown value, logs 5xx errors with `stack` and `requestId: req.requestId`, and hides internals from the client in production.
+- **`common/compiled/node/express/requestId.ts`** — `requestIdMiddleware` and the canonical `REQUEST_ID_HEADER` (`'x-request-id'`) constant. Generates one if the caller didn't send it, echoes it on the response, wired into `preRoute.ts` before `loggerMiddleware`. This closes what used to be a real gap: `db-audit.ts` already *read* `req.headers['x-request-id']` (and forwards it into a Postgres session variable for audit triggers — `app.session_id`), but nothing generated it if the client didn't send one. Always use `REQUEST_ID_HEADER`, never a variant like `x-correlation-id`.
 - **`common/compiled/node/logging/context.ts`** — `createLogger()` and the `ContextLogger` type — the injected-logger mechanism described below. Real, typechecked, unit-tested (`common/compiled/node/__test__/logging-context.test.ts`), and exercised end-to-end in `apps/sample-rest-app-v2`.
 
-Do not introduce a new logging library (no `pino`, no `winston`) — `common/node/logger.ts` already does this, and `docs/NOTES.md` directs using native tooling over heavy libraries.
+Do not introduce a new logging library (no `pino`, no `winston`) — `common/compiled/node/logger.ts` already does this, and `docs/NOTES.md` directs using native tooling over heavy libraries.
 
 ## Log levels
 
-Use the four levels `common/node/logger.ts` already implements — `error`, `warn`, `info`, `debug`, controlled by `LOG_LEVEL`:
+Use the four levels `common/compiled/node/logger.ts` already implements — `error`, `warn`, `info`, `debug`, controlled by `LOG_LEVEL`:
 
 - `error` — something failed and needs attention: an unhandled exception reaching a controller, a repository call that exhausted retries.
 - `warn` — degraded but not failed: a slow query, a fallback path taken, a client error (4xx) in development.
@@ -45,7 +45,7 @@ Every log call includes these fields, spelled exactly this way — consistency h
 
 ```ts
 {
-  timestamp: string;   // ISO string — already automatic, common/node/logger.ts stamps this
+  timestamp: string;   // ISO string — already automatic, common/compiled/node/logger.ts stamps this
   level: 'error' | 'warn' | 'info' | 'debug';
   message: string;
   service: string;     // already automatic — "<npm_package_name>@<version>"
@@ -71,7 +71,7 @@ A `requestId` that never leaves the process it was minted in isn't tracing — t
 
 ## The logger is an injected dependency, not a global import
 
-Every other file in this repo grabs the bare global `logger` (per `common/node/logger.ts`'s own module-load side effect and CLAUDE.md's "use the global logger" rule) — that convention stays for infrastructure code (`common/node/*`, one-off scripts). **Inside clean-architecture layers, it changes**: a service or repository never reaches for the bare global — it receives a logger as a parameter (idiom A) or a constructor dependency (idiom B), the same way it receives a repository. This is what makes `requestId`/`layer`/`fn` context automatic instead of something every call site has to remember to pass, and it's also what makes log output assertable in a test the same way a mocked repository call is.
+Every other file in this repo grabs the bare global `logger` (per `common/compiled/node/logger.ts`'s own module-load side effect and CLAUDE.md's "use the global logger" rule) — that convention stays for infrastructure code (`common/compiled/node/*`, one-off scripts). **Inside clean-architecture layers, it changes**: a service or repository never reaches for the bare global — it receives a logger as a parameter (idiom A) or a constructor dependency (idiom B), the same way it receives a repository. This is what makes `requestId`/`layer`/`fn` context automatic instead of something every call site has to remember to pass, and it's also what makes log output assertable in a test the same way a mocked repository call is.
 
 Shape (a thin wrapper around the existing global `logger` — not a new transport), real and in use — `common/compiled/node/logging/context.ts`:
 
@@ -92,24 +92,26 @@ export type ContextLogger = {
 export function createLogger(base: BaseLogger, context: LogContext): ContextLogger { /* wraps base.*, merges context into every call's meta; context wins over a same-named meta key */ }
 ```
 
-Usage — the controller mints the root scoped logger from `req.requestId`, then hands a re-scoped child down at each hop instead of letting the service/repository import anything global. This is the real, verified shape from `apps/sample-rest-app`, not an illustrative sketch:
+Usage — the controller mints the root scoped logger from `req.requestId`, then hands a re-scoped child down at each hop instead of letting the service/repository import anything global. This is the real, verified shape from `apps/sample-rest-app-v2`, not an illustrative sketch:
 
 ```ts
 // controllers/orders.controller.ts
 const log = createLogger(logger, { requestId: req.requestId, layer: 'controller', fn: 'postOrder' });
-const order = await createOrder(body, log.scope({ layer: 'service', fn: 'createOrder' }));
+const order = await req.dbTransaction(trx =>
+  createOrder(trx, body, log.scope({ layer: 'service', fn: 'createOrder' })),
+);
 res.status(201).json({ message: 'Order created', data: toOrderResponseData(order) });
 ```
 
 ```ts
 // services/orders.service.ts
-export const createOrder = async (body: CreateOrderBody, log: ContextLogger): Promise<Order> => {
+export const createOrder = async (db: Knex, body: CreateOrderBody, log: ContextLogger): Promise<Order> => {
   const totalEurCents = await convertUsdCentsToEurCents(
     totalCents,
     log.scope({ layer: 'repository', fn: 'convertUsdCentsToEurCents' }),
   );
-  const order = insertOrder({ ...newOrder });
-  log.info('order.created', { orderId: order.id, totalCents }); // the domain event
+  const order = await insertOrder(db, newOrder);
+  log.info('order.created', { orderId: order.id, totalCents, riskScore: internalRiskScore }); // the domain event
   return order;
 };
 ```
@@ -125,7 +127,7 @@ A subtlety hit while wiring this up: adding `context` to `ContextLogger` after `
 
 ## Stack traces and error handling
 
-Build on `common/node/errors/*`, don't invent a parallel hierarchy:
+Build on `common/compiled/node/errors/*`, don't invent a parallel hierarchy:
 
 - Throw an `AppError` subclass for expected failure modes (`NotFoundError`, `ValidationError`, `UnauthorizedError`, or a new subclass) from a service or repository. `AppError`'s constructor already calls `Error.captureStackTrace`.
 - **When a layer wraps a lower-level error instead of just letting it propagate**, attach the original as `cause`: `throw new AppError('failed to build report', 500, 'REPORT_BUILD_FAILED', undefined, { cause: err })` (native `Error.cause` — no library needed). This is what "complete tracing from all layers" actually means in practice: the top-level log has the full chain (`err.stack` plus `err.cause?.stack`), not just the last layer's generic wrapper message.

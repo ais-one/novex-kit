@@ -54,8 +54,8 @@ jobs:
         env:
           REF_NAME: ${{ github.ref_name }}
         run: |
-          if [[ "$REF_NAME" != 'main' && "$REF_NAME" != rel/* ]]; then
-            echo "::error::Releases are only cut from main or rel/* (got: $REF_NAME)"
+          if [[ ! "$REF_NAME" =~ ^rel/[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Releases are only cut from rel/<major>.<minor> branches (got: $REF_NAME)"
             exit 1
           fi
 

@@ -1,6 +1,7 @@
 ## Hooks Setup And Usage
 
 - Pre-commit runs Biome checks on affected directories and schema validation tests where applicable.
+- Commit-msg validates the message against Conventional Commits (`feat`, `fix`, `chore` only).
 - Pre-push runs workspace tests and schema validation checks.
 - `npm install` also runs `npm prepare`, which configures the hooks path automatically.
 To skip hooks temporarily:
@@ -22,7 +23,7 @@ chmod +x .githooks/setup.sh
 ./.githooks/setup.sh
 ```
 
-**OPTION 2 - Manually Installation**
+**OPTION 2 - Manual Installation**
 
 ```bash
 # remove hooks path
@@ -44,8 +45,8 @@ Runs automatically on every `git commit`:
 
 | Check | Details |
 |-------|---------|
-| **Biome format & lint** | Runs `npx biome check` on each affected directory (`common/iso`, `common/node`, `common/vue`, `common/web`, `apps`, `scripts`). Run `npm run check` to auto-fix. |
-| **Schema validation tests** | Runs `npm run test:schemas -- <folder>` for each affected schema directory (`common/schema`, `common/schemas`, `apps/*/schema`, `apps/*/schemas`). |
+| **Biome format & lint** | Runs `npx biome check` on each affected directory (`common/vanilla/iso`, `common/compiled/node`, `common/compiled/vue`, `common/vanilla/web`, `apps`, `scripts`). Run `npm run check:write` to auto-fix. |
+| **Schema validation tests** | Runs `npm run test:schemas -- <folder>` for each affected schema directory (`common/schemas`, `apps/*/schemas`). |
 
 To skip the pre-commit hook temporarily:
 ```bash
@@ -58,8 +59,9 @@ Runs automatically on every `git push`:
 
 | Check | Details |
 |-------|---------|
-| **Unit tests** | Runs `npm run test:workspaces` (or `npm test`). |
-| **Schema validation tests** | Runs `npm run test:schemas` if the script exists. |
+| **Unit tests** | Runs `npm run test --workspace=<ws>` for each touched workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test` script. |
+| **Schema validation tests** | Runs `npm run test:schemas` for `common/schemas` and every `apps/*/schemas` directory (touched or not), if the root script exists. |
+| **Security audit** | Runs `npm audit --omit=dev --audit-level=moderate`; on findings, prompts `y/n` to continue the push. |
 
 To skip the pre-push hook temporarily:
 ```bash
@@ -75,8 +77,8 @@ git push --no-verify
 - <feat/fix/chore>/scope/<...>
 - rel/<current release version>, rel/<next release version>
   - can add -rc.1, -beta.1 suffixes as needed
-- hotfix/<current release version>/<...>
-- v<patch version> (tag)
+- hotfix/<scope>/<...>
+- v<version> (root tag), <path-with-dashes>-v<version> (workspace tag, e.g. `apps-sample-api-v1.2.3`)
 - main
 
 Examples:
@@ -94,10 +96,10 @@ Use the table below to find out how to name branches based on action taken. Usua
 | `feat/fix/chore` | `rel/1.0` | `rel/1.0` via PR | Day-to-day work |
 | `hotfix/scope/name` | `main` | `main` + `rel/1.0` + `rel/2.0` | Emergency only |
 | `tag: v1.0.0` | `rel/1.0` after merge to main | — | Full release tag |
-| `tag: v1.0.1` | `rel/1.0` after hotfix merges in | — | Patch tag, then rel/1.0 → main |
-| `rel/1.1` | `main` after `v1.0.0` tag | `main` when ready | Cut from stable tag |
+| `tag: v1.0.1` | `rel/1.0` after hotfix merges in | — | Patch tag only, no merge back to main |
+| `rel/2.0` | `main` after `v1.0.0` tag | `main` when ready | Next dev cycle, cut from stable tag |
 
-The consistent rule is: **tags always come from `rel/*`**, never directly from `main`. Main is the destination, not the source of truth for what shipped.
+The consistent rule is: **tags always come from `rel/[0-9]*.[0-9]*`**, never directly from `main`. Main is the destination, not the source of truth for what shipped.
 
 ### Hotfix & Backport Flow
 
@@ -128,7 +130,7 @@ For each pattern, enable:
 | **Require a pull request before merging** | Enable. Require 1 approval. Dismiss stale approvals on new commits. |
 | **Require review from Code Owners** | Enable. Changes under `.github/` need approval from the owners in [CODEOWNERS](../.github/CODEOWNERS). |
 | **Require status checks to pass** | Enable. Require branches to be up to date. |
-| | Add required checks: `Commit Message Format` and `Biome Checks` (from `ci-lint.yml`), `Quality Gate Summary`, `Schema Validation Tests`, `Unit Tests`, `Integration Tests`, `E2E Tests` |
+| | Add required checks: `Commit Message Format` and `Biome Checks` (from `ci-lint.yml`), `Quality Gate Summary`, `Schema Validation Tests`, `Unit Tests`, `Integration Tests`, `E2E Tests` (the last four are from `ci-tests.yml`, which is **currently disabled** — a skipped job reports as passing, so they don't block anything until it's re-enabled) |
 | **Require conversation resolution before merging** | Enable. |
 | **Include administrators** | Enable. Prevents bypass by repo admins. |
 
@@ -172,11 +174,10 @@ Leave **Restrict creations** off — the `Release` workflow creates tags with it
 - Leave CodeQL **Default setup** off — code scanning is done by workflow (GitHub rejects workflow CodeQL uploads while default setup is on).
 
 **Workflow ([ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml))**
-- **Semgrep** (`sast-private-repo-semgrep`, private/internal repos only) — static analysis on PRs to `main` and `rel/**` and on pushes to `main`. Fails the job on findings, so it blocks `Quality Gate Summary`. The SARIF report is kept as a build artifact, not uploaded to the Code scanning tab.
+- **Semgrep** (`sast-private-repo-semgrep`, private/internal repos only) — static analysis on PRs and pushes to `main` and ``rel/[0-9]*.[0-9]*``. Fails the job on findings, so it blocks `Quality Gate Summary`. The SARIF report is kept as a build artifact, not uploaded to the Code scanning tab.
 - **CodeQL** (`sast-public-repo-codeql`, public repos only) — scans `javascript-typescript`, `python` and `actions` (workflow files) with the `security-extended` query suite, `build-mode: none`.
   - Skipped on private repos (they need GitHub Code Security). If you have it, remove the `github.event.repository.visibility == 'public'` condition on the `sast-public-repo-codeql` job (and change the `sast-private-repo-semgrep` condition if you don't want both).
-  - The job succeeds even when it finds issues — results go to **Security** → **Code scanning**. To block merges on findings, add a **Require code scanning results** rule (tool: CodeQL) to the ruleset for `main` and `rel/**`.
-  - Results: **Security** → **Code scanning**. To block merges on new alerts, add a **Require code scanning results** rule to the branch ruleset.
+  - The job succeeds even when it finds issues — results go to **Security** → **Code scanning**. To block merges on findings, add a **Require code scanning results** rule (tool: CodeQL) to the ruleset for `main` and ``rel/[0-9]*.[0-9]*``.
 
 This is separate from the `NPM audit` job in the same workflow: Semgrep/CodeQL are static analysis of this repo's own source code, `npm audit` checks for known CVEs in dependencies. Keep both.
 
@@ -184,12 +185,12 @@ This is separate from the `NPM audit` job in the same workflow: Semgrep/CodeQL a
 
 Version-update PRs are already configured in [.github/dependabot.yml](../.github/dependabot.yml):
 
-- `npm` — root directory (covers all workspaces via `apps/*`, `common/**`, `scripts/*`)
+- `npm` — root directory (covers all workspaces: `apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`)
 - `github-actions` — `/` for workflow files plus `.github/actions/*` for composite actions (e.g. `checkout`, `setup-node-npm-install`)
 
 Both run weekly and need no workflow file — GitHub schedules them itself.
 
-Separately, enable **Dependabot alerts** via **Settings** → **Code security** → **Dependabot** — this flags known CVEs in dependencies as they're published, complementing (not replacing) the `NPM audit` job in `ci-quality-gates.yml`.
+Separately, enable **Dependabot alerts** via **Settings** → **Advanced Security** → **Dependabot alerts** — this flags known CVEs in dependencies as they're published, complementing (not replacing) the `NPM audit` job in `ci-quality-gates.yml`.
 
 ---
 
@@ -226,7 +227,7 @@ When choosing a scope in `czg`:
 Releases are cut manually by the `Release` workflow ([.github/workflows/release.yml](../.github/workflows/release.yml), `workflow_dispatch`). It uses [git-cliff](https://git-cliff.org) ([cliff.toml](../cliff.toml)) to work out the next version and the release notes from Conventional Commits, then creates the tag and a GitHub release. Tests are not re-run — branch protection already requires PR checks to pass before merge.
 
 - **Tags are the source of truth for versions.** Nothing is committed back to the branch (no version bump in `package.json`, no `CHANGELOG.md`), so the workflow needs no branch-protection bypass, GitHub App or PAT — its own `GITHUB_TOKEN` is enough.
-- Run it from `main` or a `rel/*` branch; any other branch fails fast.
+- Run it from a `rel/<major>.<minor>` branch (e.g. `rel/1.0`); any other branch, including `main`, fails fast.
 - Troubleshooting lives in [release-troubleshooting.md](./release-troubleshooting.md).
 
 ### Components and tags
@@ -241,7 +242,7 @@ A component's **first** release (no matching tag yet) uses the version already i
 ### Inputs
 
 - `workspace` — `.` or a workspace path with a `package.json`.
-- `bump` — `auto` (default) derives it from commits since the component's last tag: breaking change (`!`) → major, `feat` → minor, anything else (`fix`, `chore`) → patch. Or force `patch`/`minor`/`major`.
+- `bump` — `auto` (default) derives it from commits since the component's last tag: breaking change (`!` or `BREAKING CHANGE:` footer) → major, `feat` → minor, anything else (`fix`, `chore`) → patch. Or force `patch`/`minor`/`major`.
 - `dry-run` — print the next version and notes to the job summary without creating anything.
 
 The run fails if the computed tag already exists, i.e. there are no new commits for that component since its last release.
@@ -265,8 +266,8 @@ Because `package.json` versions aren't bumped in the repo, a deploy job that nee
 Use the repo workflow rather than a per-team merge style.
 
 - Day-to-day feature and fix PRs should use squash merge.
-- Open those PRs from `feat/*`, `fix/*`, or `chore/*` into the active `rel/*` branch.
-- Reserve `hotfix/*` branches for urgent fixes that start from `main`, merge to `main`, and are then backported to active `rel/*` branches.
+- Open those PRs from `feat/*`, `fix/*`, or `chore/*` into the active `rel/[0-9]*.[0-9]*` branch.
+- Reserve `hotfix/*` branches for urgent fixes that start from `main`, merge to `main`, and are then backported to active `rel/[0-9]*.[0-9]*` branches.
 - Use cherry-pick for hotfix backports when the same fix must land in multiple release branches.
 
 This keeps the commit history git-cliff reads clean and matches the contributor workflow in [.github/CONTRIBUTING.md](../.github/CONTRIBUTING.md).
@@ -278,17 +279,17 @@ This keeps the commit history git-cliff reads clean and matches the contributor 
 Please read the following scripts for information on the CI workflows
 
 1. Lint workflow [ci-lint.yml](../.github/workflows/ci-lint.yml) — commit messages, Biome, workflow YAML
-2. Tests workflow [ci-tests.yml](../.github/workflows/ci-tests.yml) — schema, unit, integration, e2e
+2. Tests workflow [ci-tests.yml](../.github/workflows/ci-tests.yml) — schema, unit, integration, e2e (**currently disabled**: every job is gated `if: false && …`)
 3. Quality gates workflow [ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) — security scans, coverage, duplication
 
-Changes to `.github/` can go in the same PR as other code. Review of them is enforced by [CODEOWNERS](../.github/CODEOWNERS) (`/.github/` entry) — enable **Require review from Code Owners** in the branch protection rules / ruleset for `main` and `rel/**`.
+Changes to `.github/` can go in the same PR as other code. Review of them is enforced by [CODEOWNERS](../.github/CODEOWNERS) (`/.github/` entry) — enable **Require review from Code Owners** in the branch protection rules / ruleset for `main` and ``rel/[0-9]*.[0-9]*``.
 
 Once configured:
 - PRs show red X if any required check fails.
 - Merges are blocked until all checks pass and approvals are met.
-- The branch protection rules apply uniformly across day-to-day work (`rel/*` branches), production merges (`main`), and emergency hotfixes.
+- The branch protection rules apply uniformly across day-to-day work (`rel/[0-9]*.[0-9]*` branches), production merges (`main`), and emergency hotfixes.
 
-> **Note:** tests (unit, integration, e2e) are run for touched workspaces only, identified by the `detect-touched-workspaces`, Skip test if npm script for test not found.
+> **Note:** tests (unit, integration, e2e) are run for touched workspaces only, identified by the `detect-touched-workspaces` action; a workspace without the matching npm script is skipped. Integration and E2E tests run on `pull_request` only, not on push.
 
 ### CI Workflow
 
@@ -296,8 +297,8 @@ Once configured:
 2. CI runs on PR submitted
   - format + lint check (Biome) and commit message check — in [ci-lint.yml](../.github/workflows/ci-lint.yml), on every branch
   - repo-wide schema check, no autofix
-  - repo-wide testing, no autofix
-  - repo-side package audit, no autofix?
+  - testing of touched workspaces, no autofix
+  - repo-wide package audit (`npm audit`), no autofix
 3. Only allow merge if all checks pass
 
 ### Lint Workflow
@@ -312,21 +313,21 @@ A push to a branch with an open PR triggers both a push and a PR run.
 
 ### Quality Gates Workflow
 
-[ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) runs on PRs to `main` and `rel/**`, and on pushes to `main`:
+[ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) runs on PRs and pushes to `main` and ``rel/[0-9]*.[0-9]*``:
 
 - **Gitleaks secret scan** — scans the git history for committed secrets.
 - **NPM audit** — `npm audit --omit=dev --audit-level=moderate` against the root lockfile (all workspaces).
 - **Dependency vulnerability scan** — `dependency-review-action` blocks PRs that add dependencies with known vulnerabilities (PRs on public repos only; needs the dependency graph enabled).
 - **Security Scan - Semgrep** (private/internal repos) — security scan; on PRs only *new* findings fail the job. The SARIF report is kept as a build artifact.
 - **SAST CodeQL Analysis** (public repos) — security scan; results go to Security → Code scanning (see [Code Scanning](#code-scanning)).
-- **Test Coverage** — runs every workspace's `test:unit` script with an extra lcov reporter, merges the reports into `coverage/lcov.info` and uploads it to Codecov.
+- **Test Coverage** — runs every workspace whose `test:unit` script uses `node --test` (`--test-reporter=spec`) with an extra lcov reporter, merges the reports into `coverage/lcov.info` and uploads it to Codecov if `CODECOV_TOKEN` is set.
 - **Duplication Check (jscpd)** — fails if duplication exceeds 5% (optional; see the workflow header to drop it or make it advisory).
 
 Setup:
 
 1. Sign in to [Codecov](https://about.codecov.io/) with GitHub and add this repository.
-2. Copy the repository upload token and add it as Actions secret `CODECOV_TOKEN` (Settings → Secrets and variables → Actions). Without it the upload step fails (`fail_ci_if_error: true`).
-3. If the repository is owned by a GitHub **organization**, get a free license key from [gitleaks.io](https://gitleaks.io/) and add it as Actions secret `GITLEAKS_LICENSE`. Repos owned by a personal account don't need it.
+2. Copy the repository upload token and add it as Actions secret `CODECOV_TOKEN` (Settings → Secrets and variables → Actions). Optional — without it the Codecov upload is skipped (unit tests still run); with it, an upload error fails the job (`fail_ci_if_error: true`).
+3. If the repository is owned by a GitHub **organization**, get a free license key from [gitleaks.io](https://gitleaks.io/) and add it as Actions secret `GITLEAKS_LICENSE`. Every Gitleaks step is gated on this secret, so **without it the scan is skipped on any repo** — personal-account repos don't need a real license, but must still set the secret (any value) to enable the scan.
 4. Enable the **Dependency graph** (Settings → Advanced Security) — `dependency-review-action` needs it. On private repos the job is skipped (it needs GitHub Code Security); if you have it, remove the visibility condition on the `dependency-audit` job.
-5. In the branch protection rules / ruleset for `main` and `rel/**`, add `Quality Gate Summary` as a required status check — it fails if any gate job fails, so it is the only check you need to require from this workflow.
+5. In the branch protection rules / ruleset for `main` and ``rel/[0-9]*.[0-9]*``, add `Quality Gate Summary` as a required status check — it fails if any gate job fails, so it is the only check you need to require from this workflow.
 6. Public repos: in the same ruleset, add a **Require code scanning results** rule for CodeQL — the `sast-public-repo-codeql` job itself does not fail on findings, so without this rule CodeQL is report-only.

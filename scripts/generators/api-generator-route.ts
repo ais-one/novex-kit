@@ -6,10 +6,9 @@
 // <app>/src/openapi.ts (built with zod-openapi's createDocument() from that app's own zod
 // DTOs) — this script only loops over the onboarded apps and writes their static output.
 //
-// The live, primary way to view an app's docs is that same app mounting them itself (e.g.
-// vision-rest-audit's src/index.ts mounts @scalar/express-api-reference at /docs, reading
-// document straight from src/openapi.ts) — this script's output is a secondary artifact, not
-// what a docs viewer hits. See .claude/skills/openapi-docs/SKILL.md for the full convention.
+// No app mounts a live docs UI — the generated YAML is the deliverable (view it in any OpenAPI
+// viewer or build static HTML with Redocly). See .claude/skills/openapi-docs/SKILL.md for the
+// full convention.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

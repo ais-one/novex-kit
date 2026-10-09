@@ -30,7 +30,7 @@ This document is for
     - <tenantN>-<app2>
     - default port 3000
   - common/shared code and schemas
-  - sripts
+  - scripts
 - use zod for validation and openapi generation...
 - automation
   - commit messages - czg
@@ -54,7 +54,7 @@ This document is for
 - Authorization [strategy](design/authz.md)
   - RBAC, FGA, and legacy roles fallback
   - multi-tenant, scopes
-- jsdoc for typing and autocomplete on IDE ?
+- JSDoc for typing and IDE autocomplete — `.js` files only (see [conventions.md](conventions.md))
 
 ## Roadmap
 
@@ -79,11 +79,11 @@ This document is for
 1. Use namespace, Symbol with globalThis
 
 ```js
-# Check if namespace exists, if not create it.
+// Check if namespace exists, if not create it.
 globalThis.__myApp = globalThis.__myApp || {};
-# Define a unique symbol under a namespace
+// Define a unique symbol under a namespace
 const _logger = Symbol('logger');
-# Attach logger to global namespace using symbol as key
+// Attach logger to global namespace using symbol as key
 globalThis.__myApp[_logger] = myLogger;
 ```
 

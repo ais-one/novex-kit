@@ -16,7 +16,7 @@ Every "latest LTS" claim, every "this version has a known serious issue" claim, 
 - Every `.github/workflows/*.yml` (including any under `todo/`) → grep for `node-version:` overrides passed to that composite action, and any hardcoded version in a build `matrix`.
 - `CLAUDE.md` / `README.md` / anything under `docs/` → prose mentions like "Node.js X+ required, npm X+ required".
 - A repo-root `.nvmrc` or `.node-version` file, if one exists.
-- A repo-root `Dockerfile`, if one exists → `FROM node:...` / `ARG NODE_VERSION` style pins.
+- Every `Dockerfile` in the repo (currently `apps/*/Dockerfile`, e.g. `apps/sample-api/Dockerfile`; also a repo-root one if it ever exists) → `FROM node:...` / `ARG NODE_VERSION` style pins.
 - Every workspace's own `package.json` (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) → an `engines` field that overrides root (none exist as of the last run this was checked, but re-check live — don't assume that's still true).
 
 Record each as: location, field, current value.

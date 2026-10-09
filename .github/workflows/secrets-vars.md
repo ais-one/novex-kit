@@ -1,7 +1,7 @@
 ## Environment Workflow Secrets
 |Secret|Workflow|Note|
 |------|--------|----|
-|DOPPLER_TOKEN|*tbd*||
+|DOPPLER_TOKEN|todo/ref-soc2-deploy-to-production (draft)|not used by any live workflow; the `apps/sample-api` image reads it at runtime from the deploy platform's env (e.g. SAE app config), not from GitHub|
 |ACCESS_KEY_ID|deploy-bucket,deploy-sae|Alibaba Cloud RAM user with SAE deploy + OSS write permission (AWS key if using the s3 provider)|
 |ACCESS_KEY_SECRET|deploy-bucket,deploy-sae|secret for ACCESS_KEY_ID|
 
@@ -15,7 +15,8 @@
 |SYNC_TOKEN|update-template||
 |CODECOV_TOKEN|ci-quality-gates|optional - if not set, the Codecov upload is skipped; unit tests still run|
 |GITLEAKS_LICENSE|ci-quality-gates|optional - if not set, the Gitleaks secret scan is skipped; Gitleaks itself requires a license for repos owned by a GitHub organization|
-|GITHUB_TOKEN|ci-quality-gates,deploy-bucket|provided automatically by GitHub|
+|GITHUB_TOKEN|ci-quality-gates,deploy-bucket,release|provided automatically by GitHub|
+|SEMGREP_APP_TOKEN|ci-quality-gates|optional - only for the commented-out paid Semgrep step; not needed by default|
 
 ## Repository Workflow Variables
 

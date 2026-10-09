@@ -22,18 +22,18 @@ Or directly with custom options:
 
 ```sh
 node ../../scripts/generators/generate-crud.ts \
-  --schema         ../../db/sample/schema.ts \
+  --schema         ./schema.ts \
   --schema-module  @db/sample/schema \
   --app            . \
   --db             drizzle1 \
   --tables         categories,student \
-  --route-prefix   /api/sample-api
+  --route-prefix   /api/sample
 ```
 
 | Flag | Required | Description |
 |---|---|---|
 | `--schema` | yes | Path to the Drizzle schema `.ts` file |
-| `--schema-module` | yes | Module import specifier used in generated controller imports |
+| `--schema-module` | no | Module import specifier used in generated controller imports (default: a relative import computed from `--schema`) |
 | `--app` | yes | App root directory (relative to cwd) |
 | `--db` | yes | Drizzle service name passed to `services.get()` |
 | `--tables` | no | Comma-separated table variable names to process (default: all) |
@@ -88,7 +88,7 @@ present in the schema are silently ignored.
 | `exclude` | Tables to skip entirely — no schema, no routes, no controllers |
 | `schemaOnly` | Tables to generate a Zod schema for, but no routes or controllers |
 | `tables.<name>.excludeFromBody` | Columns removed from `BodySchema` and `UpdateSchema` (POST/PATCH) |
-| `tables.<name>.excludeFromResponse` | Columns omitted from `SELECT` in generated controllers |
+| `tables.<name>.excludeFromResponse` | Columns omitted from `ResponseSchema` and from the `SELECT` in generated controllers |
 
 The companion `generate-crud.config.schema.json` provides VS Code IntelliSense for the config file.
 
@@ -159,8 +159,9 @@ export const search = async (req, res) => {
 ```
 
 Step 2 — add your new endpoint **before** `.use('/', generatedRoutes)` in the sidecar
-`routes.ts`. The default sidecar already has this wrapper in place, so you just uncomment
-and fill in the relevant line:
+`routes.ts`. The default sidecar already has this wrapper in place, so you uncomment
+the relevant line and add the imports it needs (`authUser`, `validate`, your schema and
+controller), as shown below:
 
 ```ts
 // crud/award/routes.ts
@@ -181,6 +182,13 @@ The same pattern applies when overriding a route's input schema — register the
 replacement route before `.use('/', generatedRoutes)` and it takes precedence:
 
 ```ts
+import express from 'express';
+import { authUser } from '@common/node/auth/jwt';
+import { validate } from '@common/node/errors/validate';
+import generatedRoutes from './generated/routes.ts';
+import awardController from './controller.ts';
+import { AwardBodySchema } from './schema.ts';
+
 export default express
   .Router()
   .post('/', authUser, validate('body', AwardBodySchema), awardController.create)
@@ -237,13 +245,19 @@ export const AwardBodySchema = GeneratedBodySchema.extend({
 The OpenAPI generator reads the sidecar `schema.ts`, so it will pick up your overridden
 `AwardBodySchema` and generate accurate documentation automatically.
 
+> **Note:** this only changes the *docs*. The generated routes still validate request bodies
+> with `generated/schema.ts`, so the new `companyId` field would be documented but not
+> validated. Re-register the affected route in the sidecar `routes.ts` with
+> `validate('body', AwardBodySchema)` (see *Customising behaviour* above) so runtime validation
+> matches the documented schema.
+
 ---
 
 ### generate-openapi.ts
 
 Generates an OpenAPI 3.1 YAML document from Zod v4 schemas.
 
-Run from the schema's workspace directory (`db/sample`, `db/iam`, or `db/audit`):
+Run from the schema's workspace directory (`db/sample` or `db/iam` — `db/audit` has no `docs:*` scripts yet):
 
 ```sh
 npm run docs:generate
@@ -266,24 +280,26 @@ node ../../scripts/generators/generate-openapi.ts \
 | `--out` | yes | Output YAML file path |
 | `--src` | at least one of `--src` / `--schemas` | `src/` (or `crud/`) directory containing per-table subfolders |
 | `--schemas` | at least one of `--src` / `--schemas` | Directory of standalone `*.schema.ts` files (e.g. `common/schemas`) |
-| `--prefix` | no | URL prefix prepended to all CRUD paths (e.g. `/api/sample-api`) |
+| `--prefix` | no | URL prefix prepended to all CRUD paths (e.g. `/api/sample`) |
 | `--title` | no | `info.title` in the OpenAPI document (default: `API`) |
 | `--version` | no | `info.version` in the OpenAPI document (default: `1.0.0`) |
 | `--server` | no | Server URL in the OpenAPI document (default: `http://localhost:8080`) |
 
 The `*ResponseSchema` export from each schema file is used as the GET response body shape.
-Tables without a `ResponseSchema` export fall back to a generic object schema.
+Tables without a `ResponseSchema` export fall back to an array of generic objects for the
+list endpoint, but the single-item GET falls back to the **error** schema — export a
+`ResponseSchema` for every table you document.
 
 **Each schema generates its own OpenAPI doc.** The openapi generator scans `crud/<table>/schema.ts`
-and `crud/<table>/generated/schema.ts` — it reads Zod files, not Drizzle schemas. Since `sample`,
-`iam`, and `audit` are separate `db/<schema>/` workspaces, each has its own `docs:generate` script
+and `crud/<table>/generated/schema.ts` — it reads Zod files, not Drizzle schemas. Since `sample`
+and `iam` are separate `db/<schema>/` workspaces, each has its own `docs:generate` script
 and its own output file (`db/<schema>/openapi/openapi.yaml`) — run it once per schema.
 
 The standalone `--schemas` path has its own consumer too: `common/schemas/` (hand-written, cross-cutting
 schemas — not CRUD-generated) has its own `docs:generate`/`docs:validate`/`docs:make-html` scripts in
 `common/schemas/package.json`, run from within that folder, producing `common/schemas/docs/openapi/openapi.merged.yaml`.
 There is no root-level `docs:generate` for CRUD-generated docs — each schema source generates and validates its
-own doc independently. (See `api-generator-route.ts` below for the one root-level OpenAPI script, which covers a
+own doc independently. (See `api-generator-route.ts` below for the `scripts/generators` workspace script, which covers a
 different, non-CRUD source of specs.)
 
 ---
@@ -319,6 +335,9 @@ Onboard a new app by adding its folder name to the `APPS` array at the top of th
 ```ts
 const APPS = ['sample-rest-app-v2'];
 ```
+
+> **Not working yet:** `sample-rest-app-v2` is listed but has no `src/openapi.ts`, so `docs:generate:api`
+> currently fails on import. Add that file (or empty `APPS`) before relying on this script.
 
 Each entry must have a corresponding `apps/<app>/src/openapi.ts` that exports a `document` (the object
 returned by `zod-openapi`'s `createDocument()`) — the script dynamically imports that file and writes
