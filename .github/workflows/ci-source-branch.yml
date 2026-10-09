@@ -15,6 +15,7 @@ permissions: {}
 
 jobs:
   source-branch:
+    # check branches allowed to merge into main
     name: Allowed Source Branch
     runs-on: ubuntu-latest
     steps:
