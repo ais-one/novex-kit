@@ -4,8 +4,8 @@
 # https://docs.github.com/en/actions/sharing-automations/creating-actions/creating-a-composite-action
 # uses: ./.github/myactions/make-tag.yml
 
-name: 'Make Tag'
-description: 'Make Github Tag'
+name: "Make Tag"
+description: "Make Github Tag"
 # inputs:
 #   who-to-greet:  # id of input
 #     description: 'Who to greet'

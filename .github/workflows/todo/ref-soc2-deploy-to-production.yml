@@ -6,14 +6,14 @@ on:
   #   branches: [ main ]
 
 permissions:
-  id-token: write     # required for OIDC — no static keys
+  id-token: write # required for OIDC — no static keys
   contents: read
 
 jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    environment: production   # requires manual approval gate in GH
+    environment: production # requires manual approval gate in GH
 
     steps:
       - uses: actions/checkout@v7

@@ -4,28 +4,29 @@
 
 The folder contents are as follows:
 - `apps`: userland backend and frontend application workspaces
+- `db`: userland database schemas, migrations and seeds (one workspace per PostgreSQL schema)
 - `scripts`: deployment, service mocks and documentation scripts
 - `common`: shared JavaScript used by `apps` / `scripts`
 - `docs`: for documentation
 
-**IMPORTANT!** The `apps` folder is for **userland** content. E.g workspace codes, documents, scripts, schemas, etc. End-users please work within the apps folder.
+**IMPORTANT!** The `apps` and `db` folders are for **userland** content. E.g workspace codes, documents, scripts, schemas, migrations, etc. End-users please work within these folders — they are protected during [template updates](.github/workflows/update-template.yml).
 
 Other files and folders are managed by template maintainers.
 
 ## Quickstart
 
 ### Getting started with
-- Sample API backend [apps/sample-api](docs/install.md#Run-Sample-API)
-- Mininal Vue frontend [apps/sample-vue-minimal](docs/install.md#run-minimal-vue-application)
+- Sample API backend [apps/sample-api](docs/install.md#run-sample-api)
+- Minimal Vue frontend [apps/sample-vue-minimal](docs/install.md#run-minimal-vue-application)
 - Sample Vue frontend [apps/sample-vue-full](docs/install.md#install--run-sample-vue-application)
-- Shared codes [`common/*`](`common/*`) ESM modules for Node, browser, Vue, and isomorphic code
+- Shared codes [`common/`](common) ESM modules for Node, browser, Vue, and isomorphic code
   - sample implementations for SAML, OIDC, OAuth, OTP, FIDO2, and push notifications, zod, OpenAPI, etc.
-- Database schemas, migrations, and seeds [db](db) and Mock serivces[scripts/service-mocks](scripts/service-mocks)
+- Database schemas, migrations, and seeds [db](db) and mock services [scripts/service-mocks](scripts/service-mocks)
 
 ### Creating Own apps/services
-- API [backend](docs/install.md#Create-New-Backend-App-Or-Service) — or use the [app creation CLI](#creating-a-new-app-or-service) below
+- API [backend](docs/install.md#create-new-backend-app-or-service) — or use the [app creation CLI](#creating-a-new-app-or-service) below
 - Vue [frontend](docs/install.md#create-new-web-or-vue-frontend)
-- Publish common/** workspaces to [npm](docs/install.md#Publishing-packages-to-npm). **for template maintainers ONLY**
+- Publish common/** workspaces to [npm](docs/install.md#publishing-packages-to-npm). **for template maintainers ONLY**
 
 ## Creating a New App or Service
 
@@ -42,14 +43,14 @@ The following templates are currently available:
 | `vision-rest-app`       | REST API application       |
 | `vision-queue-consumer` | Queue consumer application |
 
-Reference template apps live under `apps/` — [`apps/sample-rest-app`](apps/sample-rest-app) and [`apps/sample-queue-consumer`](apps/sample-queue-consumer) — alongside every other app (see [Available Templates](#available-templates) above).
+Reference template apps live under `apps/` — [`apps/sample-rest-app-v2`](apps/sample-rest-app-v2) and [`apps/sample-queue-consumer`](apps/sample-queue-consumer) — alongside every other app.
 
 ### Create a New App
 
 Run the following command from the repository root:
 
 ```bash
-npm run create:app
+npm run create:app --workspace=apps/sample-common
 ```
 
 The CLI will display the available templates:
@@ -131,7 +132,7 @@ For example:
 
 ```text
 apps/
-├── sample-rest-app/
+├── sample-rest-app-v2/
 └── sample-queue-consumer/
 ```
 
@@ -140,13 +141,13 @@ To add a new template:
 1. Create a new app directory under `apps/`.
 2. Add the application starter code.
 3. Add or update its `package.json`.
-4. Register the template in `create-app.js`.
+4. Register the template in [`apps/sample-common/create-app.js`](apps/sample-common/create-app.js).
 
 For example:
 
 ```js
 const templates = {
-  "vision-rest-app": "sample-rest-app",
+  "vision-rest-app": "sample-rest-app-v2",
   "vision-queue-consumer": "sample-queue-consumer",
   "my-new-template": "my-new-template-sample",
 };
@@ -155,20 +156,21 @@ const templates = {
 After registering the template, it will automatically become available when running:
 
 ```bash
-npm run create:app
+npm run create:app --workspace=apps/sample-common
 ```
 
-**Important:** the generated application is created under `apps/` and is considered **userland content**. Template maintainers should keep reusable starter code in its own dedicated app under `apps/` (e.g. `sample-rest-app`) rather than modifying a generated application to serve as a future template.
+**Important:** the generated application is created under `apps/` and is considered **userland content**. Template maintainers should keep reusable starter code in its own dedicated app under `apps/` (e.g. `sample-rest-app-v2`) rather than modifying a generated application to serve as a future template.
 
 ## Read Me First
 
 - Contributors: read [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) and [.github/SECURITY.md](.github/SECURITY.md) before opening issues or pull requests.
+
 End Users: **BEFORE** making **ANY** changes. Read the following:
 
 - SETUP
   - [git hooks](docs/git-github.md#hooks-setup-and-usage)
   - [template updating](.github/workflows/update-template.yml)
-  - [branching-and-protection](docs/git-github.md#branch-and-protection-rules)
+  - [branching-and-protection](docs/git-github.md#branch-protection-rules)
   - [commit message lint](docs/git-github.md#commit-message)
   - [release automation](docs/git-github.md#release-automation)
   - [secret scanning](https://docs.github.com/en/enterprise-cloud@latest/code-security/concepts/secret-security/about-secret-scanning)
@@ -185,5 +187,11 @@ End Users: **BEFORE** making **ANY** changes. Read the following:
 ## CI/CD
 
 - [Deploy backend to container registry](.github/workflows/deploy-cr.yml)
+- [Deploy image to Alibaba Cloud SAE](.github/workflows/deploy-sae.yml)
 - [Publish a package to npm](.github/workflows/deploy-npm.yml)
 - [Deploy frontend (Vue) to object store](.github/workflows/deploy-bucket.yml)
+- [Manual release (git-cliff)](.github/workflows/release.yml)
+- [Sync upstream template](.github/workflows/update-template.yml)
+- [Clean up old workflow artifacts](.github/workflows/maintenance.yml)
+
+The full workflow list (including CI tests, lint and quality gates) is in the CI/CD table of [CLAUDE.md](CLAUDE.md#cicd-github-actions).

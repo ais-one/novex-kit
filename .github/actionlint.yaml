@@ -1,0 +1,2 @@
+# actionlint config - https://github.com/rhysd/actionlint/blob/main/docs/config.md
+# Add per-file `paths.<glob>.ignore` entries here for known false positives.

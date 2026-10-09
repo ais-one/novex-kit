@@ -2,7 +2,9 @@ import type { NextFunction, Request, Response } from 'express';
 import { NotFoundError } from './AppError.ts';
 import type { NormalizedError } from './types.ts';
 
-const isDev = process.env.NODE_ENV !== 'production';
+// Opt-in: only an explicit `development` exposes raw messages and stack traces to clients,
+// so a missing or misspelled NODE_ENV (`prod`, `prd`) fails safe.
+const isDev = process.env.NODE_ENV === 'development';
 
 /**
  * Normalize any thrown value into a consistent NormalizedError shape.

@@ -1,6 +1,6 @@
 # .github/workflows/ci-quality-gates.yml
 #
-# Wires together 7 quality/security checks as required PR status checks:
+# Wires together 7 quality/security checks, summarised by one required PR status check:
 #   1. Gitleaks          - secret scanning
 #   2. npm audit         - known CVEs in production npm dependencies
 #   2B. Dependency review - blocks PRs that introduce vulnerable dependencies (PRs, public repos only)
@@ -10,9 +10,6 @@
 #   4. Coverage          - test coverage via Codecov
 #   5. jscpd             - copy-paste/duplication detection (OPTIONAL - see toggle below)
 #
-# Biome lint/format is NOT run here - ci.yml already runs it via
-# wfc-format-lint.yml (scoped to touched workspaces).
-#
 # To leave out jscpd entirely: delete the `duplication` job below, and remove
 # it from the `needs:` list on `quality-gate-summary`. Alternatively, keep it
 # but make it non-blocking by setting `continue-on-error: true` on the job
@@ -20,35 +17,39 @@
 #
 # SOC2 security jobs are: secret-scan, npm-audit, dependency-audit, sast-private-repo-semgrep, sast-public-repo-codeql.
 
+# Called by ci-lint.yml after lint passes (PRs into / pushes to main and rel/x.y) -
+# no triggers of its own. Concurrency is handled by the caller.
+
 name: Quality Gates
 
 on:
-  pull_request:
-    branches: [main, 'rel/**']
-  push:
-    branches: [main]
+  workflow_call:
 
 permissions:
   contents: read
   pull-requests: read
-
-concurrency:
-  group: ci-quality-gates-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   # ── SOC2 - 1. Secret scanning ────────────────────────────────────────────
   secret-scan:
     name: Gitleaks secret scan
     runs-on: ubuntu-latest
+    env:
+      # `secrets` can't be used in a step `if:` - expose it via env instead.
+      # The scan is skipped when there's no license (or on fork PRs, which get no secrets).
+      GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # only required for repos owned by a GitHub organization
     steps:
+      - name: Skip Gitleaks (no GITLEAKS_LICENSE)
+        if: env.GITLEAKS_LICENSE == ''
+        run: echo "::notice title=Gitleaks skipped::GITLEAKS_LICENSE secret not set - secret scan not run"
       - uses: actions/checkout@v7
+        if: env.GITLEAKS_LICENSE != ''
         with:
-          fetch-depth: 0       # full history needed for diff scan
+          fetch-depth: 0 # full history needed for diff scan
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        if: env.GITLEAKS_LICENSE != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # only required for repos owned by a GitHub organization
 
   # ── SOC2 - 2. SCA — npm audit ────────────────────────────────────────────
   # Checks the root package-lock.json (covers all workspaces) for known CVEs
@@ -63,12 +64,12 @@ jobs:
       - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
 
-      - name: NPM audit
+      - name: Run NPM audit
         shell: bash
         # set --audit-level=high for more leniency
         run: |
           set -euo pipefail
-          npm audit --omit=dev --audit-level=moderate
+          npm audit --omit=dev --audit-level=high
 
   # ── SOC2 - 2B. SCA — dependency review ───────────────────────────────────
   # Complements npm-audit: blocks PRs that *introduce* vulnerable dependencies.
@@ -124,7 +125,7 @@ jobs:
             --error \
             --sarif --output semgrep.sarif
 
-      - name: "Run Semgrep (pushes to main: full scan)"
+      - name: "Run Semgrep (pushes: full scan)"
         if: github.event_name != 'pull_request'
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -169,7 +170,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [javascript-typescript, python, actions]
+        language: [javascript-typescript, actions]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -192,6 +193,10 @@ jobs:
   coverage:
     name: Test Coverage
     runs-on: ubuntu-latest
+    env:
+      # `secrets` can't be used in a step `if:` - expose it via env instead.
+      # Empty when the secret isn't set (or on fork PRs), so the upload is skipped.
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -225,10 +230,15 @@ jobs:
         # coverage always matches what the workspace itself runs. Workspaces
         # whose test:unit is a stub (no --test-reporter=spec) are skipped.
 
+      - name: Skip Codecov upload (no CODECOV_TOKEN)
+        if: env.CODECOV_TOKEN == ''
+        run: echo "::notice title=Codecov skipped::CODECOV_TOKEN secret not set - coverage report not uploaded"
+
       - name: Upload coverage to Codecov
+        if: env.CODECOV_TOKEN != ''
         uses: codecov/codecov-action@v7
         with:
-          token: ${{ secrets.CODECOV_TOKEN }} # required even for public repos now
+          token: ${{ env.CODECOV_TOKEN }} # required even for public repos now
           files: ./coverage/lcov.info
           disable_search: true # only upload the merged report, not coverage/workspaces/*.lcov too
           fail_ci_if_error: true
@@ -239,23 +249,20 @@ jobs:
   duplication:
     name: Duplication Check (jscpd)
     runs-on: ubuntu-latest
-    # continue-on-error: true   # <-- uncomment to make this advisory-only
+    continue-on-error: true # advisory-only: duplication over threshold does not block the gate
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Node.js
+      - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
-        with:
-          install: 'false'
 
       - name: Run jscpd
         run: |
-          npx jscpd . \
-            --threshold 5 \
-            --reporters "console,github" \
-            --ignore "**/node_modules/**,**/dist/**,**/*.test.ts"
-        # --threshold 5 fails the build if duplication exceeds 5%.
+          npm run quality:dup -- --reporters "console,github"
+        # jscpd is pinned in root devDependencies (bumped by Dependabot).
+        # Threshold and ignore list live in .jscpd.json at the repo root (shared with local runs).
+        # threshold 5 fails the build if duplication exceeds 5%.
         # Tune per-repo; migrations/generated code often need higher tolerance.
 
   # ---------------------------------------------------------------------
@@ -264,7 +271,15 @@ jobs:
   quality-gate-summary:
     name: Quality Gate Summary
     runs-on: ubuntu-latest
-    needs: [secret-scan, npm-audit, dependency-audit, sast-private-repo-semgrep, sast-public-repo-codeql, coverage, duplication] # remove `duplication` here if you drop that job
+    needs: [
+        secret-scan,
+        npm-audit,
+        dependency-audit,
+        sast-private-repo-semgrep,
+        sast-public-repo-codeql,
+        coverage,
+        duplication,
+      ] # remove `duplication` here if you drop that job
     # dependency-audit and the two sast-* jobs may be `skipped` (pushes / repo visibility) - only `failure` fails the gate
     if: always()
     steps:

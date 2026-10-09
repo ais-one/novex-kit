@@ -3,7 +3,7 @@ Hello and thank you for your interest in helping make novex-kit better. Please t
 
 ## Important Information
 * For general questions, please join [Our Discussion Board](https://github.com/ais-one/novex-kit/discussions).
-* For repository-wide coding and runtime conventions, see [../README.md](../README.md).
+* For repository-wide coding and runtime conventions, see [../docs/conventions.md](../docs/conventions.md).
 * Install packages from root level only, if it is used by workspace, name the workspace
 
 ## Reporting Issues
@@ -18,8 +18,8 @@ Hello and thank you for your interest in helping make novex-kit better. Please t
 ## Pull Requests
 * Always work on a new branch. Do not work directly on `main`.
 * Use branch names that follow the documented workflow: `feat/<scope>/<name>`, `fix/<scope>/<name>`, or `chore/<scope>/<name>`.
-* Create normal feature and fix branches from the active `rel/*` branch and open the PR back into that same `rel/*` branch.
-* Reserve `hotfix/*` branches for urgent production issues. Hotfix branches start from `main`, merge to `main`, and then must be backported to active `rel/*` branches as needed.
+* Create normal feature and fix branches from the active `rel/[0-9]*.[0-9]*` branch and open the PR back into that same `rel/[0-9]*.[0-9]*` branch.
+* Reserve `hotfix/*` branches for urgent production issues. Hotfix branches start from `main`, merge to `main`, and then must be backported to active `rel/[0-9]*.[0-9]*` branches as needed.
 * Do not open day-to-day feature PRs directly against `main`. In this workflow, `main` is the stable destination branch.
 * PRs should be merged with a squash merge to keep history clean and consistent with the repo workflow.
 * Use a descriptive PR title. Prefer the same Conventional Commit style used for commits, for example `fix(auth): handle expired token`.

@@ -1,5 +1,7 @@
 .git
 npm-debug.log
 docker-compose*.yml
+**/.env*
+!**/.env.json
 **/node_modules
 **/dist

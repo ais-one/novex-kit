@@ -1,1 +1,8 @@
 * @ais-one
+
+# CI/CD workflows, composite actions and repo automation.
+# Replaces the old CI-meta branch-flow (chore/ci/* -> ci-staging -> main) and
+# file-scope checks: changes here need a review from these owners when branch
+# protection has "Require review from Code Owners" enabled.
+# Change to a team (e.g. @org/platform) to require a different reviewer.
+/.github/ @ais-one

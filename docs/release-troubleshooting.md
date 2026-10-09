@@ -1,128 +1,40 @@
 # Release Troubleshooting
 
-Use this guide when the `release-please` job does not behave as expected.
+Use this guide when the manual `Release` workflow does not behave as expected.
 
 - Workflow: [../.github/workflows/release.yml](../.github/workflows/release.yml)
-- Mode: manifest config via [../release-please-config.json](../release-please-config.json) and [../.release-please-manifest.json](../.release-please-manifest.json)
+- git-cliff config: [../cliff.toml](../cliff.toml)
+- How releases work: [git-github.md → Release Automation](./git-github.md#release-automation)
 
-## Quick Checks
+Tip: run with `dry-run` checked first — the job summary shows the computed tag and release notes without creating anything.
 
-1. Confirm the push landed on `main` or `rel/*`.
-2. Confirm the `release-please` job actually ran in [../.github/workflows/release.yml](../.github/workflows/release.yml).
-3. Confirm the branch contains at least one releasable commit such as `feat`, `fix`, or `deps`.
-4. Check whether a release PR is already open.
+## Symptom: "Releases are only cut from rel/<major>.<minor> branches"
 
-## Symptom: No Release PR Was Opened
+The workflow was dispatched from another branch. Re-run it and pick the active `rel/<major>.<minor>` branch (e.g. `rel/1.0`) in the "Use workflow from" dropdown.
 
-Check these in order:
+## Symptom: "... is not a workspace with a package.json"
 
-1. The commit type may not be releasable.
-2. A release PR may already exist.
-3. The branch may not match the workflow trigger.
-4. The workflow configuration on that branch may not match the default branch.
+The `workspace` input must be `.` or a repo-relative path to a folder containing `package.json`, e.g. `apps/sample-api` (leading `./` and trailing `/` are fine). Absolute paths and `..` are rejected.
 
-Details:
+## Symptom: "<tag> already exists - no new commits for this component since its last release"
 
-- `feat`, `fix`, and `deps` trigger release PR creation.
-- `chore` entries can appear in release notes, but `chore` alone does not trigger a release PR.
-- If you need a release from non-releasable commits only, add a commit body footer such as `Release-As: 0.0.1`.
-- If a prior release PR is still open, `release-please` usually updates that PR instead of opening a new one.
+git-cliff found no commits for that component since its last tag, so the "next" version equals the current one. For a workspace, only commits touching its path count. Nothing to release — or, if you expected changes, check they were merged into the branch you ran from.
 
-## Symptom: The Workflow Fails Before Creating A Token
+## Symptom: The version is not what I expected
 
-Check repository settings:
+- **First release of a component** uses the `package.json` version as-is, without bumping. Edit `package.json` first, or create a baseline tag (e.g. `apps-sample-api-v0.0.6`) on an older commit so the next run bumps from it.
+- **`auto` bump** rules: a breaking change (`!` or `BREAKING CHANGE:` footer) → major, any `feat` → minor, otherwise patch. Pass `bump` explicitly to override.
+- **Wrong previous tag picked up**: only tags matching the component's pattern count — `v1.2.3` for `.`, `<path-with-dashes>-v1.2.3` for a workspace. Old tags in another format (e.g. bare `0.6.11`) are ignored.
 
-1. Repository Actions variable `RELEASE_PLEASE_APP_ID` exists.
-2. Repository Actions secret `RELEASE_PLEASE_APP_PRIVATE_KEY` exists.
-3. The private key value is valid PEM content.
-4. The GitHub App is installed on this repository.
+## Symptom: A commit is missing from the release notes
 
-Notes:
+Commits that don't parse as Conventional Commits (`feat|fix|chore(scope): ...`) are skipped — the git-cliff log warns how many. Commits starting `chore(release)` are skipped on purpose. With squash merges the PR title becomes the commit message, so check the PR title format.
 
-- Editor diagnostics may warn that the variable or secret names are unknown until they exist in repository settings.
-- That warning does not mean the workflow YAML is invalid.
+## Symptom: The tag/release step fails with 403 or "Resource not accessible by integration"
 
-## Symptom: The Workflow Fails Creating The GitHub App Token
+1. Settings → Actions → General → Workflow permissions must not block the job's `contents: write` request (an org-level policy can force read-only).
+2. A tag ruleset that restricts tag creation will block `GITHUB_TOKEN` — add GitHub Actions to its bypass list or relax the rule for the release tag patterns.
 
-Common causes:
+## Symptom: Another workflow did not run when the release was published
 
-1. The app ID is wrong.
-2. The private key is expired, rotated, or pasted incorrectly.
-3. The app is not installed on this repository.
-4. The installation permissions do not match the requested permissions.
-
-Required repository permissions for this setup:
-
-- `Contents: Read and write`
-- `Pull requests: Read and write`
-- `Issues: Read and write`
-- `Metadata: Read-only`
-
-If the app permissions were changed after installation, the installation may need approval again.
-
-## Symptom: A Release PR Exists, But CI Did Not Run On It
-
-This is usually a workflow-trigger or app-installation issue rather than a `release-please` versioning issue. Verify:
-
-1. The GitHub App installation is active on this repository.
-2. The app permissions still include contents, pull requests, and issues write access.
-3. The downstream workflow itself is allowed to run on the event type created by the bot.
-
-## Symptom: A Release PR Exists, But No Release Happened After Merge
-
-Check these items:
-
-1. The merge happened on `main` or `rel/*`.
-2. The post-merge push triggered [../.github/workflows/release.yml](../.github/workflows/release.yml).
-3. The `Create GitHub App token` step still requests `contents`, `issues`, and `pull-requests` write permissions (the workflow's own `GITHUB_TOKEN` is read-only by design — all writes use the App token).
-4. Repository settings still allow workflows to create pull requests if your organization restricts that behavior.
-
-Also check whether the merged PR was the release PR itself and not a normal feature PR.
-
-## Symptom: The Version Number Is Not What You Expected
-
-Check the commit history since the last release:
-
-- `fix` produces a patch bump.
-- `feat` produces a minor bump.
-- breaking changes can produce a major bump.
-
-This repo currently sets:
-
-- `release-please-action` using `config-file` and `manifest-file` for per-workspace releases under `apps/*`
-
-If you need an explicit version beyond that, add `Release-As: x.y.z` to the commit body.
-
-## Symptom: Old History Was Reprocessed
-
-That usually means one of these changed unexpectedly:
-
-1. The release tag history was changed.
-2. The repository history on the target branch changed unexpectedly.
-3. The workflow was switched and release-please is now calculating from a different previous release.
-
-## Symptom: The Changelog Looks Wrong
-
-Check these sources in order:
-
-1. The merged commit subjects on the release branch.
-2. The release PR body generated by `release-please`.
-3. The action inputs and release behavior in [../.github/workflows/release.yml](../.github/workflows/release.yml).
-
-Remember:
-
-- `release-please` builds notes from Conventional Commits.
-- `chore` may be included in notes but does not create a release by itself.
-- merged PR titles and squash-merge messages matter if squash merge is used.
-
-## Recommended Debug Path
-
-When something is wrong, use this exact order:
-
-1. Open the latest run of [../.github/workflows/release.yml](../.github/workflows/release.yml).
-2. If the job failed before token creation, verify `RELEASE_PLEASE_APP_ID`, `RELEASE_PLEASE_APP_PRIVATE_KEY`, app installation, and app permissions.
-3. Check whether the commit set contains `feat`, `fix`, or `deps`.
-4. Look for an already-open release PR.
-5. Confirm the `Run release-please` step in [../.github/workflows/release.yml](../.github/workflows/release.yml) still uses the expected direct inputs.
-
-If all of those are correct and the workflow still does not behave as expected, inspect the workflow logs for the `Run release-please` step and compare the result with the current branch history.
+Events created with the workflow's `GITHUB_TOKEN` (the tag push and `release: published`) do not trigger other workflows, by GitHub design. Dispatch the deploy workflow manually with the new tag, or call it from `release.yml` as a reusable workflow (`workflow_call`) after the release step.

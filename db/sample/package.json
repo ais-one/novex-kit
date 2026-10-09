@@ -16,7 +16,7 @@
     "db:seed": "node --env-file=.env seed.ts",
     "crud:generate": "node ../../scripts/generators/generate-crud.ts --schema ./schema.ts --schema-module @db/sample/schema --app . --db drizzle1 --route-prefix /api/sample",
     "docs:generate": "node ../../scripts/generators/generate-openapi.ts --src ./crud --out ./openapi/openapi.yaml --prefix /api/sample --title \"Sample API\" --version 1.0.0",
-    "docs:validate": "npx openapi-cli validate ./openapi/openapi.yaml"
+    "docs:validate": "npx redocly lint ./openapi/openapi.yaml"
   },
   "keywords": [],
   "author": "",

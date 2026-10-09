@@ -47,13 +47,13 @@ on:
   workflow_dispatch:
     inputs:
       upstream_branch:
-        description: 'Upstream branch to sync from. Defaults to main'
-        default: 'main'
+        description: "Upstream branch to sync from. Defaults to main"
+        default: "main"
         required: false
       ref:
         description: Downstream branch to check out. Defaults to the ref that triggered the workflow.
         required: false
-        default: ''
+        default: ""
 
 env:
   UPSTREAM_URL: https://github.com/ais-one/novex-kit.git

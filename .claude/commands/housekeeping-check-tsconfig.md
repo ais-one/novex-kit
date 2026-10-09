@@ -12,7 +12,7 @@ Every "resolved TypeScript version" and every "newest supported target/lib" clai
 ## 1. Determine the effective TypeScript version per workspace
 
 - Read the repo root `package.json` for its pinned `typescript` version (`dependencies` or `devDependencies`).
-- For every npm workspace (`apps/*`, `common/compiled/*`, `db/*`, `scripts/*`, and any others listed by `npm ls -ws --depth=0`), check whether that workspace's own `package.json` declares its own `typescript` entry.
+- For every npm workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`, and any others listed by `npm ls -ws --depth=0`), check whether that workspace's own `package.json` declares its own `typescript` entry.
   - If it does, that workspace-local version **takes precedence** over root for everything under that workspace.
   - If it doesn't, the workspace resolves to the root version (standard npm workspace hoisting).
 - Optional argument `$ARGUMENTS` narrows the scan to a workspace path or substring — if empty, scan everything.
@@ -30,7 +30,7 @@ Don't just read the semver range from `package.json` — confirm what's actually
 
 - Find every `tsconfig.json`/`tsconfig.*.json` in the repo, excluding `node_modules`.
 - Map each to its owning workspace (nearest ancestor directory with a `package.json` that is itself an npm workspace root).
-- If a config has `"extends"`, follow the chain (e.g. `db/sample/tsconfig.json` → `db/tsconfig.base.json`) and merge `compilerOptions` in the standard TypeScript way (child overrides parent) to get the **effective** `target`/`lib` for that file — a config that inherits `target` from a base file is not "missing" it, it's inherited.
+- If a config has `"extends"`, follow the chain (e.g. `db/tsconfig.json` → root `tsconfig.base.json`, or `apps/sample-api/tsconfig.json` → `apps/tsconfig.base.json`) and merge `compilerOptions` in the standard TypeScript way (child overrides parent) to get the **effective** `target`/`lib` for that file — a config that inherits `target` from a base file is not "missing" it, it's inherited.
 - Record, per tsconfig.json: file path, owning workspace, effective `target` (and where it came from — own file vs inherited via extends), effective `lib` array if explicitly set.
 
 ## 4. Compare and classify
