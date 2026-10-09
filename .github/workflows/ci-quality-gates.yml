@@ -20,7 +20,7 @@
 # Called by ci-lint.yml after lint passes (PRs into / pushes to main and rel/x.y) -
 # no triggers of its own. Concurrency is handled by the caller.
 
-name: Quality Gates
+name: CI Quality Gates
 
 on:
   workflow_call:
