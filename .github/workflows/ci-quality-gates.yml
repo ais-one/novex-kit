@@ -27,13 +27,15 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
   # ── SOC2 - 1. Secret scanning ────────────────────────────────────────────
   secret-scan:
     name: Gitleaks secret scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read # gitleaks-action lists the PR's commits via the API
     env:
       # `secrets` can't be used in a step `if:` - expose it via env instead.
       # The scan is skipped when there's no license (or on fork PRs, which get no secrets).
@@ -97,7 +99,7 @@ jobs:
     if: github.event.repository.visibility != 'public'
     runs-on: ubuntu-latest
     container:
-      image: semgrep/semgrep:latest # pin to a specific version/digest for reproducibility
+      image: semgrep/semgrep:1.179.0@sha256:93963d9295a366f59e4850127b1550400ee7b388f04fe144e4a1f6325d96e01b
     permissions:
       contents: read
     steps:
@@ -236,7 +238,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: env.CODECOV_TOKEN != ''
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ env.CODECOV_TOKEN }} # required even for public repos now
           files: ./coverage/lcov.info
