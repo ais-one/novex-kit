@@ -45,16 +45,16 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "@playwright/test": "^1.63.0",
-    "@redocly/cli": "^2.55.0",
+    "@playwright/test": "^1.64.0",
+    "@redocly/cli": "^2.62.1",
     "@types/express": "^5.0.6",
     "@vitejs/plugin-vue": "^6.0.9",
-    "jscpd": "5.4.0",
-    "msw": "^3.0.0",
+    "jscpd": "5.4.1",
+    "msw": "^3.0.2",
     "prettier": "3.9.9",
-    "start-server-and-test": "^3.0.12",
+    "start-server-and-test": "^3.0.13",
     "typescript": "^7.0.2",
-    "vite": "^8.3.1"
+    "vite": "^8.3.4"
   },
   "overrides": {
     "@openfga/sdk": {
