@@ -131,8 +131,21 @@ For each pattern, enable:
 | **Require review from Code Owners** | Enable. Changes under `.github/` need approval from the owners in [CODEOWNERS](../.github/CODEOWNERS). |
 | **Require status checks to pass** | Enable. Require branches to be up to date. |
 | | Add required checks: `Commit Message Format` and `Biome Checks` (from `ci-lint.yml`), `Quality Gates / Quality Gate Summary`, `Tests / Schema Validation Tests`, `Tests / Unit Tests`, `Tests / Integration Tests`, `Tests / E2E Tests` (the last four are from `ci-tests.yml`, which is **currently disabled** — a skipped job reports as passing, so they don't block anything until it's re-enabled). `ci-tests.yml` and `ci-quality-gates.yml` are called from `ci-lint.yml`, so their checks are prefixed with the calling job's name |
+| | `main` only: also add `Allowed Source Branch` (from `ci-source-branch.yml`) — see [Restricting PR source branches into main](#restricting-pr-source-branches-into-main) |
 | **Require conversation resolution before merging** | Enable. |
 | **Include administrators** | Enable. Prevents bypass by repo admins. |
+
+### Restricting PR source branches into main
+
+Only `hotfix/*` and `rel/[0-9]*.[0-9]*` branches may merge into `main`. GitHub branch protection and rulesets can't restrict a PR's *source* branch, so [ci-source-branch.yml](../.github/workflows/ci-source-branch.yml) enforces it as a status check:
+
+- Runs on every PR into `main` (`opened`, `synchronize`, `reopened`, `edited` — the last catches a PR retargeted to `main` after it was opened).
+- **Allowed Source Branch** fails unless the head branch matches `hotfix/<anything>` or `rel/<major>.<minor>`.
+- Fork PRs fail outright — a fork can name its branch `rel/1.0`, so only branches in this repository count.
+
+Setup: in the ruleset / branch protection for `main`, add `Allowed Source Branch` as a required status check (it appears in the picker only after the workflow has run once on a PR into `main`). Leave the bypass list empty, otherwise admins can still merge from any branch.
+
+The check runs inside the step rather than behind a job-level `if:` on purpose — GitHub treats a skipped required check as passing.
 
 ### Tag Rulesets
 
@@ -281,6 +294,7 @@ Please read the following scripts for information on the CI workflows
 1. Lint workflow [ci-lint.yml](../.github/workflows/ci-lint.yml) — commit messages, Biome, workflow YAML
 2. Tests workflow [ci-tests.yml](../.github/workflows/ci-tests.yml) — schema, unit, integration, e2e (**currently disabled**: every job is gated `if: false && …`)
 3. Quality gates workflow [ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) — security scans, coverage, duplication
+4. Source branch workflow [ci-source-branch.yml](../.github/workflows/ci-source-branch.yml) — only `hotfix/*` and `rel/x.y` may merge into `main` (standalone, not called from `ci-lint.yml`)
 
 `ci-lint.yml` is the only workflow with its own triggers. Once all its lint jobs pass, it calls `ci-tests.yml` and `ci-quality-gates.yml` (reusable workflows, `on: workflow_call`) in parallel, for PRs into and pushes to `main` and ``rel/[0-9]*.[0-9]*``. If lint fails, neither runs — their required checks stay pending, so the PR is still blocked.
 
