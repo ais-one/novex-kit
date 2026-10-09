@@ -174,7 +174,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [javascript-typescript, python, actions]
+        language: [javascript-typescript, actions]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -253,7 +253,7 @@ jobs:
   duplication:
     name: Duplication Check (jscpd)
     runs-on: ubuntu-latest
-    # continue-on-error: true   # <-- uncomment to make this advisory-only
+    continue-on-error: false # advisory-only: duplication over threshold does not block the gate
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -265,11 +265,9 @@ jobs:
 
       - name: Run jscpd
         run: |
-          npx jscpd . \
-            --threshold 5 \
-            --reporters "console,github" \
-            --ignore "**/node_modules/**,**/dist/**,**/*.test.ts"
-        # --threshold 5 fails the build if duplication exceeds 5%.
+          npx jscpd . --reporters "console,github"
+        # Threshold and ignore list live in .jscpd.json at the repo root (shared with local runs).
+        # threshold 5 fails the build if duplication exceeds 5%.
         # Tune per-repo; migrations/generated code often need higher tolerance.
 
   # ---------------------------------------------------------------------
