@@ -6,10 +6,6 @@
 ## `edited` catches a PR whose base is retargeted to main after it was opened.
 name: CI Source Branch
 
-description: |
-  Guard against PRs into main from branches other than hotfix/* or rel/x.y.
-  Fork PRs are rejected outright, since a fork can name its branch rel/1.0.
-
 on:
   pull_request:
     branches: [main]
@@ -19,6 +15,7 @@ permissions: {}
 
 jobs:
   source-branch:
+    # check branches allowed to merge into main
     name: Allowed Source Branch
     runs-on: ubuntu-latest
     steps:
