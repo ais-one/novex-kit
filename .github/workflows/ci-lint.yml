@@ -77,6 +77,8 @@ jobs:
 
       - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
+        with:
+          install-command: npm ci --ignore-scripts
 
       - name: Biome CI (whole repository)
         run: npm run ci # biome ci .
@@ -90,6 +92,8 @@ jobs:
 
       - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
+        with:
+          install-command: npm ci --ignore-scripts
 
       # todo/ holds drafts - GitHub does not run workflows in subfolders, so they are skipped
       - name: Check workflow and action YAML formatting
