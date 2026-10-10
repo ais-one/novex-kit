@@ -3,15 +3,51 @@
 [novex-kit](https://github.com/ais-one/novex-kit) is a monorepo **template** for building full-stack JavaScript applications, micro-services and frontends with NodeJS (**version 24 or Higher**). VueJS and ExpressJS are highlighted but end-user is free to implement their own JS/TS stack.
 
 The folder contents are as follows:
-- `apps`: userland backend and frontend application workspaces
-- `db`: userland database schemas, migrations and seeds (one workspace per PostgreSQL schema)
+- `apps`: **userland** backend and frontend application workspaces
+- `db`: **userland** database schemas, migrations and seeds (one workspace per PostgreSQL schema)
 - `scripts`: deployment, service mocks and documentation scripts
 - `common`: shared JavaScript used by `apps` / `scripts`
 - `docs`: for documentation
 
-**IMPORTANT!** The `apps` and `db` folders are for **userland** content. E.g workspace codes, documents, scripts, schemas, migrations, etc. End-users please work within these folders — they are protected during [template updates](.github/workflows/update-template.yml).
+**IMPORTANT!**
 
-Other files and folders are managed by template maintainers.
+- This is a template repo. Do NOT use directly. Create your new repo using this as the template
+- The `apps` folder is for **userland** workspace codes, documents, scripts, schemas, migrations, etc.
+- The `db` folder is for **userland** schemas, migrations, seeds, etc.
+- End-users **MUST** work within these folders
+- Template maintainers **MUST** work outside `apps` and `db` folders
+- End-users can pull in template updates using [Sync Upstream Template](.github/workflows/update-template.yml) workflow.
+- End-users can fork and make PR for requested features, or roll out their own in the `apps` folder.
+- only the `package.json` and `package-lock.json` files outside the `apps` can be modified (Note that a Sync Upstream Template will replace those file with the upstream ones)
+- TBD - End-user repository setup
+- TBD - git workflow
+
+## Read Me First
+
+- Contributors: read [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) and [.github/SECURITY.md](.github/SECURITY.md) before opening issues or pull requests.
+
+End Users: **BEFORE** making **ANY** changes. Read the following:
+
+- SETUP
+  - [git hooks](docs/git-github.md#hooks-setup-and-usage)
+  - [template updating](.github/workflows/update-template.yml)
+  - [branching-and-protection](docs/git-github.md#branch-protection-rules)
+  - [commit message lint](docs/git-github.md#commit-message)
+  - [release automation](docs/git-github.md#release-automation)
+  - [secret scanning](https://docs.github.com/en/enterprise-cloud@latest/code-security/concepts/secret-security/about-secret-scanning)
+  - [security](https://github.com/settings/security_analysis)
+- READ
+  - [Merge strategy](docs/git-github.md#rebase-or-merge)
+  - [Engineering standards](docs/conventions.md) format, lint, commit message, language, tooling, etc.
+  - [Workflows](docs/git-github.md#ci)
+  - [Housekeeping](docs/housekeeping.md) dependency and GitHub Actions updates — Dependabot plus on-demand Claude Code commands
+  - [Design Features](docs/NOTES.md#design-features)
+  - [OPTIONAL: Roadmap](docs/NOTES.md#roadmap)
+  - [OPTIONAL: repo custom properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization)
+
+## CI/CD
+
+The full workflow list is in the CI/CD table of [CLAUDE.md](CLAUDE.md#cicd-github-actions).
 
 ## Quickstart
 
@@ -40,8 +76,8 @@ The following templates are currently available:
 
 | Template                | Description                |
 | ----------------------- | -------------------------- |
-| `vision-rest-app`       | REST API application       |
-| `vision-queue-consumer` | Queue consumer application |
+| `sample-rest-app`       | REST API application       |
+| `sample-queue-consumer` | Queue consumer application |
 
 Reference template apps live under `apps/` — [`apps/sample-rest-app-v2`](apps/sample-rest-app-v2) and [`apps/sample-queue-consumer`](apps/sample-queue-consumer) — alongside every other app.
 
@@ -60,8 +96,8 @@ The CLI will display the available templates:
 
 Available templates:
 
-  1. vision-rest-app
-  2. vision-queue-consumer
+  1. sample-rest-app
+  2. sample-queue-consumer
 
 Choose template [1-2]:
 ```
@@ -86,7 +122,7 @@ The `package.json` inside the new application will also be updated with the appl
 Example output:
 
 ```text
-📦 Using template: vision-rest-app
+📦 Using template: sample-rest-app
 📁 Creating: apps/my-new-service
 
 ✔ Template copied
@@ -147,8 +183,8 @@ For example:
 
 ```js
 const templates = {
-  "vision-rest-app": "sample-rest-app-v2",
-  "vision-queue-consumer": "sample-queue-consumer",
+  "sample-rest-app": "sample-rest-app-v2",
+  "sample-queue-consumer": "sample-queue-consumer",
   "my-new-template": "my-new-template-sample",
 };
 ```
@@ -161,37 +197,3 @@ npm run create:app --workspace=apps/sample-common
 
 **Important:** the generated application is created under `apps/` and is considered **userland content**. Template maintainers should keep reusable starter code in its own dedicated app under `apps/` (e.g. `sample-rest-app-v2`) rather than modifying a generated application to serve as a future template.
 
-## Read Me First
-
-- Contributors: read [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) and [.github/SECURITY.md](.github/SECURITY.md) before opening issues or pull requests.
-
-End Users: **BEFORE** making **ANY** changes. Read the following:
-
-- SETUP
-  - [git hooks](docs/git-github.md#hooks-setup-and-usage)
-  - [template updating](.github/workflows/update-template.yml)
-  - [branching-and-protection](docs/git-github.md#branch-protection-rules)
-  - [commit message lint](docs/git-github.md#commit-message)
-  - [release automation](docs/git-github.md#release-automation)
-  - [secret scanning](https://docs.github.com/en/enterprise-cloud@latest/code-security/concepts/secret-security/about-secret-scanning)
-  - [security](https://github.com/settings/security_analysis)
-- READ
-  - [Merge strategy](docs/git-github.md#rebase-or-merge)
-  - [Engineering standards](docs/conventions.md) format, lint, commit message, language, tooling, etc.
-  - [Workflows](docs/git-github.md#ci)
-  - [Housekeeping](docs/housekeeping.md) dependency and GitHub Actions updates — Dependabot plus on-demand Claude Code commands
-  - [Design Features](docs/NOTES.md#design-features)
-  - [OPTIONAL: Roadmap](docs/NOTES.md#roadmap)
-  - [OPTIONAL: repo custom properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization)
-
-## CI/CD
-
-- [Deploy backend to container registry](.github/workflows/deploy-cr.yml)
-- [Deploy image to Alibaba Cloud SAE](.github/workflows/deploy-sae.yml)
-- [Publish a package to npm](.github/workflows/deploy-npm.yml)
-- [Deploy frontend (Vue) to object store](.github/workflows/deploy-bucket.yml)
-- [Manual release (git-cliff)](.github/workflows/release.yml)
-- [Sync upstream template](.github/workflows/update-template.yml)
-- [Clean up old workflow artifacts](.github/workflows/maintenance.yml)
-
-The full workflow list (including CI tests, lint and quality gates) is in the CI/CD table of [CLAUDE.md](CLAUDE.md#cicd-github-actions).

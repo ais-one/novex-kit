@@ -75,6 +75,3 @@ jobs:
   #
   #     - name: Run e2e tests in every workspace that has test:e2e
   #       run: npm run test:e2e --workspaces --if-present
-
-# Security checks (npm audit, secret scanning, SAST) run in ci-quality-gates.yml
-# releases are cut manually via release.yml

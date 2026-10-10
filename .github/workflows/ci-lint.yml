@@ -83,7 +83,7 @@ jobs:
           install-command: npm ci --ignore-scripts
 
       - name: Biome CI (whole repository)
-        run: npm run ci # biome ci .
+        run: npm run ci:biome
 
   lint-github-yaml:
     name: Lint Workflow YAML
@@ -102,7 +102,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm run quality:lint # prettier pinned in root devDependencies
+          npm run ci:lint-yml
+        # prettier pinned in root devDependencies
 
       # Image bundles shellcheck, so run: scripts are checked too.
       # Config (ignored false positives): .github/actionlint.yaml

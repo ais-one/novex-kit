@@ -71,7 +71,7 @@ jobs:
         # set --audit-level=high for more leniency
         run: |
           set -euo pipefail
-          npm audit --omit=dev --audit-level=high
+          npm run ci:audit
 
   # ── SOC2 - 2B. SCA — dependency review ───────────────────────────────────
   # Complements npm-audit: blocks PRs that *introduce* vulnerable dependencies.
@@ -274,7 +274,7 @@ jobs:
 
       - name: Run jscpd
         run: |
-          npm run quality:dup -- --reporters "console,github"
+          npm run ci:dup -- --reporters "console,github"
         # jscpd is pinned in root devDependencies (bumped by Dependabot).
         # Threshold and ignore list live in .jscpd.json at the repo root (shared with local runs).
         # threshold 5 fails the build if duplication exceeds 5%.

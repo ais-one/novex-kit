@@ -89,7 +89,10 @@ cd apps/sample-vue-minimal && npm run dev
 # linting and formatting (biome)
 npm run check          # biome check, no writes — safe to run in CI
 npm run check:write    # biome check --write (auto-fix lint + format)
-npm run ci             # biome ci (used in CI/CD)
+npm run ci:biome       # biome ci (used in CI/CD)
+
+# security
+npm run ci:audit          # audit npm packages based on security level
 
 # testing
 npm run test:workspaces     # run tests in all workspaces
@@ -339,7 +342,7 @@ Hooks live in `.githooks/` and are activated by `npm install` (via `npm prepare`
 **Pre-push** (runs on `git push`):
 - `npm run test` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test` script, touched or not — unit + integration only, e2e is disabled for now
 - Schema validation tests
-- `npm audit --omit=dev --audit-level=moderate` (prompts to continue on findings)
+- `npm run ci:audit` (prompts to continue on findings)
 
 Skip hooks temporarily:
 ```bash
@@ -412,11 +415,11 @@ docker run -p 3000:3000 novex-kit
 
 | Workflow | Purpose |
 |---|---|
-| `.github/workflows/ci-tests.yml` | Schema, unit and integration tests for every workspace that has the matching script (read-only token). Reusable (`workflow_call`) — called by `ci-lint.yml` after lint passes. **Currently disabled** — every job is gated `if: false` / `if: false && …`; remove the `false` to turn them back on. The e2e job is commented out for now |
-| `.github/workflows/ci-lint.yml` | Commit message format, Biome lint/format (whole repo), workflow YAML lint (prettier + actionlint) — every branch, PR and push. The CI entry point: once lint passes, it calls `ci-tests.yml` and `ci-quality-gates.yml` in parallel for PRs into / pushes to `main` and `rel/x.y`. Review of `.github/` changes is gated by `CODEOWNERS` |
 | `.github/workflows/ci-source-branch.yml` | Standalone PR check into `main` — `Allowed Source Branch` fails unless the head branch is `hotfix/*` or `rel/x.y` from this repo (forks rejected). Make it a required check on `main`, since rulesets can't restrict PR source branches |
-| `.github/workflows/release.yml` | Manual release (`workflow_dispatch`) — git-cliff (`cliff.toml`) computes the next version + notes from Conventional Commits for `.` (tag `v1.2.3`) or one workspace (tag `apps-sample-api-v1.2.3`), then creates the tag and GitHub release with `GITHUB_TOKEN`. Tags are the version source of truth — nothing is committed back |
+| `.github/workflows/ci-lint.yml` | Commit message format, Biome lint/format (whole repo), workflow YAML lint (prettier + actionlint) — every branch, PR and push. The CI entry point: once lint passes, it calls `ci-tests.yml` and `ci-quality-gates.yml` in parallel for PRs into / pushes to `main` and `rel/x.y`. Review of `.github/` changes is gated by `CODEOWNERS` |
+| `.github/workflows/ci-tests.yml` | Schema, unit and integration tests for every workspace that has the matching script (read-only token). Reusable (`workflow_call`) — called by `ci-lint.yml` after lint passes. **Currently disabled** — every job is gated `if: false` / `if: false && …`; remove the `false` to turn them back on. The e2e job is commented out for now |
 | `.github/workflows/ci-quality-gates.yml` | PR quality gates — Gitleaks, npm audit, dependency review, SAST, test coverage (Codecov), jscpd duplication; reusable (`workflow_call`), called by `ci-lint.yml` after lint passes; `Quality Gates / Quality Gate Summary` is the single required check. SAST is CodeQL (JS/TS, Python, Actions) on public repos and Semgrep on private/internal; dependency review runs on public repos only. CodeQL only blocks merges with a "Require code scanning results" ruleset. Code scanning is by workflow, not GitHub's CodeQL default setup |
+| `.github/workflows/release.yml` | Manual release (`workflow_dispatch`) — git-cliff (`cliff.toml`) computes the next version + notes from Conventional Commits for `.` (tag `v1.2.3`) or one workspace (tag `apps-sample-api-v1.2.3`), then creates the tag and GitHub release with `GITHUB_TOKEN`. Tags are the version source of truth — nothing is committed back |
 | `.github/workflows/deploy-cr.yml` | Build and push image to container registry |
 | `.github/workflows/deploy-sae.yml` | Deploy a pushed image to an Alibaba Cloud SAE application (Aliyun CLI) |
 | `.github/workflows/deploy-npm.yml` | Publish a package to npm |

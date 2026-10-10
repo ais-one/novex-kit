@@ -61,7 +61,7 @@ Runs automatically on every `git push`:
 |-------|---------|
 | **Workspace tests** | Runs `npm run test --workspace=<ws>` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test` script, touched or not. Unit + integration only — e2e is disabled for now. |
 | **Schema validation tests** | Runs `npm run test:schemas` for `common/schemas` and every `apps/*/schemas` directory (touched or not), if the root script exists. |
-| **Security audit** | Runs `npm audit --omit=dev --audit-level=moderate`; on findings, prompts `y/n` to continue the push. |
+| **Security audit** | Runs `npm run ci:audit`; on findings, prompts `y/n` to continue the push. |
 
 To skip the pre-push hook temporarily:
 ```bash
@@ -192,7 +192,7 @@ Leave **Restrict creations** off — the `Release` workflow creates tags with it
   - Skipped on private repos (they need GitHub Code Security). If you have it, remove the `github.event.repository.visibility == 'public'` condition on the `sast-public-repo-codeql` job (and change the `sast-private-repo-semgrep` condition if you don't want both).
   - The job succeeds even when it finds issues — results go to **Security** → **Code scanning**. To block merges on findings, add a **Require code scanning results** rule (tool: CodeQL) to the ruleset for `main` and ``rel/[0-9]*.[0-9]*``.
 
-This is separate from the `NPM audit` job in the same workflow: Semgrep/CodeQL are static analysis of this repo's own source code, `npm audit` checks for known CVEs in dependencies. Keep both.
+This is separate from `NPM audit` job in the same workflow (checks for known CVEs in dependencies): Semgrep/CodeQL are static analysis of this repo's own source code.
 
 ### Dependabot
 
@@ -237,7 +237,7 @@ When choosing a scope in `czg`:
 
 ## Release Automation
 
-Releases are cut manually by the `Release` workflow ([.github/workflows/release.yml](../.github/workflows/release.yml), `workflow_dispatch`). It uses [git-cliff](https://git-cliff.org) ([cliff.toml](../cliff.toml)) to work out the next version and the release notes from Conventional Commits, then creates the tag and a GitHub release. Tests are not re-run — branch protection already requires PR checks to pass before merge.
+Releases are cut manually by the `Release` workflow [.github/workflows/release.yml](../.github/workflows/release.yml). It uses [git-cliff](https://git-cliff.org) ([cliff.toml](../cliff.toml)) to work out the next version and release notes from Conventional Commits, then creates the tag and a GitHub release. Tests are not re-run — branch protection already requires PR checks to pass before merge.
 
 - **Tags are the source of truth for versions.** Nothing is committed back to the branch (no version bump in `package.json`, no `CHANGELOG.md`), so the workflow needs no branch-protection bypass, GitHub App or PAT — its own `GITHUB_TOKEN` is enough.
 - Run it from a `rel/<major>.<minor>` branch (e.g. `rel/1.0`); any other branch, including `main`, fails fast.
@@ -314,7 +314,7 @@ Once configured:
   - format + lint check (Biome) and commit message check — in [ci-lint.yml](../.github/workflows/ci-lint.yml), on every branch
   - repo-wide schema check, no autofix
   - testing of all workspaces, no autofix
-  - repo-wide package audit (`npm audit`), no autofix
+  - repo-wide package audit (`NPM audit`), no autofix
 3. Only allow merge if all checks pass
 
 ### Lint Workflow
@@ -323,7 +323,7 @@ Once configured:
 
 - **Commit Message Format** — every commit in the PR / push must follow Conventional Commits (`feat|fix|chore`).
 - **Biome Checks** — `biome ci .` on the whole repository.
-- **Lint Workflow YAML** — `prettier --check` on `.github/workflows/*.yml` and `.github/actions/**/*.yml`, then `actionlint` (with shellcheck for `run:` scripts) on `.github/workflows/*.yml`. Drafts in `.github/workflows/todo/` are skipped (GitHub does not run workflows in subfolders). Known false positives are ignored in [.github/actionlint.yaml](../.github/actionlint.yaml). Check locally with `npm run quality:lint`; fix with `npx prettier --write ".github/workflows/*.yml" ".github/actions/**/*.yml"` (prettier is a pinned root devDependency).
+- **Lint Workflow YAML** — `prettier --check` on `.github/workflows/*.yml` and `.github/actions/**/*.yml`, then `actionlint` (with shellcheck for `run:` scripts) on `.github/workflows/*.yml`. Drafts in `.github/workflows/todo/` are skipped (GitHub does not run workflows in subfolders). Known false positives are ignored in [.github/actionlint.yaml](../.github/actionlint.yaml). Check locally with `npm run ci:lint-yml`; fix with `npx prettier --write ".github/workflows/*.yml" ".github/actions/**/*.yml"` (prettier is a pinned root devDependency).
 
 A push to a branch with an open PR triggers both a push and a PR run.
 
@@ -332,7 +332,7 @@ A push to a branch with an open PR triggers both a push and a PR run.
 [ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) is called by `ci-lint.yml` after lint passes, on PRs and pushes to `main` and ``rel/[0-9]*.[0-9]*``:
 
 - **Gitleaks secret scan** — scans the git history for committed secrets.
-- **NPM audit** — `npm audit --omit=dev --audit-level=moderate` against the root lockfile (all workspaces).
+- **NPM audit** — `npm run ci:audit` against the root lockfile (all workspaces).
 - **Dependency vulnerability scan** — `dependency-review-action` blocks PRs that add dependencies with known vulnerabilities (PRs on public repos only; needs the dependency graph enabled).
 - **Security Scan - Semgrep** (private/internal repos) — security scan; on PRs only *new* findings fail the job. The SARIF report is kept as a build artifact.
 - **SAST CodeQL Analysis** (public repos) — security scan; results go to Security → Code scanning (see [Code Scanning](#code-scanning)).

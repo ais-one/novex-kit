@@ -67,7 +67,7 @@ fi
 
 # ── 3. Security audit ────────────────────────────────────────────────────────
 print_info "Running security audit…"
-npm audit --omit=dev --audit-level=high
+npm run ci:audit
 AUDIT_EXIT=$?
 if [ $AUDIT_EXIT -ne 0 ]; then
   print_warning "Security vulnerabilities found."

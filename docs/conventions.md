@@ -2,8 +2,6 @@
 
 This document defines repository-wide coding and runtime standards that apply across the monorepo.
 
-Read this document before making code changes. Use [.github/CONTRIBUTING.md](../.github/CONTRIBUTING.md) for contributor workflow, issue reporting, and pull request rules.
-
 ## Required Tooling
 
 - [.editorconfig](../.editorconfig) is the baseline for whitespace and formatting behavior and must be followed.
