@@ -326,16 +326,16 @@ git push --no-verify
 | `feat/scope/name` | `rel/1.0` | `rel/1.0` via PR | New features |
 | `fix/scope/name` | `rel/1.0` | `rel/1.0` via PR | Bug fixes |
 | `chore/scope/name` | `rel/1.0` | `rel/1.0` via PR | Maintenance |
-| `hotfix/scope/name` | `main` | `main` + `rel/1.0` + `rel/2.0` | Emergency only |
+| `hotfix/scope/name` | the commit shared by every target, usually the production tag (`v1.0.0`) | one PR each into `rel/1.0` and every newer `rel/*` | Emergency only |
 | `tag: v1.0.0` | `rel/1.0` after merge to main | — | Full release tag |
-| `tag: v1.0.1` | `rel/1.0` after hotfix merges in | — | Patch tag only, no merge back to main |
+| `tag: v1.0.1` | `rel/1.0` after hotfix merges in | — | Patch tag, then merge `rel/1.0` into `main` |
 | `rel/2.0` | `main` after `v1.0.0` tag | `main` when ready | Next dev cycle |
 
 **Key rules:**
 - Tags always come from `rel/[0-9]*.[0-9]*`, never directly from `main`
-- `main` only receives merges from `rel/[0-9]*.[0-9]*` or `hotfix/*`
-- Hotfix backport to next release uses `git cherry-pick`, reviewed as a separate PR
-- PRs use squash merge to keep history clean
+- `main` only receives merges from `rel/[0-9]*.[0-9]*` (enforced by `ci-source-branch.yml`) — always as a merge commit, never a squash, since `rel/x.y` is merged into `main` repeatedly
+- Hotfix flow: branch `hotfix/*` from `git merge-base --octopus` of all target `rel/*` branches (usually the production tag) → one PR from that same branch into each target (production `rel/1.0` first → release `v1.0.1` → merge `rel/1.0` into `main`; then newer `rel/*`) — no cherry-picking; keep the branch until every PR is merged (see `docs/git-github.md`)
+- PRs into `rel/x.y` use squash merge to keep history clean
 - PR titles follow Conventional Commits style: `fix(auth): handle expired token`
 
 ## Updating from upstream template
@@ -383,8 +383,9 @@ docker run -p 3000:3000 novex-kit
 
 | Workflow | Purpose |
 |---|---|
-| `.github/workflows/ci-source-branch.yml` | Standalone PR check into `main` — `Allowed Source Branch` fails unless the head branch is `hotfix/*` or `rel/x.y` from this repo (forks rejected). Make it a required check on `main`, since rulesets can't restrict PR source branches |
-| `.github/workflows/ci-lint.yml` | Commit message format, Biome lint/format (whole repo), workflow YAML lint (prettier + actionlint) — every branch, PR and push. The CI entry point: once lint passes, it calls `ci-tests.yml` and `ci-quality-gates.yml` in parallel for PRs into / pushes to `main` and `rel/x.y`. Review of `.github/` changes is gated by `CODEOWNERS` |
+| `.github/workflows/ci-pr-title.yml` | Standalone PR check — `PR Title Format` fails unless the PR title follows Conventional Commits (`feat`/`fix`/`chore`), since PRs are squash-merged and the title becomes the commit git-cliff reads. Runs on `edited` too, so fixing the title re-runs it; make it a required check on `main` and `rel/x.y` |
+| `.github/workflows/ci-source-branch.yml` | Standalone PR check into `main` — `Allowed Source Branch` fails unless the head branch is `rel/x.y` from this repo (forks rejected). Make it a required check on `main`, since rulesets can't restrict PR source branches |
+| `.github/workflows/ci-lint.yml` | Commit message format, Biome lint/format (whole repo), workflow YAML lint (prettier + actionlint) — every branch, PR and push; `Lint Summary` is the single required check. The CI entry point: once lint passes, it calls `ci-tests.yml` and `ci-quality-gates.yml` in parallel for PRs into / pushes to `main` and `rel/x.y`. Review of `.github/` changes is gated by `CODEOWNERS` |
 | `.github/workflows/ci-tests.yml` | Schema, unit and integration tests for every workspace that has the matching script (read-only token). Reusable (`workflow_call`) — called by `ci-lint.yml` after lint passes. **Currently disabled** — every job is gated `if: false` / `if: false && …`; remove the `false` to turn them back on. The e2e job is commented out for now |
 | `.github/workflows/ci-quality-gates.yml` | PR quality gates — Gitleaks, npm audit, dependency review, SAST, test coverage (Codecov), jscpd duplication; reusable (`workflow_call`), called by `ci-lint.yml` after lint passes; `Quality Gates / Quality Gate Summary` is the single required check. SAST is CodeQL (JS/TS, Python, Actions) on public repos and Semgrep on private/internal; dependency review runs on public repos only. CodeQL only blocks merges with a "Require code scanning results" ruleset. Code scanning is by workflow, not GitHub's CodeQL default setup |
 | `.github/workflows/release.yml` | Manual release (`workflow_dispatch`) — git-cliff (`cliff.toml`) computes the next version + notes from Conventional Commits for `.` (tag `v1.2.3`) or one workspace (tag `apps-sample-api-v1.2.3`), then creates the tag and GitHub release with `GITHUB_TOKEN`. Tags are the version source of truth — nothing is committed back |

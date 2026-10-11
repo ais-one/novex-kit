@@ -19,8 +19,17 @@ The folder contents are as follows:
 - End-users can pull in template updates using [Sync Upstream Template](.github/workflows/update-template.yml) workflow.
 - End-users can fork and make PR for requested features, or roll out their own in the `apps` folder.
 - only the `package.json` and `package-lock.json` files outside the `apps` can be modified (Note that a Sync Upstream Template will replace those file with the upstream ones)
-- TBD Setup the repository
-- TBD - git workflow
+- Setup [hooks](docs/git-github.md#hooks-setup-and-usage)
+- Setup your downstream repository
+  - [rulesets](docs/git-github.md#rulesets)
+  - [environment](docs/git-github.md#repository-environment)
+  - [Code Scanning](docs/git-github.md#code-scanning)
+  - [Dependabot](docs/git-github.md#dependabot)
+- Follow the branch naming and workflow
+  - 
+- Commit message [](docs/git-github.md#commit-message)
+- Release Management
+- 
 
 ## Read Me First
 
@@ -31,7 +40,6 @@ End Users: **BEFORE** making **ANY** changes. Read the following:
 - SETUP
   - [git hooks](docs/git-github.md#hooks-setup-and-usage)
   - [template updating](.github/workflows/update-template.yml)
-  - [branching-and-protection](docs/git-github.md#branch-protection-rules)
   - [commit message lint](docs/git-github.md#commit-message)
   - [release automation](docs/git-github.md#release-automation)
   - [secret scanning](https://docs.github.com/en/enterprise-cloud@latest/code-security/concepts/secret-security/about-secret-scanning)

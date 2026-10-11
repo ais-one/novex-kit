@@ -1,0 +1,38 @@
+## PR title lint - the PR title must follow Conventional Commits (feat|fix|chore only).
+## PRs are squash-merged, so the title becomes the commit message on rel/x.y and main that
+## git-cliff reads for versions and release notes; ci-lint.yml only checks the PR's own commits.
+## Separate from ci-lint.yml so a title edit (`edited`) re-runs only this check, not lint/tests/gates.
+## Make "PR Title Format" a required check on main and rel/x.y.
+name: CI PR Title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+concurrency:
+  group: ci-pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    name: PR Title Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title
+        shell: bash
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          PATTERN='^(feat|fix|chore)(\([^)]+\))?!?: .{1,}$'
+          if [[ "$PR_TITLE" =~ $PATTERN ]]; then
+            echo "PR title OK: $PR_TITLE"
+          else
+            echo "::error::Non-conventional PR title: $PR_TITLE"
+            echo "  Expected: type(scope): description"
+            echo "  Types:    feat|fix|chore"
+            echo "  Note:     use chore for docs|style|refactor|perf|test|build|ci|revert changes"
+            echo "  Why:      PRs are squash-merged - the title becomes the commit git-cliff reads"
+            exit 1
+          fi

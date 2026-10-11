@@ -295,13 +295,17 @@ jobs:
         coverage,
         duplication,
       ] # remove `duplication` here if you drop that job
-    # dependency-audit and the two sast-* jobs may be `skipped` (pushes / repo visibility) - only `failure` fails the gate
+    # dependency-audit and the two sast-* jobs may be `skipped` (pushes / repo visibility) - `skipped` passes;
+    # `failure` and `cancelled` fail the gate
     if: always()
     steps:
       - name: Check all jobs succeeded
+        env:
+          HAS_FAILURE: ${{ contains(needs.*.result, 'failure') }}
+          HAS_CANCELLED: ${{ contains(needs.*.result, 'cancelled') }}
         run: |
-          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
-            echo "One or more quality gate jobs failed."
+          if [[ "$HAS_FAILURE" == "true" || "$HAS_CANCELLED" == "true" ]]; then
+            echo "::error::One or more quality gate jobs failed or were cancelled."
             exit 1
           fi
           echo "All quality gates passed."
