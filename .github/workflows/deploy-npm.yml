@@ -4,7 +4,7 @@
 #   - git repo branch / tag
 #   - project to publish (currently only jslib)
 
-name: DEPLOY - Publish Package to npmjs
+name: 1 DEPLOY - Publish Package to npmjs
 
 # Controls when the action will run. Workflow runs when manually triggered using the UI
 # or API.

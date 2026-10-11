@@ -1,4 +1,4 @@
-name: Sync Upstream Template
+name: 0 Sync Upstream Template
 # Pulls the latest changes from the upstream template repository and opens a PR
 # with the diff, excluding app-specific folders that should never be overwritten.
 #

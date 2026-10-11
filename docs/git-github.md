@@ -80,16 +80,26 @@ To prevent merges or pushes under certain conditions.
 3. Enable the following branch rules
   - Restrict deletions
   - **Require a pull request before merging**
-    - Require at least 1 approval
+    - Require at least 1 approval (0 if sole maintainer)
+    - Require review from Code Owners (>1 maintainter)
     - Dismiss stale approvals on new commits
-    - **Require review from Code Owners** Changes under `.github/` need approval from the owners in [CODEOWNERS](../.github/CODEOWNERS).
-    - **Require conversation resolution before merging**
-    - Methods Allowed: Squash
+    - Require conversation resolution before merging
+    - Methods Allowed: Select ALL
   - **Require status checks to pass**
-    - Require branches to be up to date before merging
-    - `Lint Summary` (the single gate job of `ci-lint.yml` — it fails if any lint job fails or is cancelled, so don't require `Commit Message Format`, `Biome Checks` or `Lint Workflow YAML` individually)
-    - `Quality Gates / Quality Gate Summary`, `Tests / Test Summary` (the single gate job of `ci-tests.yml` — it fails if any test job fails or is cancelled, so don't require the individual test jobs; the tests are **currently disabled**, and skipped jobs count as passing, so it doesn't block anything until they're re-enabled).
+    - **DISABLE** Require branches to be up to date before merging — see [Why "up to date" is off](#why-up-to-date-is-off)
+    - **No required checks here.** `ci.yml` (and the Tests / Quality it calls) doesn't run on PRs into `main`, and a workflow skipped by a branch filter never reports — a check required here would leave every PR into `main` waiting forever. The CI checks are required in `protected-branches-release` instead; `main` only requires `Allowed Source Branch` (in `protected-branches-main`).
   - Block force pushes
+
+##### Why "up to date" is off
+
+With it on, a PR whose base has moved on ("This branch is out-of-date with the base branch") can't merge until the base is merged into the head branch (**Update branch**). That conflicts with this repo's flow:
+
+- **`rel/x.y` → `main` would block every release after the first.** Merging `rel/1.0` into `main` creates a merge commit that exists only on `main`, so the next `rel/1.0` → `main` PR is out of date — and **Update branch** would have to push `main` into `rel/1.0`, which the ruleset forbids (PR-only).
+- **It breaks the single-branch hotfix flow.** A hotfix branch starts at the production tag, so its PRs into newer `rel/*` branches are almost always out of date. Updating one merges that whole `rel` branch into the *shared* hotfix branch, and the PR into the production line would then ship it — see [Hotfix & Backport Flow](#hotfix--backport-flow).
+
+Little is lost: `pull_request` checks already run against a test merge of the head and the base as it was when the run started. What's dropped is a forced re-run when the base moved after that; on a small team, base-branch CI catches the rare pair of PRs that pass alone but break together. If you need that guarantee later, use GitHub's **merge queue** instead (organization-owned repos; workflows need an `on: merge_group:` trigger) — it tests the merged result without touching the head branch.
+
+**Sole maintainer:** GitHub never lets a PR's author approve it, so set required approvals to `0` and turn off **Require review from Code Owners** (if you're the only code owner) — every other rule and required check stays enforced. Switch back to 1 approval + Code Owners once there's a second reviewer. Don't add yourself to the bypass list instead: bypass skips *every* rule in the ruleset, including required checks.
 
 
 #### Ruleset - protected-branches-main
@@ -117,9 +127,9 @@ To prevent merges or pushes under certain conditions.
     - Methods Allowed: Squash
   - Require status checks to pass
     - `PR Title Format` (from `ci-pr-title.yml`)
-    - `Lint Summary`
-    - `Quality Gates / Quality Gate Summary`
-    - `Tests / Test Summary`
+    - `Lint / Lint Summary` (the single gate job of `ci-lint.yml`)
+    - `Quality / Quality Summary` (the single gate job of `ci-quality.yml`)
+    - `Tests / Test Summary` (the single gate job of `ci-tests.yml`)
   - Require code scanning results
     - CodeQL
 
@@ -131,7 +141,7 @@ Create a tag ruleset in **Settings** → **Ruleset** → **Rulesets** → **New 
 
 Target tags matching the following patterns:
 
-Both tag formats are created by the `Release` workflow — see [Release Automation](#release-automation).
+Both tag formats are created by the Release workflow (`release.yml`) — see [Release Automation](#release-automation).
 
 1. Enforcement status = Active
 2. Match the following patterns:
@@ -142,7 +152,7 @@ Both tag formats are created by the `Release` workflow — see [Release Automati
     - *-v[0-9]*.[0-9]*.[0-9]*
     - apps-sample-api-v1.2.3
 3. Enable the following tag rules
-  - Leave **Restrict creations** off — the `Release` workflow creates tags with its own `GITHUB_TOKEN`.
+  - Leave **Restrict creations** off — the Release workflow (`release.yml`) creates tags with its own `GITHUB_TOKEN`.
   - Restrict updates -  A pushed tag can't be moved to another commit — release a new patch version instead. |
   - Restrict deletions
   - Block force pushes
@@ -166,11 +176,11 @@ Both tag formats are created by the `Release` workflow — see [Release Automati
 - Enable Dependency graph, Dependabot alerts and Secret scanning (also turn on push protection).
 - Leave CodeQL **Default setup** off — code scanning is done by workflow (GitHub rejects workflow CodeQL uploads while default setup is on).
 
-**Workflow ([ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml))**
-- **Semgrep** (`sast-private-repo-semgrep`, private/internal repos only) — static analysis on PRs and pushes to `main` and ``rel/[0-9]*.[0-9]*``. Fails the job on findings, so it blocks `Quality Gate Summary`. The SARIF report is kept as a build artifact, not uploaded to the Code scanning tab.
+**Workflow ([ci-quality.yml](../.github/workflows/ci-quality.yml))**
+- **Semgrep** (`sast-private-repo-semgrep`, private/internal repos only) — static analysis on PRs into ``rel/[0-9]*.[0-9]*``. Fails the job on findings, so it blocks `Quality Summary`. The SARIF report is kept as a build artifact, not uploaded to the Code scanning tab.
 - **CodeQL** (`sast-public-repo-codeql`, public repos only) — scans `javascript-typescript`, `python` and `actions` (workflow files) with the `security-extended` query suite, `build-mode: none`.
   - Skipped on private repos (they need GitHub Code Security). If you have it, remove the `github.event.repository.visibility == 'public'` condition on the `sast-public-repo-codeql` job (and change the `sast-private-repo-semgrep` condition if you don't want both).
-  - The job succeeds even when it finds issues — results go to **Security** → **Code scanning**. To block merges on findings, add a **Require code scanning results** rule (tool: CodeQL) to the ruleset for `main` and ``rel/[0-9]*.[0-9]*``.
+  - The job succeeds even when it finds issues — results go to **Security** → **Code scanning**. To block merges on findings, add a **Require code scanning results** rule (tool: CodeQL) to the ``rel/[0-9]*.[0-9]*`` ruleset — it also needs CodeQL results on the target branch itself, which this setup doesn't produce yet (CodeQL only runs on PRs), so the rule waits forever until that's fixed.
 
 This is separate from `NPM audit` job in the same workflow (checks for known CVEs in dependencies): Semgrep/CodeQL are static analysis of this repo's own source code.
 
@@ -183,7 +193,7 @@ Version-update PRs are already configured in [.github/dependabot.yml](../.github
 
 Both run weekly and need no workflow file — GitHub schedules them itself.
 
-Separately, enable **Dependabot alerts** via **Settings** → **Advanced Security** → **Dependabot alerts** — this flags known CVEs in dependencies as they're published, complementing (not replacing) the `NPM audit` job in `ci-quality-gates.yml`.
+Separately, enable **Dependabot alerts** via **Settings** → **Advanced Security** → **Dependabot alerts** — this flags known CVEs in dependencies as they're published, complementing (not replacing) the `NPM audit` job in `ci-quality.yml`.
 
 ---
 
@@ -257,7 +267,8 @@ Branch from the shared base, not from `rel/1.0` or the latest patch tag: anythin
 
 Caveats:
 - **Keep the hotfix branch until every PR is merged.** Deleting a branch closes all open PRs from it — don't click **Delete branch** after the first merge, and if **Settings → General → Automatically delete head branches** is on, use **Restore branch** on the merged PR, then reopen the others.
-- **Conflicts in a newer line** (the code changed there): resolve with GitHub's conflict editor if simple; otherwise branch `hotfix/payment-crash-rel-2.0` from `rel/2.0`, re-apply the fix there, and PR that instead.
+- **Never click "Update branch" or use GitHub's conflict editor on the shared hotfix branch.** Both merge the PR's target (e.g. all of `rel/1.1`) into the hotfix branch, so every other PR from it — including the one into the production line — would pick up those changes. "Out of date" on these PRs is expected and harmless while "Require branches to be up to date" is off (see [Why "up to date" is off](#why-up-to-date-is-off)).
+- **Conflicts in a newer line** (the code changed there): close that one PR, branch `hotfix/payment-crash-rel-2.0` from `rel/2.0`, re-apply the fix there, and PR that instead — conflicts are then resolved on a branch only that target uses.
 - **Squash merge means each target gets its own commit** for the same fix — expected. When `rel/1.1` is later merged into `main`, git sees the identical change on both sides and normally merges it cleanly.
 
 ---
@@ -292,7 +303,7 @@ When choosing a scope in `czg`:
 
 ## Release Management
 
-Releases are cut manually by the `Release` workflow [.github/workflows/release.yml](../.github/workflows/release.yml). It uses [git-cliff](https://git-cliff.org) ([cliff.toml](../cliff.toml)) to work out the next version and release notes from Conventional Commits, then creates the tag and a GitHub release. Tests are not re-run — branch protection already requires PR checks to pass before merge.
+Releases are cut manually by the Release workflow [.github/workflows/release.yml](../.github/workflows/release.yml). It uses [git-cliff](https://git-cliff.org) ([cliff.toml](../cliff.toml)) to work out the next version and release notes from Conventional Commits, then creates the tag and a GitHub release. Tests are not re-run — branch protection already requires PR checks to pass before merge.
 
 - **Tags are the source of truth for versions.** Nothing is committed back to the branch (no version bump in `package.json`, no `CHANGELOG.md`), so the workflow needs no branch-protection bypass, GitHub App or PAT — its own `GITHUB_TOKEN` is enough.
 - Run it from a `rel/<major>.<minor>` branch (e.g. `rel/1.0`); any other branch, including `main`, fails fast.
@@ -348,11 +359,11 @@ This keeps the commit history git-cliff reads clean and matches the contributor 
 
 Please read the following scripts for information on the CI workflows
 
-1. Source branch workflow [ci-source-branch.yml](../.github/workflows/ci-source-branch.yml) — only `rel/x.y` may merge into `main` (standalone, not called from `ci-lint.yml`)
+1. Source branch workflow [ci-source-branch.yml](../.github/workflows/ci-source-branch.yml) — only `rel/x.y` may merge into `main` (standalone, not called from `ci.yml`)
 2. PR title workflow [ci-pr-title.yml](../.github/workflows/ci-pr-title.yml) — PR title must follow Conventional Commits, since it becomes the squash commit message (standalone, so a title edit re-runs only this check)
-3. Lint workflow [ci-lint.yml](../.github/workflows/ci-lint.yml) — commit messages, Biome, workflow YAML
+3. CI pipeline [ci.yml](../.github/workflows/ci.yml) — the entry point: calls [ci-lint.yml](../.github/workflows/ci-lint.yml) (commit messages, Biome, workflow YAML), then Tests and Quality gates
 4. Tests workflow [ci-tests.yml](../.github/workflows/ci-tests.yml) — schema, unit, integration, e2e (**currently disabled**: every job is gated `if: false && …`)
-5. Quality gates workflow [ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) — security scans, coverage, duplication
+5. Quality gates workflow [ci-quality.yml](../.github/workflows/ci-quality.yml) — security scans, coverage, duplication
 
 Tests and Quality gates workflow depend on Lint to pass to run.
 
@@ -362,30 +373,34 @@ The configured branch protection rules apply uniformly across day-to-day work (`
 
 ### CI Workflow
 
-1. PR submitted to main or release branches
+1. PR submitted to a release branch (`rel/x.y`)
 2. CI runs on PR submitted
-  - format + lint check (Biome) and commit message check — in [ci-lint.yml](../.github/workflows/ci-lint.yml), on every branch
+  - format + lint check (Biome) and commit message check — in [ci-lint.yml](../.github/workflows/ci-lint.yml), called from [ci.yml](../.github/workflows/ci.yml) on every branch
   - repo-wide schema check, no autofix
   - testing of all workspaces, no autofix
   - repo-wide package audit (`NPM audit`), no autofix
 3. Only allow merge if all checks pass and approvals are met
 
+PRs into `main` skip this CI: only `rel/x.y` may merge into `main` (`Allowed Source Branch`), and everything on `rel/x.y` already passed these checks on its own PR. Trade-offs accepted: the `rel` → `main` merge result isn't re-tested (it only differs from `rel/x.y` by patch merges already applied there), and `npm audit` doesn't re-run for CVEs published since the last `rel` PR (Dependabot alerts still flag those).
+
 > **Note:** tests (unit, integration) run in every workspace that has the matching npm script (`npm run <script> --workspaces --if-present`); others are skipped. Integration tests run on `pull_request` only, not on push. The e2e job is commented out for now.
 
-### Lint Workflow
+### Lint Checks
 
-[ci-lint.yml](../.github/workflows/ci-lint.yml) runs on PRs and pushes on **every** branch, with no change-scope detection:
+[ci.yml](../.github/workflows/ci.yml) runs on PRs and pushes on every branch **except `main`** (and pushes to `rel/x.y`), with no change-scope detection. It owns the triggers and concurrency; the lint jobs themselves live in the reusable [ci-lint.yml](../.github/workflows/ci-lint.yml) (`on: workflow_call`), called as job `lint` (name `Lint`) — so every check below is reported as `Lint / <job name>`:
 
 - **Commit Message Format** — every commit in the PR / push must follow Conventional Commits (`feat|fix|chore`).
 - **Biome Checks** — `biome ci .` on the whole repository.
 - **Lint Workflow YAML** — `prettier --check` on `.github/workflows/*.yml` and `.github/actions/**/*.yml`, then `actionlint` (with shellcheck for `run:` scripts) on `.github/workflows/*.yml`. Drafts in `.github/workflows/todo/` are skipped (GitHub does not run workflows in subfolders). Known false positives are ignored in [.github/actionlint.yaml](../.github/actionlint.yaml). Check locally with `npm run ci:lint-yml`; fix with `npx prettier --write ".github/workflows/*.yml" ".github/actions/**/*.yml"` (prettier is a pinned root devDependency).
-- **Lint Summary** — the single required check for lint: fails if any job above fails or is cancelled. Add new lint jobs to its `needs:`.
+- **Lint Summary** (`Lint / Lint Summary`) — the single required check for lint: fails if any job above fails or is cancelled. Add new lint jobs to `ci-lint.yml` and to its `needs:`.
+
+Renaming the `lint` job's `name:` in `ci.yml` changes the prefix of every lint check — update the `protected-branches-release` ruleset to match, or PRs wait on a check name that never reports.
 
 A push to a branch with an open PR triggers both a push and a PR run.
 
-### Quality Gates Workflow
+### Quality Workflow
 
-[ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) is called by `ci-lint.yml` after lint passes, on PRs and pushes to `main` and ``rel/[0-9]*.[0-9]*``:
+[ci-quality.yml](../.github/workflows/ci-quality.yml) is called by `ci.yml` after lint passes, on PRs into ``rel/[0-9]*.[0-9]*`` only:
 
 - **Gitleaks secret scan** — scans the git history for committed secrets.
 - **NPM audit** — `npm run ci:audit` against the root lockfile (all workspaces).
@@ -401,5 +416,5 @@ Setup:
 2. Copy the repository upload token and add it as Actions secret `CODECOV_TOKEN` (Settings → Secrets and variables → Actions). Optional — without it the Codecov upload is skipped (unit tests still run); with it, an upload error fails the job (`fail_ci_if_error: true`).
 3. If the repository is owned by a GitHub **organization**, get a free license key from [gitleaks.io](https://gitleaks.io/) and add it as Actions secret `GITLEAKS_LICENSE`. Every Gitleaks step is gated on this secret, so **without it the scan is skipped on any repo** — personal-account repos don't need a real license, but must still set the secret (any value) to enable the scan.
 4. Enable the **Dependency graph** (Settings → Advanced Security) — `dependency-review-action` needs it. On private repos the job is skipped (it needs GitHub Code Security); if you have it, remove the visibility condition on the `dependency-audit` job.
-5. In the branch protection rules / ruleset for `main` and ``rel/[0-9]*.[0-9]*``, add `Quality Gates / Quality Gate Summary` as a required status check — it fails if any gate job fails, so it is the only check you need to require from this workflow.
+5. In the ``rel/[0-9]*.[0-9]*`` ruleset (not the one covering `main` — it doesn't run there), add `Quality / Quality Summary` as a required status check — it fails if any gate job fails, so it is the only check you need to require from this workflow.
 6. Public repos: in the same ruleset, add a **Require code scanning results** rule for CodeQL — the `sast-public-repo-codeql` job itself does not fail on findings, so without this rule CodeQL is report-only.

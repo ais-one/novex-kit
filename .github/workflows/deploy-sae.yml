@@ -18,7 +18,7 @@
 # - tag_ci
 # - sae_app_id
 # - timeout_s
-name: DEPLOY - Alibaba Cloud SAE
+name: 1 DEPLOY - Alibaba Cloud SAE
 
 on:
   workflow_dispatch:

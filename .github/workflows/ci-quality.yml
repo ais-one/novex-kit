@@ -1,4 +1,4 @@
-# .github/workflows/ci-quality-gates.yml
+# .github/workflows/ci-quality.yml
 #
 # Wires together 7 quality/security checks, summarised by one required PR status check:
 #   1. Gitleaks          - secret scanning
@@ -11,16 +11,16 @@
 #   5. jscpd             - copy-paste/duplication detection (OPTIONAL - see toggle below)
 #
 # To leave out jscpd entirely: delete the `duplication` job below, and remove
-# it from the `needs:` list on `quality-gate-summary`. Alternatively, keep it
+# it from the `needs:` list on `quality-summary`. Alternatively, keep it
 # but make it non-blocking by setting `continue-on-error: true` on the job
 # (see commented option inline).
 #
 # SOC2 security jobs are: secret-scan, npm-audit, dependency-audit, sast-private-repo-semgrep, sast-public-repo-codeql.
 
-# Called by ci-lint.yml after lint passes (PRs into / pushes to main and rel/x.y) -
+# Called by ci.yml after lint passes (PRs into rel/x.y only) -
 # no triggers of its own. Concurrency is handled by the caller.
 
-name: CI Quality Gates
+name: CI Quality
 
 on:
   workflow_call:
@@ -89,7 +89,7 @@ jobs:
 
   # ── SOC2 - 3. SAST Semgrep CE - private/internal repos only
   # Public repos use CodeQL (3B) instead, which is free there. Semgrep fails
-  # the job on findings (--error), so it blocks quality-gate-summary.
+  # the job on findings (--error), so it blocks quality-summary.
   # Runs in the official Semgrep container, so no license or login is needed.
   # Results are NOT uploaded to the GitHub code scanning tab (that needs
   # GitHub Code Security on private repos); the SARIF report is kept as a
@@ -154,7 +154,7 @@ jobs:
   # ── SOC2 - 3B. CodeQL - public repos only
   # Code scanning is free on public repos; private repos need GitHub Code
   # Security, so the job is skipped there (a skipped job does not fail
-  # quality-gate-summary). If you have Code Security, drop the visibility check.
+  # quality-summary). If you have Code Security, drop the visibility check.
   # Results appear under Security > Code scanning. Do NOT also enable CodeQL
   # "default setup" in repo settings - GitHub rejects workflow uploads while
   # default setup is on.
@@ -283,8 +283,8 @@ jobs:
   # ---------------------------------------------------------------------
   # Summary gate - use this single job as your one required branch-protection check
   # ---------------------------------------------------------------------
-  quality-gate-summary:
-    name: Quality Gate Summary
+  quality-summary:
+    name: Quality Summary
     runs-on: ubuntu-latest
     needs: [
         secret-scan,
