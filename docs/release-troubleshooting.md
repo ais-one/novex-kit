@@ -1,6 +1,6 @@
 # Release Troubleshooting
 
-Use this guide when the manual `Release` workflow does not behave as expected.
+Use this guide when the manual Release workflow (`release.yml`) does not behave as expected.
 
 - Workflow: [../.github/workflows/release.yml](../.github/workflows/release.yml)
 - git-cliff config: [../cliff.toml](../cliff.toml)

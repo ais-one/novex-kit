@@ -1,5 +1,5 @@
 ## Test workflow - schema, unit and integration tests for every workspace that has the matching script.
-## Called by ci-lint.yml after lint passes (PRs into / pushes to main and rel/x.y) - no triggers of its own.
+## Called by ci.yml after lint passes (PRs into rel/x.y only) - no triggers of its own.
 name: CI Tests
 
 on:

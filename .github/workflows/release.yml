@@ -8,7 +8,7 @@
 ##   workspace "."               -> v1.2.3                  (template core, all commits)
 ##   workspace "apps/sample-api" -> apps-sample-api-v1.2.3  (only commits touching that path)
 ## A component's first release uses the version in its package.json as-is.
-name: Release
+name: 2 Release
 
 on:
   workflow_dispatch:

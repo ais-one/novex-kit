@@ -66,20 +66,7 @@ else
 fi
 
 # ── 3. Security audit ────────────────────────────────────────────────────────
-print_info "Running security audit…"
-npm run ci:audit
-AUDIT_EXIT=$?
-if [ $AUDIT_EXIT -ne 0 ]; then
-  print_warning "Security vulnerabilities found."
-  printf "Continue push anyway? (y/n) "
-  read -r REPLY
-  case "$REPLY" in
-    [Yy]*) print_info "Continuing push despite vulnerabilities." ;;
-    *)     print_error "Push aborted. Fix vulnerabilities or use 'git push --no-verify' to bypass."; exit 1 ;;
-  esac
-else
-  print_success "No security vulnerabilities found."
-fi
+# Run This In CI only
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 print_success "All pre-push checks passed. Proceeding with push."

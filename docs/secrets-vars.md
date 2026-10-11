@@ -13,10 +13,10 @@
 |CR_PASSWORD|deploy-cr||
 |NPM_AUTH_TOKEN|deploy-npm||
 |SYNC_TOKEN|update-template||
-|CODECOV_TOKEN|ci-quality-gates|optional - if not set, the Codecov upload is skipped; unit tests still run|
-|GITLEAKS_LICENSE|ci-quality-gates|optional - if not set, the Gitleaks secret scan is skipped; Gitleaks itself requires a license for repos owned by a GitHub organization|
-|GITHUB_TOKEN|ci-quality-gates,deploy-bucket,release|provided automatically by GitHub|
-|SEMGREP_APP_TOKEN|ci-quality-gates|optional - only for the commented-out paid Semgrep step; not needed by default|
+|CODECOV_TOKEN|ci-quality|optional - if not set, the Codecov upload is skipped; unit tests still run|
+|GITLEAKS_LICENSE|ci-quality|optional - if not set, the Gitleaks secret scan is skipped; Gitleaks itself requires a license for repos owned by a GitHub organization|
+|GITHUB_TOKEN|ci-quality,deploy-bucket,release|provided automatically by GitHub|
+|SEMGREP_APP_TOKEN|ci-quality|optional - only for the commented-out paid Semgrep step; not needed by default|
 
 ## Repository Workflow Variables
 
