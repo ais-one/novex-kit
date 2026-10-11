@@ -71,7 +71,7 @@ The exception is root devDependencies whose **output** is what CI checks — the
 | Package | Why exact |
 |---|---|
 | `@biomejs/biome` | Formatter/linter — a patch or minor release can change formatting or add/adjust lint rules, so `biome ci .` (CI and pre-commit) can start failing on unchanged code. Its version is also repeated in the `$schema` URL in `biome.json`, which must match. |
-| `prettier` | Formats `.github/**/*.yml`; checked by `npm run quality:lint` in CI. Prettier documents that even patch releases may change formatting and recommends pinning exact. |
+| `prettier` | Formats `.github/**/*.yml`; checked by `npm run ci:lint-yml` in CI. Prettier documents that even patch releases may change formatting and recommends pinning exact. |
 | `jscpd` | Duplication gate in `ci-quality-gates.yml` — a detection change in a new release can move the duplication percentage and flip the gate on unchanged code. |
 
 Bump these deliberately, one at a time: update the version (and, for Biome, the `biome.json` `$schema` URL), then run `npm run check:write` / `npx prettier --write ".github/workflows/*.yml" ".github/actions/**/*.yml"` and commit the reformat together with the bump.

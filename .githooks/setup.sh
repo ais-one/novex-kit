@@ -1,11 +1,11 @@
 #!/bin/sh
 # .githooks/setup.sh
 # Installs the project's native Git hooks by pointing git's hooksPath at
-# the .githooks/ directory.  Run this once after cloning the repository.
+# the .githooks/ directory.  Runs automatically on `npm install` (root
+# package.json "prepare" script) - there is no separate manual step.
 #
-# Usage:
-#   chmod +x .githooks/setup.sh
-#   ./.githooks/setup.sh
+# Re-run without reinstalling (e.g. after `npm ci --ignore-scripts`):
+#   npm run prepare
 
 HOOK_NAME=setup
 # shellcheck source=.githooks/_common.sh
@@ -32,8 +32,10 @@ chmod +x "$HOOKS_DIR/commit-msg"  2>/dev/null && print_success "  commit-msg  �
 chmod +x "$HOOKS_DIR/pre-push"    2>/dev/null && print_success "  pre-push    ✓"
 
 # ── Configure git to use .githooks/ ──────────────────────────────────────────
+# Clear first: a plain set fails if core.hooksPath already has multiple values.
 print_info "Configuring git hooksPath → .githooks"
-git config core.hooksPath .githooks
+git config --local --unset-all core.hooksPath 2>/dev/null
+git config --local core.hooksPath .githooks
 
 if [ $? -eq 0 ]; then
   print_success "Git hooks installed successfully."

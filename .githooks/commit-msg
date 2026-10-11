@@ -3,7 +3,7 @@
 # Validates the commit message against the Conventional Commits spec.
 # Tip: use `npx czg` to compose a properly-formatted message interactively.
 #
-# Install: run .githooks/setup.sh (or: git config core.hooksPath .githooks)
+# Install: runs automatically on `npm install` (re-run: npm run prepare)
 # Skip:    git commit --no-verify
 
 HOOK_NAME=commit-msg

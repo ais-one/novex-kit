@@ -9,44 +9,27 @@ This document is for
 
 ## Design Features
 
-- Fully ES Modules - JS Standards Compliant
-- Named exports preferred (default exports for class, config, or a plugin)
-- Use Native as much as viable (test runners, datetime, fetch / xhr, npm, git hooks)
-- Option to use Javascript or Typescript for backend.
-- For Typescript
-  - avoid compilation, Use NodeJS native typescript
-  - use `tsc --noEmit` for type checking and `zod` for runtime validation
+Coding, typing, logging, config and commit rules live in [conventions.md](conventions.md) — only design rationale and preferences not yet policy are kept here.
+
+- Typescript preferences (on top of [conventions.md](conventions.md))
   - avoid enums, instead... use const object pattern / string literal unions
   - avoid legacy decorators
   - avoid using <any>, use <unknown>
-- npm workspaces (microservices & shared libraries)
+- npm workspaces naming (microservices & shared libraries) — see the repository structure in [CLAUDE.md](../CLAUDE.md#repository-structure)
   - apps : microservices or applications (frontend or backend)
-    - shared-<tenant1>
+    - <tenant1>-common
     - <tenant1>-<app1>
     - <tenant1>-<app2>
     ...
-    - shared-<tenantN>
+    - <tenantN>-common
     - <tenantN>-<app1>
     - <tenantN>-<app2>
     - default port 3000
-  - common/shared code and schemas
-  - scripts
-- use zod for validation and openapi generation...
 - automation
-  - commit messages - czg
-  - changelog - git-cliff (release notes on the GitHub release)
-  - release - manual Release workflow (release.yml)
   - code review AI - TODO
   - api documentation
   - unit and integration test generation
-- global logger
-  - no console log for backend
-  - no logs in frontend production, errors sent to Sentry
-- use biome for formatting and linting
-  - biome vs prettier+eslint
-- testing
-  - use native node test runner
-  - playwright for e2e testing
+- biome chosen over prettier+eslint
 - Support
   - postgres as primary RDBMS, mysql as secondary.
   - redis or keyv
@@ -54,12 +37,10 @@ This document is for
 - Authorization [strategy](design/authz.md)
   - RBAC, FGA, and legacy roles fallback
   - multi-tenant, scopes
-- JSDoc for typing and IDE autocomplete — `.js` files only (see [conventions.md](conventions.md))
 
 ## Roadmap
 
 - **IN PROGRESS**
-  - JSON in env, refactor to use something else
   - fix typescript noExplicit any
   - Clean up auth and documentations
 - **TO TEST** 
@@ -69,31 +50,23 @@ This document is for
 - **BACKLOG**
   - safeJSON
   - remove barrel index.js files...
+    - common/compiled/vue/index.js
+    - common/compiled/node/services/index.ts.
   - re-enable E2E tests — uncomment the `e2e-tests` job in `.github/workflows/ci-tests.yml` and add a `test:e2e` step to `.githooks/pre-push` (both marked `TODO`); needs servers/ports handled in CI (e.g. `sample-api` / `sample-common` start on 8080)
 - **REVIEW**
   - visualize package sizes with rollup-plugin-visualizer
   - revisit biome when vueJS support is available
+  - revisit biome when it is able to lint YAML
   - S3/OSS
 
 ### To Consider
 
-1. Use namespace, Symbol with globalThis
-
-```js
-// Check if namespace exists, if not create it.
-globalThis.__myApp = globalThis.__myApp || {};
-// Define a unique symbol under a namespace
-const _logger = Symbol('logger');
-// Attach logger to global namespace using symbol as key
-globalThis.__myApp[_logger] = myLogger;
-```
-
-2. Use [testcontainers](https://testcontainers.com/guides/getting-started-with-testcontainers-for-nodejs/)
+1. Use [testcontainers](https://testcontainers.com/guides/getting-started-with-testcontainers-for-nodejs/)
 
 - Runs many services for test purposes
 - Data is not persisted
 
-3. linting auto fix
+2. linting auto fix
 
 ```bash
 # safe - useArrowFunction, useConst
@@ -101,15 +74,3 @@ globalThis.__myApp[_logger] = myLogger;
 npx biome <format/lint/check> common apps scripts
 npx biome lint common apps scripts --only=useTemplate --write --unsafe
 ```
-
----
-
-<!--
-on:
-  push:
-    branches: [TODO]
-    paths:
-      - 'services/auth-service/**'
-      - 'shared/**'
-      - '.github/workflows/deploy-auth-service.yml'
--->

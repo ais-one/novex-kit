@@ -5,11 +5,7 @@
 A monorepo template for building full-stack JavaScript applications with Node.js, Express, and Vue. It combines backend and frontend apps in `apps/`, and shared reusable code in `common/`. Designed as an updateable template — custom code is isolated so upstream template updates can be applied cleanly.
 
 - Node.js 24+ required, npm 11+ required
-- Fully ES Modules — no CommonJS
-- In `.ts` files: use TypeScript type annotations — do **not** use JSDoc for types
-  - used mainly in `apps/*` (with ts), `common/compiled/node` and `scripts/*`
-- In `.js` files: use JSDoc (`/** @type */`, `/** @param */`, etc.) for type hints and IDE autocomplete
-  - used mainly in `apps/*` (with js) and `common/vanilla/*`
+- Fully ES Modules, TS/JSDoc typing rules — see [Code conventions](#code-conventions)
 - TypeScript runs natively via Node 24 (`node file.ts`) — no build step needed for scripts
 
 ## Repository structure
@@ -71,10 +67,8 @@ A file-specific `exclude` still lives on the group's `tsconfig.json` where neede
 # 1. install all workspace dependencies
 npm i
 
-# 2. configure git hooks (also runs automatically via npm prepare)
-chmod +x .githooks/setup.sh && ./.githooks/setup.sh
-# or manually:
-# git config core.hooksPath .githooks
+# 2. git hooks are configured automatically by step 1 (npm prepare → .githooks/setup.sh)
+#    re-run without reinstalling: npm run prepare
 
 # 3. run the sample backend
 cd apps/sample-api && npm run start
@@ -89,7 +83,10 @@ cd apps/sample-vue-minimal && npm run dev
 # linting and formatting (biome)
 npm run check          # biome check, no writes — safe to run in CI
 npm run check:write    # biome check --write (auto-fix lint + format)
-npm run ci             # biome ci (used in CI/CD)
+npm run ci:biome       # biome ci (used in CI/CD)
+
+# security
+npm run ci:audit          # audit npm packages based on security level
 
 # testing
 npm run test:workspaces     # run tests in all workspaces
@@ -244,26 +241,11 @@ To create a new app:
 
 ## Code conventions
 
-Read `docs/conventions.md` before making code changes.
+`docs/conventions.md` is the single source of truth for coding, typing, export, config/secrets, logging and commit standards — edit it there, not here. It is imported below so it is always in context:
 
-- **Formatter and linter**: `biome` — `npm run check` reports only (no writes); `npm run check:write` auto-fixes
-- **No `console.*`** in backend — import and use `@common/node/logger` as global `logger`
-- **No `console.*`** in frontend production — errors go to Sentry
-- **Config loading**: use `@common/node/config` for app config
-- **`.env.json`**: non-sensitive structured settings, exposed via `globalThis.__config`
-- **`.env`**: sensitive values loaded into `process.env` (development only — `.env.local` then `.env`; in other environments inject real env vars)
-- **Exports**: named exports preferred; default exports only for a single class, config, or plugin
-- **No barrel `index.js` files**
-- **No default and named exports in the same file**
-- **Use native**: test runner, datetime, fetch, npm, git hooks — avoid heavy libraries where possible
-- **Validation**: use `zod` for all input validation and OpenAPI schema generation
-- **Globals pattern** (when needed):
-  ```js
-  globalThis.__myApp = globalThis.__myApp || {}
-  const _key = Symbol('key')
-  globalThis.__myApp[_key] = value
-  ```
-- Mark incomplete or planned work with `TODO`
+@docs/conventions.md
+
+Lint/format with `biome`: `npm run check` reports only (no writes); `npm run check:write` auto-fixes.
 
 ## Clean architecture (controller → service → repository)
 
@@ -306,20 +288,9 @@ Full mechanism, field shapes, the request-ID propagation rules, and the per-app 
 
 ## Commit conventions
 
-Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/).
+Rules (Conventional Commits, `feat`/`fix`/`chore` only, `!` for breaking changes) are in `docs/conventions.md`, imported under [Code conventions](#code-conventions).
 
-Only three types are allowed:
-
-| Type | Use for |
-|---|---|
-| `feat` | new behaviour the user/consumer sees |
-| `fix` | corrects broken behaviour |
-| `chore` | everything else — build, ci, docs, style, refactor, perf, test, revert |
-
-Format: `type(scope): short description`
-Breaking changes: add `!` before the colon — `feat(auth)!: replace token format`
-
-Use `czg` for interactive or AI-assisted commit messages:
+Use `czg` for interactive or AI-assisted commit messages (types and scopes come from `cz.config.js`):
 ```bash
 npx czg          # interactive prompt
 npx czg --ai     # AI-generated message (requires API key)
@@ -327,7 +298,7 @@ npx czg --ai     # AI-generated message (requires API key)
 
 ## Git hooks
 
-Hooks live in `.githooks/` and are activated by `npm install` (via `npm prepare`) or manually via `git config core.hooksPath .githooks`.
+Hooks live in `.githooks/` and are activated by `npm install` — the root `prepare` script runs `.githooks/setup.sh` (the only supported setup path; re-run with `npm run prepare`).
 
 **Pre-commit** (runs on `git commit`):
 - Biome format and lint on affected directories
@@ -339,7 +310,7 @@ Hooks live in `.githooks/` and are activated by `npm install` (via `npm prepare`
 **Pre-push** (runs on `git push`):
 - `npm run test` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test` script, touched or not — unit + integration only, e2e is disabled for now
 - Schema validation tests
-- `npm audit --omit=dev --audit-level=moderate` (prompts to continue on findings)
+- `npm run ci:audit` (prompts to continue on findings)
 
 Skip hooks temporarily:
 ```bash
@@ -355,16 +326,16 @@ git push --no-verify
 | `feat/scope/name` | `rel/1.0` | `rel/1.0` via PR | New features |
 | `fix/scope/name` | `rel/1.0` | `rel/1.0` via PR | Bug fixes |
 | `chore/scope/name` | `rel/1.0` | `rel/1.0` via PR | Maintenance |
-| `hotfix/scope/name` | `main` | `main` + `rel/1.0` + `rel/2.0` | Emergency only |
+| `hotfix/scope/name` | the commit shared by every target, usually the production tag (`v1.0.0`) | one PR each into `rel/1.0` and every newer `rel/*` | Emergency only |
 | `tag: v1.0.0` | `rel/1.0` after merge to main | — | Full release tag |
-| `tag: v1.0.1` | `rel/1.0` after hotfix merges in | — | Patch tag only, no merge back to main |
+| `tag: v1.0.1` | `rel/1.0` after hotfix merges in | — | Patch tag, then merge `rel/1.0` into `main` |
 | `rel/2.0` | `main` after `v1.0.0` tag | `main` when ready | Next dev cycle |
 
 **Key rules:**
 - Tags always come from `rel/[0-9]*.[0-9]*`, never directly from `main`
-- `main` only receives merges from `rel/[0-9]*.[0-9]*` or `hotfix/*`
-- Hotfix backport to next release uses `git cherry-pick`, reviewed as a separate PR
-- PRs use squash merge to keep history clean
+- `main` only receives merges from `rel/[0-9]*.[0-9]*` (enforced by `ci-source-branch.yml`) — always as a merge commit, never a squash, since `rel/x.y` is merged into `main` repeatedly
+- Hotfix flow: branch `hotfix/*` from `git merge-base --octopus` of all target `rel/*` branches (usually the production tag) → one PR from that same branch into each target (production `rel/1.0` first → release `v1.0.1` → merge `rel/1.0` into `main`; then newer `rel/*`) — no cherry-picking; keep the branch until every PR is merged (see `docs/git-github.md`)
+- PRs into `rel/x.y` use squash merge to keep history clean
 - PR titles follow Conventional Commits style: `fix(auth): handle expired token`
 
 ## Updating from upstream template
@@ -412,11 +383,12 @@ docker run -p 3000:3000 novex-kit
 
 | Workflow | Purpose |
 |---|---|
+| `.github/workflows/ci-pr-title.yml` | Standalone PR check — `PR Title Format` fails unless the PR title follows Conventional Commits (`feat`/`fix`/`chore`), since PRs are squash-merged and the title becomes the commit git-cliff reads. Runs on `edited` too, so fixing the title re-runs it; make it a required check on `main` and `rel/x.y` |
+| `.github/workflows/ci-source-branch.yml` | Standalone PR check into `main` — `Allowed Source Branch` fails unless the head branch is `rel/x.y` from this repo (forks rejected). Make it a required check on `main`, since rulesets can't restrict PR source branches |
+| `.github/workflows/ci-lint.yml` | Commit message format, Biome lint/format (whole repo), workflow YAML lint (prettier + actionlint) — every branch, PR and push; `Lint Summary` is the single required check. The CI entry point: once lint passes, it calls `ci-tests.yml` and `ci-quality-gates.yml` in parallel for PRs into / pushes to `main` and `rel/x.y`. Review of `.github/` changes is gated by `CODEOWNERS` |
 | `.github/workflows/ci-tests.yml` | Schema, unit and integration tests for every workspace that has the matching script (read-only token). Reusable (`workflow_call`) — called by `ci-lint.yml` after lint passes. **Currently disabled** — every job is gated `if: false` / `if: false && …`; remove the `false` to turn them back on. The e2e job is commented out for now |
-| `.github/workflows/ci-lint.yml` | Commit message format, Biome lint/format (whole repo), workflow YAML lint (prettier + actionlint) — every branch, PR and push. The CI entry point: once lint passes, it calls `ci-tests.yml` and `ci-quality-gates.yml` in parallel for PRs into / pushes to `main` and `rel/x.y`. Review of `.github/` changes is gated by `CODEOWNERS` |
-| `.github/workflows/ci-source-branch.yml` | Standalone PR check into `main` — `Allowed Source Branch` fails unless the head branch is `hotfix/*` or `rel/x.y` from this repo (forks rejected). Make it a required check on `main`, since rulesets can't restrict PR source branches |
-| `.github/workflows/release.yml` | Manual release (`workflow_dispatch`) — git-cliff (`cliff.toml`) computes the next version + notes from Conventional Commits for `.` (tag `v1.2.3`) or one workspace (tag `apps-sample-api-v1.2.3`), then creates the tag and GitHub release with `GITHUB_TOKEN`. Tags are the version source of truth — nothing is committed back |
 | `.github/workflows/ci-quality-gates.yml` | PR quality gates — Gitleaks, npm audit, dependency review, SAST, test coverage (Codecov), jscpd duplication; reusable (`workflow_call`), called by `ci-lint.yml` after lint passes; `Quality Gates / Quality Gate Summary` is the single required check. SAST is CodeQL (JS/TS, Python, Actions) on public repos and Semgrep on private/internal; dependency review runs on public repos only. CodeQL only blocks merges with a "Require code scanning results" ruleset. Code scanning is by workflow, not GitHub's CodeQL default setup |
+| `.github/workflows/release.yml` | Manual release (`workflow_dispatch`) — git-cliff (`cliff.toml`) computes the next version + notes from Conventional Commits for `.` (tag `v1.2.3`) or one workspace (tag `apps-sample-api-v1.2.3`), then creates the tag and GitHub release with `GITHUB_TOKEN`. Tags are the version source of truth — nothing is committed back |
 | `.github/workflows/deploy-cr.yml` | Build and push image to container registry |
 | `.github/workflows/deploy-sae.yml` | Deploy a pushed image to an Alibaba Cloud SAE application (Aliyun CLI) |
 | `.github/workflows/deploy-npm.yml` | Publish a package to npm |

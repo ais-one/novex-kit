@@ -76,5 +76,23 @@ jobs:
   #     - name: Run e2e tests in every workspace that has test:e2e
   #       run: npm run test:e2e --workspaces --if-present
 
-# Security checks (npm audit, secret scanning, SAST) run in ci-quality-gates.yml
-# releases are cut manually via release.yml
+  # ---------------------------------------------------------------------
+  # Summary gate - use this single job as your one required branch-protection check
+  # ---------------------------------------------------------------------
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [schema-tests, unit-tests, integration-tests] # add e2e-tests here when re-enabled
+    # `skipped` passes (disabled jobs, integration tests on push); `failure` and `cancelled` fail the gate
+    if: always()
+    steps:
+      - name: Check all jobs succeeded
+        env:
+          HAS_FAILURE: ${{ contains(needs.*.result, 'failure') }}
+          HAS_CANCELLED: ${{ contains(needs.*.result, 'cancelled') }}
+        run: |
+          if [[ "$HAS_FAILURE" == "true" || "$HAS_CANCELLED" == "true" ]]; then
+            echo "::error::One or more test jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All test gates passed."

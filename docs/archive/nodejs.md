@@ -37,48 +37,6 @@ Use on dev servers to run node apps perpetually
 npm install -g pm2
 ```
 
-## Node
-
-- https://github.com/goldbergyoni/nodebestpractices
-- https://github.com/thedaviddias/Front-End-Checklist
-- https://frontendchecklist.io/
-
-## Node Modules Singleton
-
-### Method 1
-
-```js
-// modules.js
-exports.init = (init) => {
-  console.log(init);
-  return this;
-};
-exports.myMethod = () => console.log("Has access to this");
-```
-
-```js
-// index.js
-var mod = require("./module.js").init("test"); //Prints 'test'
-mod.myMethod(); // Will print 'Has access to this.'
-```
-
-### Method 2 - Or you could use a constructor
-
-```js
-// modules.js
-module.exports = function (config) {
-  this.config = config;
-  this.myMethod = () => console.log("Has access to this");
-  return this;
-};
-```
-
-```js
-// index.js
-var myModule = require("./module.js")(config);
-myModule.myMethod(); // Prints 'Has access to this'
-```
-
 ## App Design Considerations
 
 https://12factor.net/
@@ -161,8 +119,6 @@ busboy, formidable
 - https://dev.to/helenanders26/sql-series-from-a-to-z-2pk9
 - https://dev.to/helenanders26/sql-series-speed-up-your-queries-with-indexes-3c83
 - https://dev.to/helenanders26/sql-series-all-about-sql-joins-15ol
-- https://dev.to/helenanders26/sql-301-why-you-need-sql-window-functions-part-1-6e1
-- https://dev.to/helenanders26/sql-301-why-you-need-sql-window-functions-part-2-2nmj
 
 ## SSE
 
@@ -313,9 +269,6 @@ Create token
 
 - for automation fine grain and limit its access
 
-
-
-
 # SQA NodeJS
 
 The following development dependencies are using to assist in SQA in NodeJS
@@ -323,7 +276,7 @@ The following development dependencies are using to assist in SQA in NodeJS
 - git hooks: native git precommit hooks
 - format + lint: biome (vs eslint + prettier)
 - commit lint: czg (vs commitizen)
-- versioning & release: release-please action
+- versioning & release: git-cliff
 
 ## A list of Software Quality Assurance Tools
 
