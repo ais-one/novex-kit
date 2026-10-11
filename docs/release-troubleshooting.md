@@ -4,7 +4,7 @@ Use this guide when the manual Release workflow (`release.yml`) does not behave 
 
 - Workflow: [../.github/workflows/release.yml](../.github/workflows/release.yml)
 - git-cliff config: [../cliff.toml](../cliff.toml)
-- How releases work: [git-github.md → Release Automation](./git-github.md#release-automation)
+- How releases work: [github.md → Release Management](./github.md#release-management)
 
 Tip: run with `dry-run` checked first — the job summary shows the computed tag and release notes without creating anything.
 

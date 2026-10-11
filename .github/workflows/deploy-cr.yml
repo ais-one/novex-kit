@@ -1,5 +1,11 @@
-# This manually triggered workflow deploys front end application to a object store bucket
-# try to use as much shell scripting a possible
+# Manually triggered: builds a backend app's container image and pushes it to a container registry.
+#   1. build            - shows the inputs
+#   2. request-approval - waits for approval on the "production" GitHub Environment
+#   3. deploy_to_cr     - checks out `tag_gr`, builds apps/<image name>/Dockerfile (target `runtime`)
+#                         from the build context, then pushes <CR_HOST>/<CR_NAMESPACE>/<image name>:<tag_ci>
+# The image name doubles as the app folder: it must match a folder in apps/ that has a Dockerfile.
+# Deploying a pushed image to Alibaba Cloud SAE: deploy-sae.yml.
+# Try to use as much shell scripting as possible.
 # actions appear from default branch - https://github.community/t/workflow-files-only-picked-up-from-master/16129/2
 #
 # Supported Container Registries: AWS, Alicloud, Digital Ocean
@@ -10,7 +16,7 @@
 # Setup the following vars
 # - CR_HOST: container registry host (for deployment)
 # - CR_NAMESPACE: container registry namespace (for deployment)
-# - CR_IMAGENAME: The image name. If not specified, the repository name will be used
+# - CR_IMAGENAME: The image name (= app folder under apps/). If not specified, the repository name will be used
 # Specify the following inputs
 # - tag_gr
 # - cr_imagename
@@ -35,8 +41,8 @@ on:
         description: "container image tag"
         default: "latest"
         required: true
-      dockerfile_path:
-        description: "path to dockerfile"
+      dockerfile_path: # kept for compatibility - it is the build context, not the Dockerfile path
+        description: "docker build context (default: repo root) - the Dockerfile is always apps/<image name>/Dockerfile"
         default: "."
         required: false
 
@@ -83,16 +89,12 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag_gr }}
       - name: Build and push image to CR
-        env:
-          IMAGE_TARGET: runtime
-          IMAGE_TAG: ${{ github.sha }}
         run: |
           # cat password.txt |
           echo "$CR_PASSWORD" | docker login --username "$CR_USERNAME" --password-stdin "$CR_HOST"
           docker build -f "apps/$CR_IMAGENAME/Dockerfile" \
             -t "$CR_HOST/$CR_NAMESPACE/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}" \
             --target "$DOCKERFILE_TARGET" \
-            --build-arg ARG_API_PORT=3000 \
             "$DOCKERFILE_PATH" || exit 1
           docker push "$CR_HOST/$CR_NAMESPACE/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
           docker logout

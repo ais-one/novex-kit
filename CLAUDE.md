@@ -10,42 +10,7 @@ A monorepo template for building full-stack JavaScript applications with Node.js
 
 ## Repository structure
 
-```
-apps/                # backend and frontend apps (npm workspace)
-  sample-api/        # sample backend app — copy and rename, do not develop here directly
-  base-iam/          # sample IAM service — auth, RBAC/FGA, user management (SAML/OIDC)
-  cron/              # HTTP-triggered cron microservice — Express app built on the shared preRoute/postRoute, no internal scheduler; an external scheduler hits routes like `POST /cron/process-outbox`. Auth is a separate bearer-token scheme (`CRON_API_KEY`), not the main JWT/RBAC/FGA system
-  sample-a2a-mcp-rag/ # current combined RAG + MCP + A2A demo — src/{a2a,mcp,rag,lib}/ + demo/, backed by @db/rag (Drizzle + pgvector)
-  sample-a2a-rag-mcp-aaron/ # earlier version of the same demo — ingest/mcp-server/a2a layout, raw SQL (no Drizzle); kept for reference, not actively developed
-  sample-vue-full/   # full-featured sample Vue app (port 8080)
-  sample-vue-minimal/ # minimal Vue app (port 8081)
-  sample-common/     # internal shared backend code for apps/* workspaces (@apps/sample-common)
-  sample-queue-consumer/ # clean-architecture sample Kafka queue consumer (strict TS)
-  sample-rest-app-v2/ # clean-architecture sample REST app (strict TS, Knex)
-common/              # shared reusable code (npm workspaces)
-  compiled/          # modules that need type-stripping or bundling (node: native TS, vue: built by Vite in the consuming app)
-    node/            # Node.js modules, Express middleware and services (@common/node)
-    vue/             # Vue-specific shared modules (@common/vue)
-  vanilla/           # plain JS modules, no build step
-    iso/             # isomorphic utilities, runs in Node and browser (@common/iso)
-    web/             # browser-only utilities and web components
-  schemas/           # shared zod schemas — not an npm workspace (imported directly), but has its own package.json with docs:generate/validate/make-html scripts (run from within common/schemas/)
-db/                  # database schemas, migrations, seeds — separate npm workspaces, one per schema
-  dev.db/            # PGlite data directory for local dev (gitignored) — served by scripts/db-mocks
-  sample/            # @db/sample — public schema: schema.ts, drizzle.config.ts, migrations, seeds (consumed by sample-api, cron)
-  iam/               # @db/iam — iam schema: schema.ts, drizzle.config.ts, migrations, seeds (consumed by base-iam)
-  audit/             # @db/audit — audit schema: schema.ts, drizzle.config.ts, migrations, seed (no-op) (SOC2/HIPAA trail)
-  rag/               # @db/rag — pgvector schema (documents, chunks + embedding column): schema.ts, drizzle.config.ts (consumed by sample-a2a-mcp-rag)
-docs/                # project documentation
-scripts/             # code/OpenAPI generation tooling, service mocks (npm workspace)
-  generators/        # @tools/generators — generate-crud.ts (Drizzle schema → Zod/routes/controllers) and generate-openapi.ts
-  service-mocks/     # redis/kafka mocks (SAML/OIDC: see docs/design/authn.md)
-  db-mocks/          # serve-db.ts — local PGlite socket server backing db/sample, db/iam, db/audit, db/rag
-.github/             # GitHub Actions workflows and CONTRIBUTING.md
-.githooks/           # native git hooks (pre-commit, commit-msg, pre-push)
-```
-
-`sample-a2a-mcp-rag` is the current combined RAG + MCP + A2A demo (`sample-a2a-rag-mcp-aaron` is an earlier version of the same idea, kept for reference — same concept, `ingest`/`mcp-server`/`a2a` layout, raw SQL instead of Drizzle, not actively developed). In the active app: `src/rag/` ingests documents into pgvector via `@db/rag` (Drizzle); `src/mcp/server.ts` is the MCP *server* (StreamableHTTP transport, `npm run start:mcp`) exposing `rag_search`/`rag_add_document`/etc.; `src/lib/mcp-client.ts` is the MCP *client*; `src/a2a/` holds `supervisor.ts` and `specialist.ts`, two separate A2A protocol servers (`npm run start:supervisor`/`start:specialist`, `/.well-known/agent.json` + `POST /` task endpoints) — the supervisor classifies and delegates to the specialist, which does the actual MCP-backed RAG query. `demo/demo.ts` (`npm run demo`) seeds sample docs into an already-running MCP server, spawns the supervisor and specialist as child processes, sends sample queries through the supervisor, then tears both down. Most scripts here are demo entry points, not long-running services — it has no real `test` script (stubbed to exit 0).
+@docs/structure.md
 
 ## TypeScript configuration
 
@@ -63,41 +28,11 @@ A file-specific `exclude` still lives on the group's `tsconfig.json` where neede
 
 ## Setup
 
-```bash
-# 1. install all workspace dependencies
-npm i
-
-# 2. git hooks are configured automatically by step 1 (npm prepare → .githooks/setup.sh)
-#    re-run without reinstalling: npm run prepare
-
-# 3. run the sample backend
-cd apps/sample-api && npm run start
-
-# 4. run the minimal Vue frontend
-cd apps/sample-vue-minimal && npm run dev
-```
+`npm i` at the root installs every workspace and activates the git hooks. Running the sample apps (local DB first for `sample-api`), their URLs and logins: `docs/install.md` (the single source of truth); local DB server, migrations and seeds: `db/README.md`.
 
 ## Common commands
 
-```bash
-# linting and formatting (biome)
-npm run check          # biome check, no writes — safe to run in CI
-npm run check:write    # biome check --write (auto-fix lint + format)
-npm run ci:biome       # biome ci (used in CI/CD)
-
-# security
-npm run ci:audit          # audit npm packages based on security level
-
-# testing
-npm run test:workspaces     # run tests in all workspaces
-
-# workspace management
-npm ls -ws                              # list all workspaces
-npm i <pkg> --workspace=<path>          # install into a specific workspace
-npm outdated -ws                        # check outdated packages across all workspaces
-```
-
-There is no root-level `docs:generate`/`docs:validate` anymore — OpenAPI doc generation is scoped to whichever package owns the schemas: `cd common/schemas && npm run docs:generate` for the shared cross-cutting schemas (output: `common/schemas/docs/openapi/openapi.merged.yaml`), or `npm run docs:generate` from within `db/<schema>/` for a schema's per-table CRUD docs (see below).
+Verify a change before finishing: `npm run check` (Biome, no writes — `npm run check:write` to auto-fix) and `npm run test:workspaces`. Every root script and workspace command: `docs/install.md#command-reference` (the single source of truth).
 
 ## Testing
 
@@ -153,15 +88,6 @@ node --test-reporter=spec --test --test-only --test-isolation=process --test-con
 
 Per-workspace `test` scripts run `test:unit` and `test:integration` (some also chain a `test:schema` step, currently stubbed to `exit 0`) — see each app's `package.json` for its exact composition. Zod schema exports are validated by the root `test:schemas` script (`scripts/test-schemas.ts <schema-dir>`), which the git hooks run for `common/schemas` and `apps/*/schemas`.
 
-## Local URLs (sample backend)
-
-| URL | Purpose |
-|---|---|
-| `http://127.0.0.1:3000/health` | Health check (shared, unauthenticated) |
-| `http://127.0.0.1:3000/api/sample-api/healthcheck` | App-level health check |
-| `http://127.0.0.1:3000` | Express app with samples |
-| `http://127.0.0.1:3000/native/index.html` | Unbundled Vue sample |
-
 ## Backend architecture: generated CRUD + OpenAPI
 
 CRUD generation lives in `db/<schema>/` (`sample`, `iam`, `audit` — note `db/audit` names the script `generate:crud` and has no `docs:*` scripts), not in the consuming apps — apps import the generated routes/controllers via the `@db/<schema>` package rather than owning a copy. Each schema workspace follows a **generate once, own forever** pattern driven by its Drizzle schema:
@@ -183,61 +109,13 @@ Most backend apps (`sample-api`, `base-iam`, `cron`, `sample-a2a-mcp-rag`) build
 
 ## Database (local dev)
 
-`db/` holds one npm workspace per PostgreSQL schema, separate from `apps/` and `common/` — schema, migrations, and seeds are userland code, protected from upstream template sync the same way `apps/**` is. Each schema workspace colocates `schema.ts` + `drizzle.config.ts` + migrations + seeds:
+One npm workspace per database under `db/` (`@db/sample` → `public`, `@db/iam` → `iam`, `@db/audit` → `audit`, served locally by PGlite via `npm run serve` in `scripts/db-mocks`; `@db/rag` → separate PostgreSQL + pgvector on port 55432). Schemas, consumers, migrations, seeds and reset: `db/README.md` (the single source of truth).
 
-| Schema | Consumed by | Drizzle schema source | Import (from apps) |
-|---|---|---|---|
-| `public` | `apps/sample-api`, `apps/cron` | `db/sample/schema.ts` | `@db/sample/schema` |
-| `iam` | `apps/base-iam` | `db/iam/schema.ts` | `@db/iam/schema` |
-| `audit` | audit trail (SOC2/HIPAA) | `db/audit/schema.ts` | `@db/audit/schema` |
-| `rag` | `apps/sample-a2a-mcp-rag` | `db/rag/schema.ts` | `@db/rag/schema` |
+- **Migrate `db/sample` (public) before `db/audit`** — an audit trigger on `public.users` depends on it.
 
-The PGlite socket server itself (`scripts/db-mocks/serve-db.ts`, `npm run serve`, port 5432) lives outside `db/`, alongside the other local service mocks (redis, kafka; SAML/OIDC per `docs/design/authn.md`) — it's dev-infra tooling, not schema/migrations. It reads and writes `db/dev.db` (gitignored).
+## Creating a new app
 
-Migration order matters: `public` must migrate **before** `audit` (an audit trigger on `public.users` depends on it). Typical flow: `npm run serve` (from `scripts/db-mocks/`) in one terminal, then `npm run db:migrate --workspace=db/sample` → `db/iam` → `db/audit`, followed by the matching `db:seed --workspace=...` commands (plus `db:migrate --workspace=db/rag` if running `sample-a2a-mcp-rag`). See `db/README.md` for the full command table and how to reset local state.
-
-## Creating a new backend service
-
-Two ways to start:
-
-- Run `npm run create:app --workspace=apps/sample-common` to scaffold from a clean-architecture template (`sample-rest-app-v2` or `sample-queue-consumer`, strict TS) — see README
-- Or copy `apps/sample-api` to a new folder in `apps/` using kebab-case naming
-
-Then:
-
-- Edit `.env` and `.env.json` in the new folder as needed
-- Inject secrets from environment variables or a secret manager — never commit secrets
-- Do not develop directly in `sample-api`
-
-## Creating a new frontend app
-
-Two starting points are available — pick the one that matches your needs:
-
-| Template | Use when |
-|---|---|
-| `apps/sample-vue-full` | Building a full app — includes routing, auth views, UI framework, state, monitoring, and mocking already wired |
-| `apps/sample-vue-minimal` | Starting from scratch or building a micro-frontend — just Vue + Vite, nothing else |
-
-**`sample-vue-full` includes:**
-- Vue Router with public/secure layout split
-- Pinia state management
-- Ant Design Vue UI component library
-- Sentry error monitoring
-- MSW (Mock Service Worker) for API mocking in development
-- PWA support
-- Playwright e2e test setup
-- Pre-built sign-in, sign-up, dashboard, and OAuth callback views
-
-**`sample-vue-minimal` includes:**
-- Vue + Vite only
-- Single `App.vue` + `Hello.vue` entry point
-- No router, no UI framework, no state management
-
-To create a new app:
-- Copy the chosen template to a new folder in `apps/` using kebab-case naming
-- Edit `.env` and `.env.development` as needed
-- Routes use kebab-case and support up to 1 submenu level (full template only)
-- Do not develop directly in the sample templates
+Backend (`create:app` CLI from a clean-architecture template, or copy `sample-api`) and frontend (copy `sample-vue-full` or `sample-vue-minimal`): `docs/create-app.md` (the single source of truth). Never develop directly in the `sample-*` templates.
 
 ## Code conventions
 
@@ -288,118 +166,30 @@ Full mechanism, field shapes, the request-ID propagation rules, and the per-app 
 
 ## Commit conventions
 
-Rules (Conventional Commits, `feat`/`fix`/`chore` only, `!` for breaking changes) are in `docs/conventions.md`, imported under [Code conventions](#code-conventions).
-
-Use `czg` for interactive or AI-assisted commit messages (types and scopes come from `cz.config.js`):
-```bash
-npx czg          # interactive prompt
-npx czg --ai     # AI-generated message (requires API key)
-```
+Single source of truth [](docs/git.md#commit-message)
 
 ## Git hooks
 
-Hooks live in `.githooks/` and are activated by `npm install` — the root `prepare` script runs `.githooks/setup.sh` (the only supported setup path; re-run with `npm run prepare`).
-
-**Pre-commit** (runs on `git commit`):
-- Biome format and lint on affected directories
-- Schema validation tests for affected schema directories
-
-**Commit-msg** (runs on `git commit`, after pre-commit):
-- Validates the message against Conventional Commits — only `feat`, `fix`, `chore` (see [Commit conventions](#commit-conventions))
-
-**Pre-push** (runs on `git push`):
-- `npm run test` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test` script, touched or not — unit + integration only, e2e is disabled for now
-- Schema validation tests
-- `npm run ci:audit` (prompts to continue on findings)
-
-Skip hooks temporarily:
-```bash
-git commit --no-verify
-git push --no-verify
-```
+Single source of truth [](docs/git.md#hooks)
 
 ## Branch conventions
 
-| Branch | Branch from | Merge to | Notes |
-|---|---|---|---|
-| `rel/1.0` | `main` | `main` when production ready | Active dev branch |
-| `feat/scope/name` | `rel/1.0` | `rel/1.0` via PR | New features |
-| `fix/scope/name` | `rel/1.0` | `rel/1.0` via PR | Bug fixes |
-| `chore/scope/name` | `rel/1.0` | `rel/1.0` via PR | Maintenance |
-| `hotfix/scope/name` | the commit shared by every target, usually the production tag (`v1.0.0`) | one PR each into `rel/1.0` and every newer `rel/*` | Emergency only |
-| `tag: v1.0.0` | `rel/1.0` after merge to main | — | Full release tag |
-| `tag: v1.0.1` | `rel/1.0` after hotfix merges in | — | Patch tag, then merge `rel/1.0` into `main` |
-| `rel/2.0` | `main` after `v1.0.0` tag | `main` when ready | Next dev cycle |
-
-**Key rules:**
-- Tags always come from `rel/[0-9]*.[0-9]*`, never directly from `main`
-- `main` only receives merges from `rel/[0-9]*.[0-9]*` (enforced by `ci-source-branch.yml`) — always as a merge commit, never a squash, since `rel/x.y` is merged into `main` repeatedly
-- Hotfix flow: branch `hotfix/*` from `git merge-base --octopus` of all target `rel/*` branches (usually the production tag) → one PR from that same branch into each target (production `rel/1.0` first → release `v1.0.1` → merge `rel/1.0` into `main`; then newer `rel/*`) — no cherry-picking; keep the branch until every PR is merged (see `docs/git-github.md`)
-- PRs into `rel/x.y` use squash merge to keep history clean
-- PR titles must follow Conventional Commits — `fix(auth): handle expired token` — enforced on PRs into `rel/x.y` by the `PR Title Format` check (the title becomes the squash commit git-cliff reads)
+Single source of truth [](docs/git.md#branching-and-workflow)
 
 ## Updating from upstream template
 
-Run the `Sync Upstream Template` workflow (`.github/workflows/update-template.yml`, triggered via `workflow_dispatch` — inputs: `upstream_branch`, default `main`; `ref`, the downstream branch to update). It clones upstream into a scratch dir, wipes this repo's working tree except the protected paths below, copies upstream's tree in wholesale, restores the protected paths, regenerates `package-lock.json`, and force-pushes the result to `chore/sync-upstream` — it never pushes directly to the target branch, and it does not open the PR; open one from `chore/sync-upstream` manually to review. See the workflow file's own header comment for the exact mechanics.
-
-### Protected paths during sync
-
-The following paths are never overwritten or deleted by the sync workflow:
-
-| Path | Purpose |
-|---|---|
-| `apps/**` | All backend and frontend apps |
-| `db/**` | Database schemas, migrations, and seeds (userland — separate from `common/`) |
-| `.github/workflows/local-*.yml` | Downstream-only GitHub Actions workflows |
-| `.github/actions/local-**` | Downstream-only composite/reusable actions |
-
-**Adding your own workflows or actions:** name them with the `local-` prefix — workflows as `local-deploy.yml`, actions as a folder `local-my-action/` containing `action.yml`. They will be preserved across all future template syncs. Files without this prefix are treated as template-owned and may be updated or removed by the sync.
-
-To protect an additional path (e.g., a custom `docs/` folder), edit the `Apply upstream` step in `.github/workflows/update-template.yml` — add it to both the "pull aside" block and the "restore" block, the same way `apps`/`db` are handled:
-
-```bash
-# pull aside, before the wipe
-[ -d docs ] && mv docs /tmp/protected/docs
-
-# restore, after upstream is copied in
-[ -d /tmp/protected/docs ] && rm -rf docs && mv /tmp/protected/docs docs
-```
-
-There's no `.gitattributes`/merge-driver setup to maintain — the workflow does a wholesale file copy, not a `git merge`, so protection is just whatever paths its own script pulls aside and restores.
+`apps/**`, `db/**` and `local-`-prefixed workflows/actions are protected from the upstream sync; everything else is template-owned and gets replaced — so downstream-only code and workflows must live in those paths. How the sync works (it force-pushes `chore/sync-upstream`; you open the PR yourself), and how to protect more paths: `docs/github.md#sync-upstream-template` (the single source of truth).
 
 ## Docker / Podman
 
-```bash
-docker build -t novex-kit \
-  --target runtime \
-  --build-arg APP_NAME=sample-api \
-  --build-arg API_PORT=3000 \
-  -f apps/sample-api/Dockerfile .
-
-docker run -p 3000:3000 novex-kit
-```
+Each deployable app has its own multi-stage `apps/<app>/Dockerfile`, built from the repo root (`-f apps/<app>/Dockerfile .`) — commands and build args: `docs/install.md` (Run Sample API → Docker/Podman).
 
 ## CI/CD (GitHub Actions)
 
-| Workflow | Purpose |
-|---|---|
-| `.github/workflows/ci-pr-title.yml` | Standalone PR check — `PR Title Format` fails unless the PR title follows Conventional Commits (`feat`/`fix`/`chore`), since PRs are squash-merged and the title becomes the commit git-cliff reads. Runs on `edited` too, so fixing the title re-runs it; required check on `rel/x.y` only (PRs into `main` are merge commits, so their title isn't used) |
-| `.github/workflows/ci-source-branch.yml` | Standalone PR check into `main` — `Allowed Source Branch` fails unless the head branch is `rel/x.y` from this repo (forks rejected). Make it a required check on `main`, since rulesets can't restrict PR source branches |
-| `.github/workflows/ci.yml` | The CI entry point — owns the triggers: every branch, PR and push except PRs into / pushes to `main` (only already-checked `rel/x.y` merges into `main`). Calls `ci-lint.yml` as job `Lint`; once lint passes, it calls `ci-tests.yml` and `ci-quality.yml` in parallel for PRs into `rel/x.y` only. Required checks live in the `rel/x.y` ruleset, never the one covering `main`. Review of `.github/` changes is gated by `CODEOWNERS` |
-| `.github/workflows/ci-lint.yml` | Reusable (`workflow_call`), called by `ci.yml` — commit message format, Biome lint/format (whole repo), workflow YAML lint (prettier + actionlint), plus `Lint Summary`. Checks are reported as `Lint / <job name>`; `Lint / Lint Summary` is the single required check. New lint jobs go here and into `Lint Summary`'s `needs:` |
-| `.github/workflows/ci-tests.yml` | Schema, unit and integration tests for every workspace that has the matching script (read-only token). Reusable (`workflow_call`) — called by `ci.yml` after lint passes. **Currently disabled** — every job is gated `if: false` / `if: false && …`; remove the `false` to turn them back on. The e2e job is commented out for now |
-| `.github/workflows/ci-quality.yml` | PR quality gates — Gitleaks, npm audit, dependency review, SAST, test coverage (Codecov), jscpd duplication; reusable (`workflow_call`), called by `ci.yml` after lint passes; `Quality / Quality Summary` is the single required check. SAST is CodeQL (JS/TS, Python, Actions) on public repos and Semgrep on private/internal; dependency review runs on public repos only. CodeQL only blocks merges with a "Require code scanning results" ruleset. Code scanning is by workflow, not GitHub's CodeQL default setup |
-| `.github/workflows/release.yml` | Manual release (`workflow_dispatch`) — git-cliff (`cliff.toml`) computes the next version + notes from Conventional Commits for `.` (tag `v1.2.3`) or one workspace (tag `apps-sample-api-v1.2.3`), then creates the tag and GitHub release with `GITHUB_TOKEN`. Tags are the version source of truth — nothing is committed back |
-| `.github/workflows/deploy-cr.yml` | Build and push image to container registry |
-| `.github/workflows/deploy-sae.yml` | Deploy a pushed image to an Alibaba Cloud SAE application (Aliyun CLI) |
-| `.github/workflows/deploy-npm.yml` | Publish a package to npm |
-| `.github/workflows/deploy-bucket.yml` | Deploy Vue frontend to object store |
-| `.github/workflows/update-template.yml` | Sync upstream template changes into the repo |
-| `.github/workflows/maintenance.yml` | Manual (`workflow_dispatch`) cleanup of old workflow artifacts |
+Every workflow — trigger, purpose, required check — is listed in `docs/github.md#workflows` (the single source of truth); CI pipeline details in `docs/github.md#ci`.
 
-Required GitHub Secrets and Variables (names, which workflow uses each, and what they hold) are listed in [`docs/secrets-vars.md`](docs/secrets-vars.md) — keep that file in sync when a workflow adds or drops a `secrets.*` / `vars.*` reference.
-
-> Secrets must never be stored in the repo — inject them via your deployment platform or CI/CD secrets store.
+- When a workflow adds or drops a `secrets.*` / `vars.*` reference, update `docs/github.md#secrets-and-variables`.
+- Secrets must never be stored in the repo — inject them via the deployment platform or CI/CD secrets store.
 
 ## Authorization
 
@@ -426,9 +216,12 @@ Route middleware available after `authUser`:
 
 | File | Purpose |
 |---|---|
-| `.github/CONTRIBUTING.md` | Contributor workflow, hooks, issue reporting, PR rules |
+| `.github/CONTRIBUTING.md` | Contributor guide — issue reporting and PR rules (branch and commit rules link to `docs/git.md`) |
 | `docs/conventions.md` | Coding, tooling, commit, and runtime standards |
-| `docs/git-github.md` | Git workflow, branch/tag patterns, merge strategy, GitHub repo settings (branch protection, code scanning) |
+| `docs/structure.md` | Repo layout — every app, `common/*` package (import name, workspace or not) and `db/*` schema; imported under Repository structure |
+| `docs/create-app.md` | Creating apps — `create:app` CLI (backend templates, naming rules, post-create steps, adding a template), copying `sample-api`, and creating a Vue frontend |
+| `docs/git.md` | Git hooks (setup via `npm install` → `.githooks/setup.sh`, what each hook checks), branch/tag naming, merge flow, hotfix flow, commit messages |
+| `docs/github.md` | GitHub repo settings (rulesets, environments, code scanning, Dependabot), CI workflows and required checks, release management |
 | `docs/install.md` | Backend, frontend setup, development guide, and workspace reference |
 | `docs/design/authn.md` | Authentication setup — SAML 2.0 and OIDC provider configuration |
 | `docs/design/authz.md` | Authorization — RBAC and FGA: setup, JWT payload, roles fallback chain, usage |
@@ -437,7 +230,7 @@ Route middleware available after `authUser`:
 | `.claude/skills/structured-logging/SKILL.md` | Per-layer logging, error handling, and request-ID tracing conventions |
 | `.claude/skills/openapi-docs/SKILL.md` | Per-app OpenAPI 3.1 spec from zod DTOs (`src/openapi.ts` → `docs/openapi/<app>.yaml`) |
 | `docs/cloud/` | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare |
-| `docs/secrets-vars.md` | GitHub Secrets and Variables required by the workflows |
+| `docs/github.md#secrets-and-variables` | GitHub Secrets and Variables required by the workflows |
 | `docs/release-troubleshooting.md` | Troubleshooting the manual Release workflow (`release.yml`, git-cliff) |
 | `docs/NOTES.md` | Design decisions, caveats, open questions, TODOs |
 | `docs/housekeeping.md` | Dependency/Actions updates — Dependabot config plus the `/housekeeping-scan-actions`, `/housekeeping-update-packages`, `/housekeeping-update-node-npm` and `/housekeeping-check-tsconfig` Claude Code commands |

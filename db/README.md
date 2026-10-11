@@ -181,12 +181,12 @@ db/
 
 ## Schema Sources
 
-| Schema | Drizzle schema file | Import (from apps) |
-|---|---|---|
-| `public` | `db/sample/schema.ts` | `@db/sample/schema` |
-| `iam` | `db/iam/schema.ts` | `@db/iam/schema` |
-| `audit` | `db/audit/schema.ts` | `@db/audit/schema` |
-| `public` (rag tables) | `db/rag/schema.ts` | `@db/rag/schema` |
+| Workspace | PostgreSQL schema | Server | Drizzle schema file | Import (from apps) | Used by |
+|---|---|---|---|---|---|
+| `db/sample` | `public` | PGlite, port 5432 | `db/sample/schema.ts` | `@db/sample/schema` | `apps/sample-api`, `apps/cron` |
+| `db/iam` | `iam` | PGlite, port 5432 | `db/iam/schema.ts` | `@db/iam/schema` | `apps/base-iam` |
+| `db/audit` | `audit` | PGlite, port 5432 | `db/audit/schema.ts` | `@db/audit/schema` | audit trail (SOC2/HIPAA) — `apps/sample-api` |
+| `db/rag` | `public` (rag tables) | separate PostgreSQL + pgvector, port 55432 | `db/rag/schema.ts` | `@db/rag/schema` | `apps/sample-a2a-mcp-rag` |
 
 ---
 
