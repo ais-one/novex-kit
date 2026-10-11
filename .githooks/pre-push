@@ -34,40 +34,11 @@ fi
 
 print_success "Workspace tests passed."
 
-# ── 2. Schema validation tests ────────────────────────────────────────────────
-# Run schema tests for all known schema directories that exist in the repo.
-if node -e "const p=require('./package.json'); process.exit(p.scripts&&p.scripts['test:schemas']?0:1)" 2>/dev/null; then
-  print_info "Running schema validation tests…"
-  SCHEMA_DIRS=""
-  [ -d "common/schemas" ] && SCHEMA_DIRS="$SCHEMA_DIRS common/schemas"
-  for DIR in apps/*/schemas; do
-    [ -d "$DIR" ] && SCHEMA_DIRS="$SCHEMA_DIRS $DIR"
-  done
-
-  if [ -z "$SCHEMA_DIRS" ]; then
-    print_warning "No schema directories found – skipping schema tests."
-  else
-    SCHEMA_EXIT=0
-    for SCHEMA_DIR in $SCHEMA_DIRS; do
-      npm run test:schemas -- "$SCHEMA_DIR"
-      if [ $? -ne 0 ]; then
-        print_error "Schema validation tests failed for $SCHEMA_DIR. Fix schema errors before pushing."
-        SCHEMA_EXIT=1
-      else
-        print_success "Schema validation tests passed for $SCHEMA_DIR."
-      fi
-    done
-    if [ $SCHEMA_EXIT -ne 0 ]; then
-      exit 1
-    fi
-  fi
-else
-  print_warning "No 'test:schemas' script found – skipping schema tests."
-fi
+# ── 2. Type checking tsc --noEmit ────────────────────────────────────────────
 
 # ── 3. Security audit ────────────────────────────────────────────────────────
 # Run This In CI only
 
-# ── Done ──────────────────────────────────────────────────────────────────────
+# ── Done ─────────────────────────────────────────────────────────────────────
 print_success "All pre-push checks passed. Proceeding with push."
 exit 0

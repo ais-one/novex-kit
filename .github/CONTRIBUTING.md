@@ -16,13 +16,10 @@ Hello and thank you for your interest in helping make novex-kit better. Please t
 * **Never** comment "+1" or "me too!" on issues without leaving additional information, use the :+1: button in the top right instead.
 
 ## Pull Requests
-* Always work on a new branch. Do not work directly on `main`.
-* Create normal feature and fix branches from the active `rel/[0-9]*.[0-9]*` branch and open the PR back into that same `rel/[0-9]*.[0-9]*` branch.
-* Use branch names that follow the documented workflow: `feat/<scope>/<name>`, `fix/<scope>/<name>`, or `chore/<scope>/<name>`.
-* Reserve `hotfix/*` branches for urgent production issues. Start the branch from the commit shared by every `rel/[0-9]*.[0-9]*` branch that needs the fix (usually the production tag — see [Hotfix & Backport Flow](../docs/git-github.md#hotfix--backport-flow)), then open one PR from that same branch into each of them. Maintainers release a patch from the production line and merge it into `main`. Keep the branch until every PR is merged — deleting it closes the others.
-* Do not open PRs against `main`. Only `rel/[0-9]*.[0-9]*` branches may merge into `main` (enforced by the `Allowed Source Branch` check); `main` is the stable destination branch.
-* PRs into `rel/[0-9]*.[0-9]*` should be merged with a squash merge to keep history clean and consistent with the repo workflow (`rel` → `main` merges use a merge commit).
-* PR titles must follow the same Conventional Commit style as commits, for example `fix(auth): handle expired token` — the `PR Title Format` check enforces it, because the title becomes the squash commit used for versions and release notes. GitHub suggests the branch name (e.g. `chore/ci`) as the title for multi-commit PRs; change it before merging.
+* Always work on a new branch, never directly on `main` or `rel/*`.
+* Follow the branch naming and merge flow in [docs/git.md](../docs/git.md#branching-and-workflow): `feat/`, `fix/`, `chore/` from the right `rel/x.y` branch, PRs back into it; fixes go to every affected release line ([Fixes Across Release Lines](../docs/git.md#fixes-across-release-lines)).
+* Don't open PRs against `main` — only `rel/x.y` branches merge there.
+* PR titles must be Conventional Commits (e.g. `fix(auth): handle expired token`); they become the squash commit used for versions and release notes. Change GitHub's suggested title (the branch name) before merging.
 * For changes and feature requests, include a clear description of the problem, the proposed behavior, and any relevant example, request, or UI/API markup.
 * Reference the issue that the PR resolves, for example `Fixes #1234` or `Resolves #6458`.
 

@@ -11,19 +11,25 @@ HOOK_NAME=commit-msg
 . "$(dirname "$0")/_common.sh"
 
 COMMIT_MSG_FILE="$1"
-COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
 
-# Skip merge commits, reverts, fixups, and squash commits
-case "$COMMIT_MSG" in
-  Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0 ;;
+# Only the subject line is checked - the same line CI's commit lint (git log %s)
+# and git-cliff read. Subject = first non-empty, non-comment line (git may still
+# include '#' comment lines and leading blank lines at this point).
+SUBJECT=$(grep -v '^#' "$COMMIT_MSG_FILE" | sed '/^[[:space:]]*$/d' | head -n 1)
+
+# Skip git-generated merge, fixup and squash commits (same list as CI's commit lint).
+# Reverts are NOT skipped: git's default 'Revert "..."' must be reworded to
+# 'chore: revert ...', or CI rejects it and git-cliff drops it from release notes.
+case "$SUBJECT" in
+  Merge\ *|fixup!\ *|squash!\ *) exit 0 ;;
 esac
 
-# Conventional Commits pattern: type(scope?)[!]: description
-PATTERN='^(feat|fix|chore)(\([^)]+\))?!?: .{1,}'
+# Conventional Commits pattern: type(scope?)[!]: description (same as CI)
+PATTERN='^(feat|fix|chore)(\([^)]+\))?!?: .{1,}$'
 
-if ! echo "$COMMIT_MSG" | grep -Eq "$PATTERN"; then
-  print_error "Commit message does not follow Conventional Commits format."
-  print_error "  Got:      $COMMIT_MSG"
+if ! printf '%s\n' "$SUBJECT" | grep -Eq "$PATTERN"; then
+  print_error "Commit message subject does not follow Conventional Commits format."
+  print_error "  Got:      $SUBJECT"
   print_info  "  Expected: type(scope): description"
   print_info  "  Types:    feat|fix|chore"
   print_info  "  Note:     use chore for docs|style|refactor|perf|test|build|ci|revert changes"

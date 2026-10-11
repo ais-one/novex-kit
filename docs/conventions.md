@@ -14,14 +14,8 @@ This document defines repository-wide coding and runtime standards that apply ac
 
 ## Commit Message Standard
 
-- Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/).
-- Only `feat`, `fix`, and `chore` may be used as the top-level commit types.
-  - `feat` — new behaviour the user/consumer sees
-  - `fix` — corrects broken behaviour
-  - `chore` — everything else: `build`, `ci`, `docs`, `style`, `refactor`, `perf`, `test`, and `revert` style changes
-- Commit messages must use the format `type(scope): short description`.
-- Breaking changes must add `!` before `:` — e.g. `feat(auth)!: replace token format`.
-- Use [czg](https://cz-git.qbb.sh/cli/) when generating commit messages.
+- Must use [czg](https://cz-git.qbb.sh/cli/) when generating commit messages.
+- Refer to [git.md - Commit Message](git.md#commit-message) for details.
 
 ## JS Language Standard
 
