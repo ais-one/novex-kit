@@ -1,0 +1,82 @@
+## CI pipeline - entry point. Owns the triggers; the lint jobs (commit message format, Biome,
+## workflow YAML, Lint Summary) live in ci-lint.yml, reported as "Lint / <job name>".
+## Runs on pull requests and pushes on every branch except main, with no change-scope detection.
+## Biome checks the whole repository (fast enough that change-scoping isn't worth it).
+## Entry point for CI: once every lint job passes, it calls ci-tests.yml and
+## ci-quality.yml (reusable workflows) in parallel, for PRs into rel/x.y only.
+## PRs into main are skipped entirely - only rel/x.y may merge into main (ci-source-branch.yml),
+## and everything on rel/x.y already passed these checks on its own PR. So the ruleset for main
+## must NOT require Lint / Lint Summary, Tests / Quality (a filtered-out workflow never reports).
+## Pushes to main and rel/x.y are skipped too - they arrive via already-checked PRs.
+name: CI
+
+on:
+  pull_request:
+    branches-ignore:
+      - main
+  push:
+    branches-ignore: # protected branches - already checked on the PR
+      - main
+      - "rel/[0-9]*.[0-9]*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    uses: ./.github/workflows/ci-lint.yml
+    permissions:
+      contents: read
+
+  # ---------------------------------------------------------------------
+  # Downstream workflows - run in parallel after lint passes, only for
+  # PRs into rel/[0-9]*.[0-9]* (PRs into main and pushes to main / rel are filtered out by `on:`).
+  # ---------------------------------------------------------------------
+  branch-scope:
+    name: Check Target Branch
+    runs-on: ubuntu-latest
+    outputs:
+      protected: ${{ steps.scope.outputs.protected }}
+    steps:
+      - name: Match target branch against rel/[0-9]*.[0-9]*
+        id: scope
+        shell: bash
+        env:
+          # PR: the base branch; push: the pushed branch
+          TARGET: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          # regex form of the old `branches:` glob - `*` there matches anything except `/`
+          if [[ "$TARGET" =~ ^rel/[0-9][^/]*\.[0-9][^/]*$ ]]; then
+            echo "protected=true" >> "$GITHUB_OUTPUT"
+            echo "$TARGET: running tests and quality gates"
+          else
+            echo "protected=false" >> "$GITHUB_OUTPUT"
+            echo "$TARGET: not rel/x.y - skipping tests and quality gates"
+          fi
+
+  tests:
+    name: Tests
+    needs: [branch-scope, lint]
+    if: needs.branch-scope.outputs.protected == 'true'
+    uses: ./.github/workflows/ci-tests.yml
+    permissions:
+      contents: read
+
+  quality-gates:
+    name: Quality
+    needs: [branch-scope, lint]
+    if: needs.branch-scope.outputs.protected == 'true'
+    uses: ./.github/workflows/ci-quality.yml
+    secrets: inherit # GITLEAKS_LICENSE, CODECOV_TOKEN
+    # a called workflow can't exceed these - union of what its jobs request
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      security-events: write

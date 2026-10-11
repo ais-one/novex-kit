@@ -17,7 +17,7 @@
 # - bucket (bucket name - e.g. test-www-dev)
 # - env (development, statging, production)
 #
-name: DEPLOY - Bucket
+name: 1 DEPLOY - Bucket
 
 # on: [push]
 on:
@@ -163,51 +163,5 @@ jobs:
           rm -r dist
           git checkout -f "${GITHUB_REF##*/}"
           git branch -D gh-pages
-  ghsp2-tocheck:
-    needs: build
-    environment: production # see deploy-oss for setup
-    if: github.event.inputs.provider == 'ghp'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v7
-      # Setup .npmrc file to publish to GitHub Packages
-      - uses: ./.github/actions/setup-node-npm-install
-        with:
-          node-version: "24.18.0"
-          registry-url: "https://npm.pkg.github.com"
-          # Defaults to the user or organization that owns the workflow file
-          scope: "@octocat"
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # # https://cli.vuejs.org/guide/deployment.html#github-pages
-
-# #!/usr/bin/env sh
-
-# # abort on errors
-# set -e
-
-# # build
-# npm run build
-
-# # navigate into the build output directory
-# cd dist
-
-# # if you are deploying to a custom domain
-# # echo 'www.example.com' > CNAME
-
-# git init
-# git add -A
-# git commit -m 'deploy'
-
-# # if you are deploying to https://<USERNAME>.github.io
-# # git push -f git@github.com:<USERNAME>/<USERNAME>.github.io.git master
-
-# # if you are deploying to https://<USERNAME>.github.io/<REPO>
-# # git push -f git@github.com:<USERNAME>/<REPO>.git master:gh-pages
-
-# cd -
+# https://cli.vuejs.org/guide/deployment.html#github-pages

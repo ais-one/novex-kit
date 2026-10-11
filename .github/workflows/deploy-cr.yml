@@ -17,7 +17,7 @@
 # - tag_ci
 # - dockerfile_path
 # environment NOT needed as it is specified in the container orchestration platform.
-name: DEPLOY - Container Registry
+name: 1 DEPLOY - Container Registry
 
 on:
   workflow_dispatch:

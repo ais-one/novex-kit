@@ -336,7 +336,7 @@ git push --no-verify
 - `main` only receives merges from `rel/[0-9]*.[0-9]*` (enforced by `ci-source-branch.yml`) — always as a merge commit, never a squash, since `rel/x.y` is merged into `main` repeatedly
 - Hotfix flow: branch `hotfix/*` from `git merge-base --octopus` of all target `rel/*` branches (usually the production tag) → one PR from that same branch into each target (production `rel/1.0` first → release `v1.0.1` → merge `rel/1.0` into `main`; then newer `rel/*`) — no cherry-picking; keep the branch until every PR is merged (see `docs/git-github.md`)
 - PRs into `rel/x.y` use squash merge to keep history clean
-- PR titles follow Conventional Commits style: `fix(auth): handle expired token`
+- PR titles must follow Conventional Commits — `fix(auth): handle expired token` — enforced on PRs into `rel/x.y` by the `PR Title Format` check (the title becomes the squash commit git-cliff reads)
 
 ## Updating from upstream template
 
@@ -383,11 +383,12 @@ docker run -p 3000:3000 novex-kit
 
 | Workflow | Purpose |
 |---|---|
-| `.github/workflows/ci-pr-title.yml` | Standalone PR check — `PR Title Format` fails unless the PR title follows Conventional Commits (`feat`/`fix`/`chore`), since PRs are squash-merged and the title becomes the commit git-cliff reads. Runs on `edited` too, so fixing the title re-runs it; make it a required check on `main` and `rel/x.y` |
+| `.github/workflows/ci-pr-title.yml` | Standalone PR check — `PR Title Format` fails unless the PR title follows Conventional Commits (`feat`/`fix`/`chore`), since PRs are squash-merged and the title becomes the commit git-cliff reads. Runs on `edited` too, so fixing the title re-runs it; required check on `rel/x.y` only (PRs into `main` are merge commits, so their title isn't used) |
 | `.github/workflows/ci-source-branch.yml` | Standalone PR check into `main` — `Allowed Source Branch` fails unless the head branch is `rel/x.y` from this repo (forks rejected). Make it a required check on `main`, since rulesets can't restrict PR source branches |
-| `.github/workflows/ci-lint.yml` | Commit message format, Biome lint/format (whole repo), workflow YAML lint (prettier + actionlint) — every branch, PR and push; `Lint Summary` is the single required check. The CI entry point: once lint passes, it calls `ci-tests.yml` and `ci-quality-gates.yml` in parallel for PRs into / pushes to `main` and `rel/x.y`. Review of `.github/` changes is gated by `CODEOWNERS` |
-| `.github/workflows/ci-tests.yml` | Schema, unit and integration tests for every workspace that has the matching script (read-only token). Reusable (`workflow_call`) — called by `ci-lint.yml` after lint passes. **Currently disabled** — every job is gated `if: false` / `if: false && …`; remove the `false` to turn them back on. The e2e job is commented out for now |
-| `.github/workflows/ci-quality-gates.yml` | PR quality gates — Gitleaks, npm audit, dependency review, SAST, test coverage (Codecov), jscpd duplication; reusable (`workflow_call`), called by `ci-lint.yml` after lint passes; `Quality Gates / Quality Gate Summary` is the single required check. SAST is CodeQL (JS/TS, Python, Actions) on public repos and Semgrep on private/internal; dependency review runs on public repos only. CodeQL only blocks merges with a "Require code scanning results" ruleset. Code scanning is by workflow, not GitHub's CodeQL default setup |
+| `.github/workflows/ci.yml` | The CI entry point — owns the triggers: every branch, PR and push except PRs into / pushes to `main` (only already-checked `rel/x.y` merges into `main`). Calls `ci-lint.yml` as job `Lint`; once lint passes, it calls `ci-tests.yml` and `ci-quality.yml` in parallel for PRs into `rel/x.y` only. Required checks live in the `rel/x.y` ruleset, never the one covering `main`. Review of `.github/` changes is gated by `CODEOWNERS` |
+| `.github/workflows/ci-lint.yml` | Reusable (`workflow_call`), called by `ci.yml` — commit message format, Biome lint/format (whole repo), workflow YAML lint (prettier + actionlint), plus `Lint Summary`. Checks are reported as `Lint / <job name>`; `Lint / Lint Summary` is the single required check. New lint jobs go here and into `Lint Summary`'s `needs:` |
+| `.github/workflows/ci-tests.yml` | Schema, unit and integration tests for every workspace that has the matching script (read-only token). Reusable (`workflow_call`) — called by `ci.yml` after lint passes. **Currently disabled** — every job is gated `if: false` / `if: false && …`; remove the `false` to turn them back on. The e2e job is commented out for now |
+| `.github/workflows/ci-quality.yml` | PR quality gates — Gitleaks, npm audit, dependency review, SAST, test coverage (Codecov), jscpd duplication; reusable (`workflow_call`), called by `ci.yml` after lint passes; `Quality / Quality Summary` is the single required check. SAST is CodeQL (JS/TS, Python, Actions) on public repos and Semgrep on private/internal; dependency review runs on public repos only. CodeQL only blocks merges with a "Require code scanning results" ruleset. Code scanning is by workflow, not GitHub's CodeQL default setup |
 | `.github/workflows/release.yml` | Manual release (`workflow_dispatch`) — git-cliff (`cliff.toml`) computes the next version + notes from Conventional Commits for `.` (tag `v1.2.3`) or one workspace (tag `apps-sample-api-v1.2.3`), then creates the tag and GitHub release with `GITHUB_TOKEN`. Tags are the version source of truth — nothing is committed back |
 | `.github/workflows/deploy-cr.yml` | Build and push image to container registry |
 | `.github/workflows/deploy-sae.yml` | Deploy a pushed image to an Alibaba Cloud SAE application (Aliyun CLI) |
@@ -437,7 +438,7 @@ Route middleware available after `authUser`:
 | `.claude/skills/openapi-docs/SKILL.md` | Per-app OpenAPI 3.1 spec from zod DTOs (`src/openapi.ts` → `docs/openapi/<app>.yaml`) |
 | `docs/cloud/` | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare |
 | `docs/secrets-vars.md` | GitHub Secrets and Variables required by the workflows |
-| `docs/release-troubleshooting.md` | Troubleshooting the manual `Release` workflow (`release.yml`, git-cliff) |
+| `docs/release-troubleshooting.md` | Troubleshooting the manual Release workflow (`release.yml`, git-cliff) |
 | `docs/NOTES.md` | Design decisions, caveats, open questions, TODOs |
 | `docs/housekeeping.md` | Dependency/Actions updates — Dependabot config plus the `/housekeeping-scan-actions`, `/housekeeping-update-packages`, `/housekeeping-update-node-npm` and `/housekeeping-check-tsconfig` Claude Code commands |
 | `scripts/generators/README.md` | `generate-crud.ts` / `generate-openapi.ts` flags, config file, override recipes |
