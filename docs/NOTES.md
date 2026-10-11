@@ -74,3 +74,17 @@ Coding, typing, logging, config and commit rules live in [conventions.md](conven
 npx biome <format/lint/check> common apps scripts
 npx biome lint common apps scripts --only=useTemplate --write --unsafe
 ```
+
+3. Pre-release branches (`-rc` / `-beta`) — decide later
+
+[git.md](git.md#branch--tag-names) suggests suffixes like `rel/1.1-beta.4` / `-rc.1`, but nothing supports them yet:
+
+- `release.yml` only releases from exact `rel/<major>.<minor>` branches, so a `rel/1.1-beta.4` branch can't be released.
+- `Allowed Source Branch` (`ci-source-branch.yml`) only lets exact `rel/x.y` merge into `main`.
+- The rulesets' `rel/[0-9]*.[0-9]*` pattern and `ci.yml`'s branch-scope regex *do* match suffixed names, so such a branch would be protected and get full CI — inconsistent with the two above.
+
+Options:
+- **Drop the suffix examples** from git.md until pre-releases are needed (simplest).
+- **Pre-release tags, not branches** — keep releasing from `rel/1.1`, add a `prerelease` bump to `release.yml` producing `v1.1.0-beta.1`, `v1.1.0-rc.1` (git-cliff and the tag-ruleset patterns would need to accept the suffix; mark them as GitHub pre-releases, not "Latest").
+- **Pre-release branches** — allow `rel/x.y-*` in `release.yml` and decide whether they may merge into `main` (probably not).
+

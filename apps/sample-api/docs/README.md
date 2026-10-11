@@ -16,7 +16,6 @@ Refer to [docs/conventions.md](../../../docs/conventions.md)
 - You can test it on [sso.html](http://127.0.0.1:3000/sso.html). The file source is [apps/sample-api/public/demo-express/sso.html](../public/demo-express/sso.html).
 - For SAML and OIDC, the sample credentials are `test` / `test`, which redirect to the Keycloak IdP.
 - OAuth requires GitHub account setup and related configuration.
-- See [apps/sample-api/src/routes/auth.js](../src/routes/auth.js).
 
 ### FIDO2
 
@@ -25,7 +24,6 @@ Refer to the following files for the SPA sample, which uses `fido2-lib` in the b
 - [apps/sample-api/public/demo-express/fido.html](../public/demo-express/fido.html)
   - You might need to use a nip.io-style service for a pseudo-domain during local testing.
   - Take note of and use the private IP on your local machine.
-- [apps/sample-api/src/routes/fido.js](../src/routes/fido.js)
 - You will need Windows Hello or a similar platform authenticator on macOS.
 
 ### Push Notification
@@ -33,7 +31,6 @@ Refer to the following files for the SPA sample, which uses `fido2-lib` in the b
 - Ensure that browser notification permissions are enabled.
 - Notifications may be blocked by company policy; you may receive a push event without a visible notification.
 - Refer to the following files for the SPA sample:
-  - [apps/sample-api/src/routes/webpush.js](../src/routes/webpush.js)
   - [apps/sample-api/public/demo-express/pn.html](../public/demo-express/pn.html)
 - The sample uses Web Push and runs on `http://127.0.0.1:3000`.
 - Click the following buttons in order (see their output in console.log and screen):

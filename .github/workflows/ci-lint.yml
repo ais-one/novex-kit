@@ -14,32 +14,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0 # full history for diff-based change detection
+          fetch-depth: 0 # full history so the PR's base..head range resolves
 
+      # Called from ci.yml, which only runs on pull_request - checks every commit in the PR.
       - name: Validate commit messages
         shell: bash
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PUSH_BEFORE_SHA: ${{ github.event.before }}
-          PUSH_HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
           PATTERN='^(feat|fix|chore)(\([^)]+\))?!?: .{1,}$'
           FAILED=0
 
-          if [[ "$GITHUB_EVENT_NAME" == 'pull_request' ]]; then
-            RANGE="$PR_BASE_SHA..$PR_HEAD_SHA"
-            git log --format="%s" "$RANGE" > /tmp/commit_msgs.txt
-          elif [[ "$PUSH_BEFORE_SHA" == '0000000000000000000000000000000000000000' ]] \
-            || ! git cat-file -e "${PUSH_BEFORE_SHA}^{commit}" 2>/dev/null; then
-            # new branch, or force-push (old tip no longer in history) - check the head commit only
-            git log --format="%s" -n 1 "$PUSH_HEAD_SHA" > /tmp/commit_msgs.txt
-          else
-            RANGE="$PUSH_BEFORE_SHA..$PUSH_HEAD_SHA"
-            git log --format="%s" "$RANGE" > /tmp/commit_msgs.txt
-          fi
+          git log --format="%s" "$PR_BASE_SHA..$PR_HEAD_SHA" > /tmp/commit_msgs.txt
 
           while IFS= read -r msg; do
             case "$msg" in

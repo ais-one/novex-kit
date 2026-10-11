@@ -55,7 +55,7 @@ jobs:
 
   # ── SOC2 - 2. SCA — npm audit ────────────────────────────────────────────
   # Checks the root package-lock.json (covers all workspaces) for known CVEs
-  # in production dependencies. Runs on every PR and push - no scope detection.
+  # in production dependencies. Runs on every PR into rel/x.y - no scope detection.
   npm-audit:
     name: NPM audit
     runs-on: ubuntu-latest
@@ -295,7 +295,7 @@ jobs:
         coverage,
         duplication,
       ] # remove `duplication` here if you drop that job
-    # dependency-audit and the two sast-* jobs may be `skipped` (pushes / repo visibility) - `skipped` passes;
+    # dependency-audit and the two sast-* jobs may be `skipped` (repo visibility) - `skipped` passes;
     # `failure` and `cancelled` fail the gate
     if: always()
     steps:

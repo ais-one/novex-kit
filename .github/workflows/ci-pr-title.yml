@@ -1,12 +1,15 @@
 ## PR title lint - the PR title must follow Conventional Commits (feat|fix|chore only).
-## PRs are squash-merged, so the title becomes the commit message on rel/x.y and main that
+## PRs into rel/x.y are squash-merged, so the title becomes the commit on rel/x.y that
 ## git-cliff reads for versions and release notes; ci.yml only checks the PR's own commits.
+## Runs only on PRs into rel/x.y: PRs into main are merge commits (title unused) and PRs into
+## other branches never reach the history git-cliff reads - checking them only adds noise.
 ## Separate from ci.yml so a title edit (`edited`) re-runs only this check, not lint/tests/gates.
-## Make "PR Title Format" a required check on rel/x.y (PRs into main are merge commits - title unused).
+## Make "PR Title Format" a required check on rel/x.y.
 name: CI PR Title
 
 on:
   pull_request:
+    branches: ["rel/[0-9]*.[0-9]*"]
     types: [opened, edited, synchronize, reopened]
 
 permissions: {}

@@ -40,7 +40,6 @@
     "prepare": "sh .githooks/setup.sh || echo 'Can not set git hooks'",
     "test:schemas": "node scripts/test-schemas.ts",
     "test:workspaces": "npm run test --workspaces --if-present",
-    "test:cover-only": "node --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=lcov.info --test __tests__/**/*.spec.js",
     "test:e2e": "start-server-and-test start http://localhost:8080 test",
     "update-commit-hash": "git rev-parse --verify --short HEAD > commit-hash"
   },

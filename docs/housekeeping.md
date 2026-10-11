@@ -8,7 +8,7 @@ This document covers how dependencies and GitHub Actions are kept up to date in 
 
 | Ecosystem | Scope | Interval |
 |---|---|---|
-| `npm` | root (`/`) | weekly |
+| `npm` | root (`/`) — the root lockfile covers every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) | weekly |
 | `github-actions` | `.github/workflows/*.yml` and `.github/actions/*` composite actions | weekly |
 
 Dependabot opens one PR per bump. It doesn't research breaking changes, doesn't batch non-major bumps together, and doesn't enforce commit-SHA pinning on Actions — it just proposes the bump and lets CI and review catch problems.

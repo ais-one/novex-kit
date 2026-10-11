@@ -26,6 +26,9 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
 # VS Code
 brew install --cask visual-studio-code
 
+# gitleaks - secret scan in the pre-commit hook (skipped with a warning if missing)
+brew install gitleaks
+
 # optional: full uninstall / cleanup — do not paste with the install line above
 # brew uninstall --cask --zap visual-studio-code
 # leftover folders to delete manually if needed:
@@ -68,9 +71,12 @@ npm run start
 
 4. Visit the following URLs
 
-- http://127.0.0.1:3000/health - API is running normally
-- http://127.0.0.1:3000 - Website served by Express with functional samples and demos
-- http://127.0.0.1:3000/native/index.html - unbundled Vue website sample
+| URL | Purpose |
+|---|---|
+| http://127.0.0.1:3000/health | Shared health check — mounted before auth, always unauthenticated |
+| http://127.0.0.1:3000/api/sample-api/healthcheck | App-level health check (the app's own routes are mounted) |
+| http://127.0.0.1:3000 | Website served by Express with functional samples and demos |
+| http://127.0.0.1:3000/native/index.html | Unbundled Vue website sample |
 
 **Notes**
 
@@ -81,23 +87,27 @@ npm run start
 
 5. Running Using Docker/Podman
 
-For running with Docker or Podman:
+Build from the **repository root** (the build needs the whole monorepo):
 
 ```bash
-docker build -t novex-kit --target runtime --build-arg APP_NAME=sample-api --build-arg API_PORT=3000 -f apps/sample-api/Dockerfile .
+docker build -t novex-kit \
+  --target runtime \
+  --build-arg APP_NAME=sample-api \
+  --build-arg API_PORT=3000 \
+  -f apps/sample-api/Dockerfile .
+
 docker run -p 3000:3000 novex-kit
 ```
+
+`podman` takes the same commands. `apps/base-iam` and `apps/cron` have their own Dockerfiles with the same stages and build args, and they default `APP_NAME` and `API_PORT` to their own values (3001 and 4000), so `-f apps/<app>/Dockerfile` alone is enough. CI builds and pushes images with [deploy-cr.yml](../.github/workflows/deploy-cr.yml).
 
 Features include FIDO2 login and push notifications. SAML/OIDC/OAuth login lives in [`apps/base-iam`](../apps/base-iam).
 
 ## Create New Backend App Or Service
 
-- Either run `npm run create:app --workspace=apps/sample-common` to scaffold from a clean-architecture template (`sample-rest-app-v2` or `sample-queue-consumer`) — see [README](../README.md) — or make a copy of the `sample-api` folder in the `apps` folder and rename it using kebab-case.
-- Edit the `.env` and `.env.json` files as needed. For production, inject secrets from environment variables or a secret manager.
-
+Use the `create:app` CLI or copy `sample-api` — see [create-app.md](create-app.md).
 
 ---
-
 
 ## Run Minimal Vue Application
 
@@ -144,38 +154,44 @@ npm run dev:mocked # run locally with mock service worker (many other API calls 
 
 ## Create New Web or Vue Frontend
 
-- Make a copy of the `sample-vue-full` folder in the `apps` folder and rename it using kebab-case.
-- Edit the `.env` and `.env.development` files as needed.
-  - `.env` is common to all environments for the app
-  - `.env.[MODE]` indicates the environment file to use (command to use: npx vite build --mode $1). default is `development`
-- `apps/sample-vue-full` is a sample skeleton that can be used as scaffolding
-  - `ROUTES` property
-    - Use kebab-case; it will be converted to capitalized menu labels in the UI.
-    - only up to 1 submenu level
-      - /first-level
-      - /submenu/second-level
-    - Component paths: relative to `setups/` (e.g. `'../views/SignIn.vue'`) or via the `@common/vue` alias (e.g. `'@common/vue/views/...'`)
+Copy `sample-vue-full` or `sample-vue-minimal` — see [create-app.md → Creating a New Frontend App](create-app.md#creating-a-new-frontend-app).
 
 ---
 
 ## Common Folders
 
-The `common` folders contain reusable shared code and schemas for use across applications in this monorepo. Only `common/compiled/*` and `common/vanilla/*` folders with their own `package.json` are npm workspaces; the others are imported by path or Vite alias.
+What each `common/*` folder is, its import name and whether it's an npm workspace: [structure.md → common](structure.md#common). Full repo layout: [structure.md](structure.md).
 
-- [common/vanilla/iso](../common/vanilla/iso) - isomorphic utilities that can run across multiple JavaScript runtimes
-- [common/compiled/node](../common/compiled/node) - Node.js runtime modules, including Express-specific middleware and services
-- [common/schemas](../common/schemas) - shared schemas written in `zod` (not a workspace — imported by path; has its own `docs:*` scripts)
-- [common/vanilla/web](../common/vanilla/web) - browser-only utilities and web components (not a workspace — imported via the `@common/web` alias)
-- [common/compiled/vue](../common/compiled/vue) - Vue-specific shared modules
-- [scripts](../scripts) - code/OpenAPI generation tooling (`generators`), local DB and service mocks (`db-mocks`, `service-mocks`), and schema tests
+### Command Reference
 
+Root `npm run` scripts (from the root `package.json`):
 
-### Workspace Command Reference
+| Script | What it does |
+|---|---|
+| `check` | Biome check, no writes — run before committing |
+| `check:write` | Biome check with `--write` — auto-fixes lint and format |
+| `ci:biome` | `biome ci .` — what the CI `Lint / Biome Checks` job runs |
+| `ci:lint-yml` | prettier check of `.github/workflows/*.yml` and `.github/actions/**/*.yml` (CI `Lint / Lint Workflow YAML`); fix with `npx prettier --write` on the same globs |
+| `ci:audit` | `npm audit --audit-level=high --omit=dev` (CI `Quality / NPM audit`) |
+| `ci:dup` | jscpd duplication check (CI `Quality / Duplication Check`) |
+| `test:workspaces` | `npm run test` in every workspace that has a `test` script |
+| `test:schemas` | zod schema export tests for a folder — `npm run test:schemas -- common/schemas` (run by the pre-commit hook) |
+| `test:e2e` | `start-server-and-test` against `http://localhost:8080` |
+| `prepare` | runs `.githooks/setup.sh` — automatic on `npm install`, re-run to re-apply the git hooks |
+| `clean:all` | **deletes every `node_modules` and every `package-lock.json`** in the repo — reinstall with `npm i` afterwards |
+| `git:hash` / `git:branch` | print the current short commit hash / branch |
+| `update-commit-hash` | write the short commit hash to a `commit-hash` file |
+
+Workspace management:
 
 - List workspaces: `npm ls -ws`
-- Install by workspace: `npm i @node-saml/node-saml@latest --workspace=common/compiled/node`
+- Install into a workspace (always from the root): `npm i @node-saml/node-saml@latest --workspace=common/compiled/node`
 - Check outdated packages: `npm outdated -ws`
-- Update packages: `npm update --save`
+- Update packages within their ranges: `npm update --save`
+- Run a script in one workspace: `npm run <script> --workspace=<path>`
+- Coverage locally: `npm run test:unit --workspace=<path>` (prints a coverage table); the merged lcov report is produced in CI (`Quality / Test Coverage`)
+
+OpenAPI docs are generated per package, not from the root: `cd common/schemas && npm run docs:generate` for the shared schemas (output `common/schemas/docs/openapi/openapi.merged.yaml`), or `npm run docs:generate` inside `db/<schema>/` for that schema's CRUD docs — see [scripts/generators/README.md](../scripts/generators/README.md).
 
 ### Publishing packages to npm
 

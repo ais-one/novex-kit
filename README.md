@@ -9,45 +9,33 @@ The folder contents are as follows:
 - `common`: shared JavaScript used by `apps` / `scripts`
 - `docs`: for documentation
 
+Full layout — every app, package and schema: [docs/structure.md](docs/structure.md).
+
 **IMPORTANT!**
 
+End Users and Contributors: **BEFORE** making **ANY** changes. Read the following:
+
+- For Contributors, read [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) and [.github/SECURITY.md](.github/SECURITY.md) before opening issues or pull requests.
 - This is a template repo. **Do NOT** use directly. Create your new repo using this as the template
 - The `apps` folder is for **userland** workspace codes, documents, scripts, etc.
 - The `db` folder is for **userland** schemas, migrations, seeds, etc.
 - End-users **MUST** work within these folders
 - Template maintainers **MUST** work outside `apps` and `db` folders
-- End-users can pull in template updates using [Sync Upstream Template](.github/workflows/update-template.yml) workflow.
+- End-users can pull in template updates using the [Sync Upstream Template](docs/github.md#sync-upstream-template) workflow — it prepares a `chore/sync-upstream` branch; you open and review the PR.
 - End-users can fork and make PR for requested features, or roll out their own in the `apps` folder.
 - only the `package.json` and `package-lock.json` files outside the `apps` can be modified (Note that a Sync Upstream Template will replace those file with the upstream ones)
-- Setup [hooks](docs/git-github.md#hooks-setup-and-usage)
-- Setup your downstream repository
-  - [rulesets](docs/git-github.md#rulesets)
-  - [environment](docs/git-github.md#repository-environment)
-  - [Code Scanning](docs/git-github.md#code-scanning)
-  - [Dependabot](docs/git-github.md#dependabot)
-- Follow the branch naming and workflow
-  - 
-- Commit message [](docs/git-github.md#commit-message)
-- Release Management
-- 
-
-## Read Me First
-
-- Contributors: read [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) and [.github/SECURITY.md](.github/SECURITY.md) before opening issues or pull requests.
-
-End Users: **BEFORE** making **ANY** changes. Read the following:
-
-- SETUP
-  - [git hooks](docs/git-github.md#hooks-setup-and-usage)
-  - [template updating](.github/workflows/update-template.yml)
-  - [commit message lint](docs/git-github.md#commit-message)
-  - [release automation](docs/git-github.md#release-automation)
-  - [secret scanning](https://docs.github.com/en/enterprise-cloud@latest/code-security/concepts/secret-security/about-secret-scanning)
-  - [security](https://github.com/settings/security_analysis)
+- git related
+  - Setup [hooks](docs/git.md#hooks)
+  - Read on [branch naming and workflows](docs/git.md#branching-and-workflow)
+  - Read on [commit messaging](docs/git.md#commit-message)
+- github related Setup your downstream repository
+  - [rulesets](docs/github.md#rulesets)
+  - [environment](docs/github.md#repository-environment)
+  - [Advanced Security](docs/github.md#advanced-security)
+  - [CI](docs/github.md#ci)
+  - [Release Management](docs/github.md#release-management)
 - READ
-  - [Merge strategy](docs/git-github.md#rebase-or-merge)
   - [Engineering standards](docs/conventions.md) format, lint, commit message, language, tooling, etc.
-  - [Workflows](docs/git-github.md#ci)
   - [Housekeeping](docs/housekeeping.md) dependency and GitHub Actions updates — Dependabot plus on-demand Claude Code commands
   - [Design Features](docs/NOTES.md#design-features)
   - [OPTIONAL: Roadmap](docs/NOTES.md#roadmap)
@@ -55,7 +43,7 @@ End Users: **BEFORE** making **ANY** changes. Read the following:
 
 ## CI/CD
 
-The full workflow list is in the CI/CD table of [CLAUDE.md](CLAUDE.md#cicd-github-actions).
+The full workflow list — triggers, purpose and required checks — is in [docs/github.md](docs/github.md#workflows).
 
 ## Quickstart
 
@@ -68,140 +56,6 @@ The full workflow list is in the CI/CD table of [CLAUDE.md](CLAUDE.md#cicd-githu
 - Database schemas, migrations, and seeds [db](db) and mock services [scripts/service-mocks](scripts/service-mocks)
 
 ### Creating Own apps/services
-- API [backend](docs/install.md#create-new-backend-app-or-service) — or use the [app creation CLI](#creating-a-new-app-or-service) below
-- Vue [frontend](docs/install.md#create-new-web-or-vue-frontend)
+- API [backend](docs/create-app.md#creating-a-new-app-or-service) — `create:app` CLI or copy `sample-api`
+- Vue [frontend](docs/create-app.md#creating-a-new-frontend-app)
 - Publish common/** workspaces to [npm](docs/install.md#publishing-packages-to-npm). **for template maintainers ONLY**
-
-## Creating a New App or Service
-
-Novex Kit provides reference template apps that can be used to quickly create new backend applications and services.
-
-Instead of manually copying an existing application, use the app creation CLI.
-
-### Available Templates
-
-The following templates are currently available:
-
-| Template                | Description                |
-| ----------------------- | -------------------------- |
-| `sample-rest-app`       | REST API application       |
-| `sample-queue-consumer` | Queue consumer application |
-
-Reference template apps live under `apps/` — [`apps/sample-rest-app-v2`](apps/sample-rest-app-v2) and [`apps/sample-queue-consumer`](apps/sample-queue-consumer) — alongside every other app.
-
-### Create a New App
-
-Run the following command from the repository root:
-
-```bash
-npm run create:app --workspace=apps/sample-common
-```
-
-The CLI will display the available templates:
-
-```text
-🚀 Create new app
-
-Available templates:
-
-  1. sample-rest-app
-  2. sample-queue-consumer
-
-Choose template [1-2]:
-```
-
-Select the template you want to use, then provide the name of the new application:
-
-```text
-Choose template [1-2]: 1
-
-App name: my-new-service
-```
-
-The CLI will copy the selected template into the `apps` directory:
-
-```text
-apps/
-└── my-new-service/
-```
-
-The `package.json` inside the new application will also be updated with the application name.
-
-Example output:
-
-```text
-📦 Using template: sample-rest-app
-📁 Creating: apps/my-new-service
-
-✔ Template copied
-✔ package.json updated
-
-✨ Done!
-
-Created:
-  apps/my-new-service
-```
-
-### Naming Rules
-
-Application names must:
-
-* use lowercase letters
-* use numbers when needed
-* use hyphens (`-`) to separate words
-* start with a letter or number
-
-Valid examples:
-
-```text
-payment-service
-user-api
-notification-worker
-order-service-v2
-```
-
-Invalid examples:
-
-```text
-PaymentService
-payment_service
-payment service
-```
-
-### Adding a New Template
-
-Reference template apps are maintained under `apps/`, alongside every other app.
-
-For example:
-
-```text
-apps/
-├── sample-rest-app-v2/
-└── sample-queue-consumer/
-```
-
-To add a new template:
-
-1. Create a new app directory under `apps/`.
-2. Add the application starter code.
-3. Add or update its `package.json`.
-4. Register the template in [`apps/sample-common/create-app.js`](apps/sample-common/create-app.js).
-
-For example:
-
-```js
-const templates = {
-  "sample-rest-app": "sample-rest-app-v2",
-  "sample-queue-consumer": "sample-queue-consumer",
-  "my-new-template": "my-new-template-sample",
-};
-```
-
-After registering the template, it will automatically become available when running:
-
-```bash
-npm run create:app --workspace=apps/sample-common
-```
-
-**Important:** the generated application is created under `apps/` and is considered **userland content**. Template maintainers should keep reusable starter code in its own dedicated app under `apps/` (e.g. `sample-rest-app-v2`) rather than modifying a generated application to serve as a future template.
-

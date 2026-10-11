@@ -1,6 +1,8 @@
 name: 0 Sync Upstream Template
-# Pulls the latest changes from the upstream template repository and opens a PR
-# with the diff, excluding app-specific folders that should never be overwritten.
+# Pulls the latest changes from the upstream template repository into the
+# chore/sync-upstream branch, excluding app-specific folders that should never be
+# overwritten. It does NOT open a PR - open one from chore/sync-upstream yourself.
+# Docs: docs/github.md#sync-upstream-template
 #
 # Process (wholesale copy, not a git merge):
 #   1. Checks out this repo (downstream) and creates the chore/sync-upstream branch.
@@ -11,11 +13,12 @@ name: 0 Sync Upstream Template
 #      tree in wholesale, then puts the protected paths back.
 #      Deletions are handled for free: anything upstream removed is simply never
 #      copied back in — no separate diff/comm step needed.
-#   4. If any files changed, opens a PR on branch chore/sync-upstream for review.
+#   4. Regenerates package-lock.json, then - if any files changed - commits and
+#      force-pushes chore/sync-upstream. Nothing changed = green run, nothing pushed.
 #
 # Trigger: run manually via workflow_dispatch.
 # Protected branches: safe — changes are pushed to chore/sync-upstream, never directly
-#   to the target branch. A human reviews and merges the PR as normal.
+#   to the target branch. A human opens, reviews and merges the PR as normal.
 #
 # Required secret: SYNC_TOKEN
 #   The built-in GITHUB_TOKEN cannot create or update workflow files (.github/workflows/).
@@ -24,7 +27,7 @@ name: 0 Sync Upstream Template
 #   Setup:
 #     Classic PAT:
 #       1. GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
-#       2. Generate new token → tick BOTH `repo` (for push + PR creation) AND `workflow` (for
+#       2. Generate new token → tick BOTH `repo` (for push) AND `workflow` (for
 #          writing .github/workflows/ files) — these are separate scopes; neither implies the other
 #       3. Copy the token value.
 #
@@ -33,7 +36,6 @@ name: 0 Sync Upstream Template
 #       2. Set Resource owner to the repo's owner, Important! Names must match
 #       3. Under Permissions → Repository permissions, grant:
 #            - Contents: Read and write
-#            - Pull requests: Read and write
 #            - Workflows: Read and write
 #       4. Copy the token value.
 #
@@ -130,5 +132,9 @@ jobs:
           SYNC_BRANCH: chore/sync-upstream
         run: |
           git add -A
+          if git diff --cached --quiet; then
+            echo "::notice title=Already up to date::No changes from upstream - nothing pushed"
+            exit 0
+          fi
           git commit -m "chore: sync from upstream template"
           git push origin "$SYNC_BRANCH" --force --no-verify

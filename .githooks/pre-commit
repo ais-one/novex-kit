@@ -1,7 +1,8 @@
 #!/bin/sh
 # .githooks/pre-commit
-# Pre-commit hook: runs Biome checks per-directory for staged files,
-# and zod schema tests when schema files are staged.
+# Pre-commit hook: scans staged changes for secrets (gitleaks), runs Biome
+# checks per-directory for staged files, and zod schema tests when schema
+# files are staged.
 #
 # Install: runs automatically on `npm install` (re-run: npm run prepare)
 # Skip:    git commit --no-verify
@@ -13,7 +14,29 @@ HOOK_NAME=pre-commit
 # ── Collect all staged files ─────────────────────────────────────────────────
 STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
 
-# ── 1. Biome check per directory ─────────────────────────────────────────────
+# ── 1. Secret scan (gitleaks) ────────────────────────────────────────────────
+# Blocks the commit if the staged changes contain a secret - once pushed, a
+# secret can't be fully removed from GitHub, only rotated.
+# gitleaks is a standalone binary (not an npm package): brew install gitleaks
+# Missing binary = warning only, so a fresh clone can still commit; CI (Quality
+# workflow) and GitHub push protection are the later safety nets.
+# False positive: add `gitleaks:allow` in a comment on that line, or add the
+# finding's fingerprint to .gitleaksignore.
+if [ -n "$STAGED" ]; then
+  if command -v gitleaks >/dev/null 2>&1; then
+    print_info "Scanning staged changes for secrets (gitleaks)…"
+    if ! gitleaks git --pre-commit --staged --redact --no-banner --verbose; then
+      print_error "gitleaks found a potential secret in the staged changes (see above)."
+      print_error "Remove it, unstage it, or mark a false positive with 'gitleaks:allow'."
+      exit 1
+    fi
+    print_success "No secrets found ✓"
+  else
+    print_warning "gitleaks not installed - secret scan skipped. Install: brew install gitleaks"
+  fi
+fi
+
+# ── 2. Biome check per directory ─────────────────────────────────────────────
 print_info "Running Biome checks on staged directories…"
 
 BIOME_FAILED=0
@@ -41,7 +64,7 @@ if [ $BIOME_FAILED -ne 0 ]; then
   exit 1
 fi
 
-# ── 2. Schema (Zod) validation tests ─────────────────────────────────────────
+# ── 3. Schema (Zod) validation tests ─────────────────────────────────────────
 # Detect staged files under the known schema folders:
 #   common/schemas, apps/*/schemas
 SCHEMA_FAILED=0

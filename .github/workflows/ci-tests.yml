@@ -83,7 +83,7 @@ jobs:
     name: Test Summary
     runs-on: ubuntu-latest
     needs: [schema-tests, unit-tests, integration-tests] # add e2e-tests here when re-enabled
-    # `skipped` passes (disabled jobs, integration tests on push); `failure` and `cancelled` fail the gate
+    # `skipped` passes (disabled jobs); `failure` and `cancelled` fail the gate
     if: always()
     steps:
       - name: Check all jobs succeeded
