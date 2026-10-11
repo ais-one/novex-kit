@@ -4,8 +4,7 @@
 
 ## Summary
 
-- [ ] List Github issue numbers if any(e.g. `#123`, `#987`) or
-- [ ] describe what this change does and what problem it resolves.
+- [ ] List Github issue numbers if any (e.g. `#123`, `#987`) or describe what this change does/problem it resolves.
 
 ## Affected Area
 
