@@ -3,7 +3,7 @@
 # Pre-commit hook: runs Biome checks per-directory for staged files,
 # and zod schema tests when schema files are staged.
 #
-# Install: run .githooks/setup.sh (or: git config core.hooksPath .githooks)
+# Install: runs automatically on `npm install` (re-run: npm run prepare)
 # Skip:    git commit --no-verify
 
 HOOK_NAME=pre-commit

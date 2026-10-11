@@ -1,43 +1,36 @@
 ## Hooks Setup And Usage
 
+This repository uses native Git hooks in `.githooks/`.
+
 - Pre-commit runs Biome checks on affected directories and schema validation tests where applicable.
 - Commit-msg validates the message against Conventional Commits (`feat`, `fix`, `chore` only).
 - Pre-push runs workspace tests and schema validation checks.
-- `npm install` also runs `npm prepare`, which configures the hooks path automatically.
 To skip hooks temporarily:
 ```bash
 git commit --no-verify
 git push --no-verify
 ```
 
+They are activated automatically by `npm install` — its `prepare` script runs [.githooks/setup.sh](../.githooks/setup.sh), which:
+- marks `pre-commit`, `commit-msg` and `pre-push` executable
+- clears any existing `core.hooksPath` (`--unset-all`, so a key set more than once doesn't block the update), then sets it to `.githooks` in this clone's `.git/config`
 
-This repository uses native Git hooks in `.githooks/`.
-
-After cloning, activate the hooks by
-
-**OPTION 1 - Running Setup Script**
-
-```bash
-# Make the setup script executable and run it
-chmod +x .githooks/setup.sh
-./.githooks/setup.sh
-```
-
-**OPTION 2 - Manual Installation**
+If installed with `--ignore-scripts`, or to re-apply the setup without reinstalling:
 
 ```bash
-# remove hooks path
-git config --local --unset-all core.hooksPath
-
-# set hooks path explicitly
-git config --local core.hooksPath .githooks
-chmod +x .githooks/pre-commit .githooks/pre-push
+npm run prepare
 ```
 
-**OPTION 3 - Via NPM prepare script**
+A failure (e.g. not a git checkout, as in a Docker build) prints `Can not set git hooks` but does not fail the install — check the install output if hooks don't fire.
 
-Running `npm install` will also run `npm prepare`, which configures the hooks path automatically.
+**Windows:** `prepare` calls `sh`, works on macOS and Linux but isn't on the `cmd.exe` PATH in a default Git for Windows install.
 
+Either run `npm install` from Git Bash, or point npm at Git's bash once so every npm script runs through it:
+
+```bash
+npm config set script-shell "C:\\Program Files\\Git\\bin\\bash.exe"
+npm run prepare
+```
 
 ### pre-commit hook
 
@@ -68,49 +61,7 @@ To skip the pre-push hook temporarily:
 git push --no-verify
 ```
 
----
-
-## Branching And Protection
-
-### Branch tags used
-
-- <feat/fix/chore>/scope/<...>
-- rel/<current release version>, rel/<next release version>
-  - can add -rc.1, -beta.1 suffixes as needed
-- hotfix/<scope>/<...>
-- v<version> (root tag), <path-with-dashes>-v<version> (workspace tag, e.g. `apps-sample-api-v1.2.3`)
-- main
-
-Examples:
-- release branch: rel/1.1
-- patch tags: v1.1.1
-- beta release: rel/1.1-beta.4
-
-### Branch & Tag Summary & Flow
-
-Use the table below to find out how to name branches based on action taken. Usually, contributors will create feat/fix/chore based off a `rel` branch
-
-| Branch | Branch from | Merge to | Notes |
-|---|---|---|---|
-| `rel/1.0` | `main` | `main` when production ready | Active dev branch |
-| `feat/fix/chore` | `rel/1.0` | `rel/1.0` via PR | Day-to-day work |
-| `hotfix/scope/name` | `main` | `main` + `rel/1.0` + `rel/2.0` | Emergency only |
-| `tag: v1.0.0` | `rel/1.0` after merge to main | — | Full release tag |
-| `tag: v1.0.1` | `rel/1.0` after hotfix merges in | — | Patch tag only, no merge back to main |
-| `rel/2.0` | `main` after `v1.0.0` tag | `main` when ready | Next dev cycle, cut from stable tag |
-
-The consistent rule is: **tags always come from `rel/[0-9]*.[0-9]*`**, never directly from `main`. Main is the destination, not the source of truth for what shipped.
-
-### Hotfix & Backport Flow
-
-```
-hotfix/payment-crash (check out from main)
-  → merge to main (keeps main stable)
-  → merge to rel/1.0
-      → tag v1.0.1 here (patch tag on rel/1.0)
-      → DO NOT DO THIS! DANGEROUS! merge rel/1.0 to main (main now has the patch)
-  → cherry-pick to rel/2.0 (backport)
-```
+## Github Repo Setup
 
 ### Branch Protection Rules
 
@@ -172,7 +123,7 @@ Leave **Restrict creations** off — the `Release` workflow creates tags with it
 
 ### Repository Environment
 
-1. Settings → Environments → production (choose New environment if it doesn't exist yet).
+1. Settings → Environments → production (create New environment if it doesn't exist yet).
 2. Under Environment secrets, add the secrets listed in [Environment Workflow Secrets](secrets-vars.md#environment-workflow-secrets).
 3. On the same page, set up the rules:
   - Required reviewers: add the people or teams who may approve deploys.
@@ -204,6 +155,50 @@ Version-update PRs are already configured in [.github/dependabot.yml](../.github
 Both run weekly and need no workflow file — GitHub schedules them itself.
 
 Separately, enable **Dependabot alerts** via **Settings** → **Advanced Security** → **Dependabot alerts** — this flags known CVEs in dependencies as they're published, complementing (not replacing) the `NPM audit` job in `ci-quality-gates.yml`.
+
+---
+
+## Branching And Protection
+
+### Branch tags used
+
+- <feat/fix/chore>/scope/<...>
+- rel/<current release version>, rel/<next release version>
+  - can add -rc.1, -beta.1 suffixes as needed
+- hotfix/<scope>/<...>
+- v<version> (root tag), <path-with-dashes>-v<version> (workspace tag, e.g. `apps-sample-api-v1.2.3`)
+- main
+
+Examples:
+- release branch: rel/1.1
+- patch tags: v1.1.1
+- beta release: rel/1.1-beta.4
+
+### Branch & Tag Summary & Flow
+
+Use the table below to find out how to name branches based on action taken. Usually, contributors will create feat/fix/chore based off a `rel` branch
+
+| Branch | Branch from | Merge to | Notes |
+|---|---|---|---|
+| `rel/1.0` | `main` | `main` when production ready | Active dev branch |
+| `feat/fix/chore` | `rel/1.0` | `rel/1.0` via PR | Day-to-day work |
+| `hotfix/scope/name` | `main` | `main` + `rel/1.0` + `rel/2.0` | Emergency only |
+| `tag: v1.0.0` | `rel/1.0` after merge to main | — | Full release tag |
+| `tag: v1.0.1` | `rel/1.0` after hotfix merges in | — | Patch tag only, no merge back to main |
+| `rel/2.0` | `main` after `v1.0.0` tag | `main` when ready | Next dev cycle, cut from stable tag |
+
+The consistent rule is: **tags always come from `rel/[0-9]*.[0-9]*`**, never directly from `main`. Main is the destination, not the source of truth for what shipped.
+
+### Hotfix & Backport Flow
+
+```
+hotfix/payment-crash (check out from main)
+  → merge to main (keeps main stable)
+  → merge to rel/1.0
+      → tag v1.0.1 here (patch tag on rel/1.0)
+      → DO NOT DO THIS! DANGEROUS! merge rel/1.0 to main (main now has the patch)
+  → cherry-pick to rel/2.0 (backport)
+```
 
 ---
 
@@ -291,21 +286,16 @@ This keeps the commit history git-cliff reads clean and matches the contributor 
 
 Please read the following scripts for information on the CI workflows
 
-1. Lint workflow [ci-lint.yml](../.github/workflows/ci-lint.yml) — commit messages, Biome, workflow YAML
-2. Tests workflow [ci-tests.yml](../.github/workflows/ci-tests.yml) — schema, unit, integration, e2e (**currently disabled**: every job is gated `if: false && …`)
-3. Quality gates workflow [ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) — security scans, coverage, duplication
-4. Source branch workflow [ci-source-branch.yml](../.github/workflows/ci-source-branch.yml) — only `hotfix/*` and `rel/x.y` may merge into `main` (standalone, not called from `ci-lint.yml`)
+1. Source branch workflow [ci-source-branch.yml](../.github/workflows/ci-source-branch.yml) — only `hotfix/*` and `rel/x.y` may merge into `main` (standalone, not called from `ci-lint.yml`)
+2. Lint workflow [ci-lint.yml](../.github/workflows/ci-lint.yml) — commit messages, Biome, workflow YAML
+3. Tests workflow [ci-tests.yml](../.github/workflows/ci-tests.yml) — schema, unit, integration, e2e (**currently disabled**: every job is gated `if: false && …`)
+4. Quality gates workflow [ci-quality-gates.yml](../.github/workflows/ci-quality-gates.yml) — security scans, coverage, duplication
 
-`ci-lint.yml` is the only workflow with its own triggers. Once all its lint jobs pass, it calls `ci-tests.yml` and `ci-quality-gates.yml` (reusable workflows, `on: workflow_call`) in parallel, for PRs into and pushes to `main` and ``rel/[0-9]*.[0-9]*``. If lint fails, neither runs — their required checks stay pending, so the PR is still blocked.
+Tests and Quality gates workflow depend on Lint to pass to run.
 
 Changes to `.github/` can go in the same PR as other code. Review of them is enforced by [CODEOWNERS](../.github/CODEOWNERS) (`/.github/` entry) — enable **Require review from Code Owners** in the branch protection rules / ruleset for `main` and ``rel/[0-9]*.[0-9]*``.
 
-Once configured:
-- PRs show red X if any required check fails.
-- Merges are blocked until all checks pass and approvals are met.
-- The branch protection rules apply uniformly across day-to-day work (`rel/[0-9]*.[0-9]*` branches), production merges (`main`), and emergency hotfixes.
-
-> **Note:** tests (unit, integration) run in every workspace that has the matching npm script (`npm run <script> --workspaces --if-present`); others are skipped. Integration tests run on `pull_request` only, not on push. The e2e job is commented out for now.
+The configured branch protection rules apply uniformly across day-to-day work (`rel/[0-9]*.[0-9]*` branches), production merges (`main`), and emergency hotfixes.
 
 ### CI Workflow
 
@@ -315,7 +305,9 @@ Once configured:
   - repo-wide schema check, no autofix
   - testing of all workspaces, no autofix
   - repo-wide package audit (`NPM audit`), no autofix
-3. Only allow merge if all checks pass
+3. Only allow merge if all checks pass and approvals are met
+
+> **Note:** tests (unit, integration) run in every workspace that has the matching npm script (`npm run <script> --workspaces --if-present`); others are skipped. Integration tests run on `pull_request` only, not on push. The e2e job is commented out for now.
 
 ### Lint Workflow
 

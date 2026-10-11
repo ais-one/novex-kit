@@ -5,11 +5,7 @@
 A monorepo template for building full-stack JavaScript applications with Node.js, Express, and Vue. It combines backend and frontend apps in `apps/`, and shared reusable code in `common/`. Designed as an updateable template — custom code is isolated so upstream template updates can be applied cleanly.
 
 - Node.js 24+ required, npm 11+ required
-- Fully ES Modules — no CommonJS
-- In `.ts` files: use TypeScript type annotations — do **not** use JSDoc for types
-  - used mainly in `apps/*` (with ts), `common/compiled/node` and `scripts/*`
-- In `.js` files: use JSDoc (`/** @type */`, `/** @param */`, etc.) for type hints and IDE autocomplete
-  - used mainly in `apps/*` (with js) and `common/vanilla/*`
+- Fully ES Modules, TS/JSDoc typing rules — see [Code conventions](#code-conventions)
 - TypeScript runs natively via Node 24 (`node file.ts`) — no build step needed for scripts
 
 ## Repository structure
@@ -71,10 +67,8 @@ A file-specific `exclude` still lives on the group's `tsconfig.json` where neede
 # 1. install all workspace dependencies
 npm i
 
-# 2. configure git hooks (also runs automatically via npm prepare)
-chmod +x .githooks/setup.sh && ./.githooks/setup.sh
-# or manually:
-# git config core.hooksPath .githooks
+# 2. git hooks are configured automatically by step 1 (npm prepare → .githooks/setup.sh)
+#    re-run without reinstalling: npm run prepare
 
 # 3. run the sample backend
 cd apps/sample-api && npm run start
@@ -247,26 +241,11 @@ To create a new app:
 
 ## Code conventions
 
-Read `docs/conventions.md` before making code changes.
+`docs/conventions.md` is the single source of truth for coding, typing, export, config/secrets, logging and commit standards — edit it there, not here. It is imported below so it is always in context:
 
-- **Formatter and linter**: `biome` — `npm run check` reports only (no writes); `npm run check:write` auto-fixes
-- **No `console.*`** in backend — import and use `@common/node/logger` as global `logger`
-- **No `console.*`** in frontend production — errors go to Sentry
-- **Config loading**: use `@common/node/config` for app config
-- **`.env.json`**: non-sensitive structured settings, exposed via `globalThis.__config`
-- **`.env`**: sensitive values loaded into `process.env` (development only — `.env.local` then `.env`; in other environments inject real env vars)
-- **Exports**: named exports preferred; default exports only for a single class, config, or plugin
-- **No barrel `index.js` files**
-- **No default and named exports in the same file**
-- **Use native**: test runner, datetime, fetch, npm, git hooks — avoid heavy libraries where possible
-- **Validation**: use `zod` for all input validation and OpenAPI schema generation
-- **Globals pattern** (when needed):
-  ```js
-  globalThis.__myApp = globalThis.__myApp || {}
-  const _key = Symbol('key')
-  globalThis.__myApp[_key] = value
-  ```
-- Mark incomplete or planned work with `TODO`
+@docs/conventions.md
+
+Lint/format with `biome`: `npm run check` reports only (no writes); `npm run check:write` auto-fixes.
 
 ## Clean architecture (controller → service → repository)
 
@@ -309,20 +288,9 @@ Full mechanism, field shapes, the request-ID propagation rules, and the per-app 
 
 ## Commit conventions
 
-Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/).
+Rules (Conventional Commits, `feat`/`fix`/`chore` only, `!` for breaking changes) are in `docs/conventions.md`, imported under [Code conventions](#code-conventions).
 
-Only three types are allowed:
-
-| Type | Use for |
-|---|---|
-| `feat` | new behaviour the user/consumer sees |
-| `fix` | corrects broken behaviour |
-| `chore` | everything else — build, ci, docs, style, refactor, perf, test, revert |
-
-Format: `type(scope): short description`
-Breaking changes: add `!` before the colon — `feat(auth)!: replace token format`
-
-Use `czg` for interactive or AI-assisted commit messages:
+Use `czg` for interactive or AI-assisted commit messages (types and scopes come from `cz.config.js`):
 ```bash
 npx czg          # interactive prompt
 npx czg --ai     # AI-generated message (requires API key)
@@ -330,7 +298,7 @@ npx czg --ai     # AI-generated message (requires API key)
 
 ## Git hooks
 
-Hooks live in `.githooks/` and are activated by `npm install` (via `npm prepare`) or manually via `git config core.hooksPath .githooks`.
+Hooks live in `.githooks/` and are activated by `npm install` — the root `prepare` script runs `.githooks/setup.sh` (the only supported setup path; re-run with `npm run prepare`).
 
 **Pre-commit** (runs on `git commit`):
 - Biome format and lint on affected directories

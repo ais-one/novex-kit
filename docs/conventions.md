@@ -16,31 +16,46 @@ This document defines repository-wide coding and runtime standards that apply ac
 
 - Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/).
 - Only `feat`, `fix`, and `chore` may be used as the top-level commit types.
-- Use `chore` for `build`, `ci`, `docs`, `style`, `refactor`, `perf`, `test`, and `revert` style changes.
+  - `feat` — new behaviour the user/consumer sees
+  - `fix` — corrects broken behaviour
+  - `chore` — everything else: `build`, `ci`, `docs`, `style`, `refactor`, `perf`, `test`, and `revert` style changes
 - Commit messages must use the format `type(scope): short description`.
-- Breaking changes must add `!` before `:`.
+- Breaking changes must add `!` before `:` — e.g. `feat(auth)!: replace token format`.
 - Use [czg](https://cz-git.qbb.sh/cli/) when generating commit messages.
 
-## Language Standard
+## JS Language Standard
 
-- Use of ES Modules is mandated.
+- Use only ES Modules - JS Standards compliant, no CommonJS
 - NodeJS applications or applications requiring compilation like Vue / React may use Native NodeJS **Typescript** (recommended) or **Javascript**
   - Exception: new backend apps using the controller → service → repository layering must be **Typescript with `strict: true`** (see [CLAUDE.md](../CLAUDE.md#clean-architecture-controller--service--repository) and the `clean-architecture` skill)
   - NodeJS TS (runtime) + `tsc --noEmit` (static type check) + `zod` (dynamic validation)  
   - `common/compiled/node` uses Typescript (`common/compiled/vue` is still Javascript)
 - Browser and Isomorphic code must use Javascript only
+- Named exports preferred (use export default only for a single class, config, or plugin)
+- do not use named exports and export default in same file
+- do not create barrel index.js/index.ts files
+- Prefer native platform features — test runner, datetime, fetch, npm, git hooks — over heavy libraries where possible
+- Use `zod` for all input validation and OpenAPI schema generation
+- When globals are needed, namespace them under one object and key them with a `Symbol`:
+  ```js
+  globalThis.__myApp = globalThis.__myApp || {}
+  const _key = Symbol('key')
+  globalThis.__myApp[_key] = value
+  ```
 
 ### Typing Convention
 
 - In `.ts` files: use TypeScript type annotations — do **not** use JSDoc for types
+  - used mainly in `apps/*` (with ts), `common/compiled/node` and `scripts/*`
 - In `.js` files: use JSDoc (`/** @type */`, `/** @param */`, etc.) for type hints and IDE autocomplete
+  - used mainly in `apps/*` (with js) and `common/vanilla/*`
 
 ## Node Runtime Standard
 
 - Node runtime applications must import `@common/node/logger` and use the global `logger` instead of `console.*`.
 - Node runtime applications must import `@common/node/config` for application config loading.
 - `.env.json` for non-sensitive structured values, exposed globally through `globalThis.__config`. `//` line comments are allowed.
-- `.env` for secrets and simple scalar values, loaded into `process.env` in development only. In production, inject secrets via your deployment platform (K8s secrets, Docker env, vault agent sidecar, CI/CD injection) — `.env` files are not loaded outside development.
+- `.env` for secrets and simple scalar values, loaded into `process.env` in development only (`.env.local` first, then `.env`). In production, inject secrets via your deployment platform (K8s secrets, Docker env, vault agent sidecar, CI/CD injection) — `.env` files are not loaded outside development.
 
 ## Configuration And Secrets Standard
 
@@ -54,14 +69,9 @@ This document defines repository-wide coding and runtime standards that apply ac
   - common/compiled/node
   - scripts/* - long-running services/servers only; one-shot CLI tooling (generators, `test-schemas.ts`, `serve-db.ts` startup output, `kafka-*.ts`) may use `console.*`
   - apps/* - if node runtime
-- strip `console.*` for browser runtime applications in the folders below (in production)
+- strip `console.*` for browser runtime applications in the folders below (in production) — errors go to Sentry instead
   - common/compiled/vue - frontend VueJS
   - common/vanilla/web - frontend plainJS
   - common/vanilla/iso - simple files used in both browser and node runtimes
   - apps/* - if browser runtime
 
-## OTHER IMPORTANT CAVEATS!
-
-- use named exports; use export default only for a single class, config, or plugin
-- do not create barrel index.js files
-- do not use named exports and export default in same file

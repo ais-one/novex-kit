@@ -11,15 +11,15 @@ The folder contents are as follows:
 
 **IMPORTANT!**
 
-- This is a template repo. Do NOT use directly. Create your new repo using this as the template
-- The `apps` folder is for **userland** workspace codes, documents, scripts, schemas, migrations, etc.
+- This is a template repo. **Do NOT** use directly. Create your new repo using this as the template
+- The `apps` folder is for **userland** workspace codes, documents, scripts, etc.
 - The `db` folder is for **userland** schemas, migrations, seeds, etc.
 - End-users **MUST** work within these folders
 - Template maintainers **MUST** work outside `apps` and `db` folders
 - End-users can pull in template updates using [Sync Upstream Template](.github/workflows/update-template.yml) workflow.
 - End-users can fork and make PR for requested features, or roll out their own in the `apps` folder.
 - only the `package.json` and `package-lock.json` files outside the `apps` can be modified (Note that a Sync Upstream Template will replace those file with the upstream ones)
-- TBD - End-user repository setup
+- TBD Setup the repository
 - TBD - git workflow
 
 ## Read Me First
