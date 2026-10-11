@@ -1,4 +1,4 @@
-## Source branch guard - only hotfix/* and rel/x.y branches may merge into main.
+## Source branch guard - only rel/x.y branches may merge into main (hotfix/* goes into rel/x.y first).
 ## GitHub rulesets can't restrict a PR's source branch, so this job fails for any
 ## other head branch; make "Allowed Source Branch" a required check on main.
 ## The check runs in the step, not a job-level `if:` - a skipped required check counts as passing.
@@ -15,6 +15,7 @@ permissions: {}
 
 jobs:
   source-branch:
+    # check branches allowed to merge into main
     name: Allowed Source Branch
     runs-on: ubuntu-latest
     steps:
@@ -29,9 +30,9 @@ jobs:
             echo "::error::PRs into main must come from a branch in $BASE_REPO, not a fork ($HEAD_REPO)"
             exit 1
           fi
-          if [[ "$HEAD_REF" =~ ^hotfix/.+$ || "$HEAD_REF" =~ ^rel/[0-9]+\.[0-9]+$ ]]; then
+          if [[ "$HEAD_REF" =~ ^rel/[0-9]+\.[0-9]+$ ]]; then
             echo "Allowed source branch: $HEAD_REF"
           else
-            echo "::error::Only hotfix/* or rel/x.y branches may merge into main (got: $HEAD_REF)"
+            echo "::error::Only rel/x.y branches may merge into main (got: $HEAD_REF) - hotfix/* goes into rel/x.y first"
             exit 1
           fi

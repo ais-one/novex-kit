@@ -157,11 +157,6 @@ npx commitizen init cz-conventional-changelog --save-dev --save-exact
 exec < /dev/tty && node_modules/.bin/cz --hook || true
 ```
 
-### semantic-release
-
-- https://github.com/semantic-release/semantic-release
-- https://github.com/semantic-release/semantic-release/tree/master/docs/recipes
-
 
 
 # Merge updates from upstream

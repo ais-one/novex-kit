@@ -2,7 +2,7 @@
 # .githooks/pre-push
 # Pre-push hook: runs workspace tests (unit + integration, no e2e) and schema validation tests before allowing a push.
 #
-# Install: run .githooks/setup.sh (or: git config core.hooksPath .githooks)
+# Install: runs automatically on `npm install` (re-run: npm run prepare)
 # Skip:    git push --no-verify
 
 HOOK_NAME=pre-push
@@ -67,7 +67,7 @@ fi
 
 # ── 3. Security audit ────────────────────────────────────────────────────────
 print_info "Running security audit…"
-npm audit --omit=dev --audit-level=high
+npm run ci:audit
 AUDIT_EXIT=$?
 if [ $AUDIT_EXIT -ne 0 ]; then
   print_warning "Security vulnerabilities found."

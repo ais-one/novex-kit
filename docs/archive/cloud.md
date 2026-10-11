@@ -20,7 +20,7 @@ Supported Cloud Platforms
 |Managed relational DB|RDS (MySQL/PG)|RDS| ? |
 |Load Balancers|SLB|ALB / NLB / CLB| ? |
 |NAT Gateway for outgoing|NAT|NAT| ? |
-|Docker image registry|ACR|ECR| ? |
+|Docker image registry|ACR|ECR|DOCR|
 
 ## Install CLI
 
@@ -57,7 +57,7 @@ Associate appropriate policy and/or role to IAM user. WIP
 
 TBD
 
-## Deploy And Run API on Aliyun Function Compute
+## Deploy And Run on SAE / Function Compute
 
 TBD
 
@@ -69,6 +69,9 @@ How to check if app is updated
   - service revisions
   - container images
 
+## Doppler
+
+Manage Secrets
 
 ## Cloudflare
 
