@@ -44,38 +44,44 @@ on:
         description: "bucket name e.g. test-www-dev"
         default: ""
         required: true
-      env:
-        description: "environment: dev, uat, prd"
-        default: "dev"
+      environment:
+        description: "deployment environment"
         required: true
-# env:
-#   OSS_TYPE: ${{ github.event.inputs.tag || 'main' }}
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  # OSS_TYPE: ${{ inputs.tag || 'main' }}
+  DEPLOY_ENV: ${{ inputs.environment }}
+  BUCKET: ${{ inputs.bucket }}
+  APP: ${{ inputs.app }}
+
 jobs:
   build:
     name: Install And Build
     runs-on: ubuntu-latest
     steps:
-      - name: Workflow Inputs
-        run: |
-          echo "provider: ${{ github.event.inputs.provider }}"
-          echo "branch/tag: ${{ github.event.inputs.tag }}"
-          echo "environment: ${{ github.event.inputs.env }}"
-          echo "app: ${{ github.event.inputs.app }}"
-          echo "bucket: ${{ github.event.inputs.bucket }}"
-      - name: Checkout ${{ github.event.inputs.tag }}
+      - name: Show inputs
+        env:
+          INPUTS: ${{ toJSON(inputs) }}
+        run: echo "$INPUTS"
+      - name: Checkout ${{ inputs.tag }}
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.inputs.tag }}
+          ref: ${{ inputs.tag }}
       - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
       - name: Build
-        run: cd apps/${{ github.event.inputs.app }} && npm run build --mode ${{ github.event.inputs.env }}
+        run: cd "apps/$APP" && npm run build --mode "$DEPLOY_ENV"
         # run: npm run build # will create a dist folder (TODO build environment??)
       - name: upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: my-build
-          path: ${{ github.workspace }}/apps/${{ github.event.inputs.app }}/dist
+          path: ${{ github.workspace }}/apps/${{ inputs.app }}/dist
 
   deploy-oss: # aliyun OSS
     needs: build
@@ -83,7 +89,7 @@ jobs:
     # for approval, and only then receives the environment secrets (ACCESS_KEY_ID/SECRET).
     # Settings → Environments → production → Required reviewers / Environment secrets
     environment: production
-    if: github.event.inputs.provider == 'oss'
+    if: inputs.provider == 'oss'
     name: Deploying To Aliyun OSS - Node Version TODO
     runs-on: ubuntu-latest
     steps:
@@ -91,24 +97,24 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: my-build
-          path: ${{ github.workspace }}/apps/${{ github.event.inputs.app }}/dist
+          path: ${{ github.workspace }}/apps/${{ inputs.app }}/dist
       - name: Install Alibaba Cloud OSSUTIL
         run: wget http://gosspublic.alicdn.com/ossutil/1.6.10/ossutil64 && chmod +x ossutil64
       - name: Configure Alibaba Cloud OSSUTIL
         run: ./ossutil64 config -i ${{ secrets.ACCESS_KEY_ID }} -k ${{ secrets.ACCESS_KEY_SECRET }} -e ${{ vars.ENDPOINT }} -c .ossutilconfig
       - name: Upload the web folder to the chosen OSS bucket
-        run: ./ossutil64 --config-file .ossutilconfig cp ${{ github.workspace }}/apps/${{ github.event.inputs.app }}/dist oss://${{ github.event.inputs.bucket }} -r -f
+        run: ./ossutil64 --config-file .ossutilconfig cp "${{ github.workspace }}/apps/$APP/dist" "oss://$BUCKET" -r -f
   deploy-s3: # AWS S3
     needs: build
     environment: production # see deploy-oss for setup
-    if: github.event.inputs.provider == 's3'
+    if: inputs.provider == 's3'
     runs-on: ubuntu-latest
     steps:
       - name: download artifact
         uses: actions/download-artifact@v8
         with:
           name: my-build
-          path: ${{ github.workspace }}/apps/${{ github.event.inputs.app }}/dist
+          path: ${{ github.workspace }}/apps/${{ inputs.app }}/dist
       - name: Setup AWS CLI
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -117,18 +123,18 @@ jobs:
           aws-region: us-east-1
       - name: Sync files to S3 bucket
         run: |
-          aws s3 sync dist s3://${{ github.event.inputs.bucket }} --delete
+          aws s3 sync dist "s3://$BUCKET" --delete
   deploy-oss2: # Alibaba Cloud OSS via AWS CLI
     needs: build
     environment: production # see deploy-oss for setup
-    if: github.event.inputs.provider == 'oss2'
+    if: inputs.provider == 'oss2'
     runs-on: ubuntu-latest
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v8
         with:
           name: my-build
-          path: ${{ github.workspace }}/apps/${{ github.event.inputs.app }}/dist
+          path: ${{ github.workspace }}/apps/${{ inputs.app }}/dist
       - name: Configure AWS CLI for OSS
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -137,31 +143,8 @@ jobs:
           aws-region: ap-southeast-1
       - name: Sync files to OSS bucket
         run: |
-          aws s3 sync dist s3://${{ github.event.inputs.bucket }} \
+          aws s3 sync dist "s3://$BUCKET" \
             --delete \
             --endpoint-url https://${{ vars.ENDPOINT }}
-  deploy-ghp: # Alibaba Cloud OSS via AWS CLI
-    needs: build
-    environment: production # see deploy-oss for setup
-    if: github.event.inputs.provider == 'ghp'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: my-build
-          path: ${{ github.workspace }}/apps/${{ github.event.inputs.app }}/dist
-      - name: Run deploy script
-        # remember to change user.name and user.email
-        run: |
-          git config user.name "Your username" && git config user.email "your email"
-          git checkout --orphan gh-pages
-          npx vite build --mode ${{ github.event.inputs.env }}
-          git --work-tree dist add --all
-          git --work-tree dist commit -m 'Deploy'
-          git push origin HEAD:gh-pages --force
-          rm -r dist
-          git checkout -f "${GITHUB_REF##*/}"
-          git branch -D gh-pages
 
 # https://cli.vuejs.org/guide/deployment.html#github-pages

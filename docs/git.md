@@ -4,7 +4,7 @@ This repository uses native Git hooks in `.githooks/`.
 
 - Pre-commit scans staged changes for secrets (gitleaks), then runs Biome checks on affected directories and schema validation tests where applicable.
 - Commit-msg validates the message against Conventional Commits (`feat`, `fix`, `chore` only).
-- Pre-push runs workspace tests.
+- Pre-push runs unit tests (`test:unit`) in every workspace that has them.
 
 To skip hooks temporarily:
 ```bash
@@ -62,7 +62,7 @@ Runs automatically on every `git push`:
 
 | Check | Details |
 |-------|---------|
-| **Workspace tests** | Runs `npm run test --workspace=<ws>` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test` script, touched or not. Unit + integration only — e2e is disabled for now. |
+| **Workspace unit tests** | Runs `npm run test:unit --workspace=<ws>` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test:unit` script, touched or not, and blocks the push if any fail. Workspaces without `test:unit` (or with an unreadable `package.json`) are listed as **Skipped**; if none has the script, the hook warns that no unit tests ran. Integration and e2e tests aren't run here — integration runs in CI (`Tests` workflow, currently disabled), e2e is disabled for now; schema tests run in pre-commit. |
 
 TODO:
 - Type checking with tsc --noEmit, since it needs the whole project and is too slow per commit.
@@ -71,6 +71,8 @@ TODO:
 ---
 
 ## Branching And Workflow
+
+Always work on a new branch, never directly on `main` or `rel/*`.
 
 ### Branch & Tag Names
 
@@ -83,7 +85,7 @@ TODO:
 - main
 
 Examples:
-- release branch: rel/1.1
+- release-line branch: rel/1.1
 - patch tags: v1.1.1
 - beta release: rel/1.1-beta.4
 
@@ -188,6 +190,15 @@ When choosing a scope in `czg`:
 - Use `docs` for documentation-only changes.
 - Use `ci` for workflow, hook, or automation changes.
 - Use `repo` for root-level or cross-cutting changes that do not fit a single workspace.
+
+---
+
+## Pull Requests
+* Follow the branch naming and merge flow in [docs/git.md](../docs/git.md#branching-and-workflow): `feat/`, `fix/`, `chore/` from the right `rel/x.y` branch, PRs back into it; fixes go to every affected release line ([Fixes Across Release Lines](../docs/git.md#fixes-across-release-lines)).
+* Don't open PRs against `main` — only `rel/x.y` branches merge there.
+* PR titles must be Conventional Commits (e.g. `fix(auth): handle expired token`); they become the squash commit used for versions and release notes. Change GitHub's suggested title (the branch name) before merging.
+* For changes and feature requests, include a clear description of the problem, the proposed behavior, and any relevant example, request, or UI/API markup.
+* Reference the issue that the PR resolves, for example `Fixes #1234` or `Resolves #6458`.
 
 ---
 

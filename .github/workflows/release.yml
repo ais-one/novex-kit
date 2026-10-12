@@ -50,6 +50,10 @@ jobs:
     permissions:
       contents: write # create the tag and the GitHub release
     steps:
+      - name: Show inputs
+        env:
+          INPUTS: ${{ toJSON(inputs) }}
+        run: echo "$INPUTS"
       - name: Check branch
         env:
           REF_NAME: ${{ github.ref_name }}

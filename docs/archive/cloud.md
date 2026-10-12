@@ -25,7 +25,7 @@ Supported Cloud Platforms
 ## Install CLI
 
 - Aliyun
-  - tbd
+  - TODO
 - AWS
   - AWS-cli
 - Others
@@ -55,11 +55,11 @@ Associate appropriate policy and/or role to IAM user. WIP
 
 ## Hosting Static Website on Aliyun OSS
 
-TBD
+TODO
 
 ## Deploy And Run on SAE / Function Compute
 
-TBD
+TODO
 
 **Notes:**
 

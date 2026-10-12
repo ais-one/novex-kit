@@ -2,7 +2,6 @@
   "name": "@common/vue",
   "description": "Common VueJS packages",
   "type": "module",
-  "main": "index.js",
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
     "@common/iso": "file:../../vanilla/iso",
