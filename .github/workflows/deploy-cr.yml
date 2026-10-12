@@ -1,13 +1,9 @@
 # Manually triggered: builds a backend app's container image and pushes it to a container registry.
-#   1. build            - shows the inputs
-#   2. request-approval - waits for approval on the "production" GitHub Environment
-#   3. deploy_to_cr     - checks out `tag_gr`, builds apps/<image name>/Dockerfile (target `runtime`)
-#                         from the build context, then pushes <CR_HOST>/<CR_NAMESPACE>/<image name>:<tag_ci>
+#   1. check_release_ref - fails unless release_ref is a rel/x.y branch or a release tag (runs before any approval)
+#   2. deploy_to_cr - waits for approval if the chosen environment has required reviewers, then checks out release_ref, builds apps/<image name>/Dockerfile and pushes the image
 # The image name doubles as the app folder: it must match a folder in apps/ that has a Dockerfile.
-# Deploying a pushed image to Alibaba Cloud SAE: deploy-sae.yml.
-# Try to use as much shell scripting as possible.
-# actions appear from default branch - https://github.community/t/workflow-files-only-picked-up-from-master/16129/2
-#
+# The environment's deployment branch rule checks the branch the workflow is RUN FROM, not release_ref -
+# check_release_ref is what restricts the code that gets built.
 # Supported Container Registries: AWS, Alicloud, Digital Ocean
 #
 # Setup the following secrets
@@ -18,26 +14,25 @@
 # - CR_NAMESPACE: container registry namespace (for deployment)
 # - CR_IMAGENAME: The image name (= app folder under apps/). If not specified, the repository name will be used
 # Specify the following inputs
-# - tag_gr
+# - release_ref: rel/x.y branch or release tag to build (rel/1.0, v1.2.3, apps-sample-api-v1.2.3)
 # - cr_imagename
-# - tag_ci
+# - cr_tag
 # - dockerfile_path
-# environment NOT needed as it is specified in the container orchestration platform.
+# - environment
 name: 1 DEPLOY - Container Registry
 
 on:
   workflow_dispatch:
     # Inputs the workflow accepts.
     inputs:
-      tag_gr:
-        description: "git repo branch or tag"
-        default: "main"
+      release_ref:
+        description: "rel/x.y branch or release tag to build (e.g. rel/1.0, v1.2.3, apps-sample-api-v1.2.3)"
         required: true
       cr_imagename:
-        description: "container image name - leave blank to use GITHUB variables (if specified) or repo name"
+        description: "container image name - a folder with a Dockerfile in the apps folder"
         default: ""
-        required: false
-      tag_ci:
+        required: true
+      cr_tag:
         description: "container image tag"
         default: "latest"
         required: true
@@ -45,56 +40,65 @@ on:
         description: "docker build context (default: repo root) - the Dockerfile is always apps/<image name>/Dockerfile"
         default: "."
         required: false
-
+      environment:
+        description: "Select target deployment environment"
+        required: true
+        default: "staging"
+        type: choice
+        # development environment is on local machine
+        options:
+          - staging
+          - production
 env:
-  CR_IMAGENAME: ${{ github.event.inputs.cr_imagename || vars.CR_IMAGENAME || github.event.repository.name }}
+  RELEASE_REF: ${{ github.event.inputs.release_ref }}
+  CR_TAG: ${{ github.event.inputs.cr_tag }}
+  CR_IMAGENAME: ${{ github.event.inputs.cr_imagename }}
   CR_PASSWORD: ${{ secrets.CR_PASSWORD }}
   CR_USERNAME: ${{ secrets.CR_USERNAME }}
   CR_HOST: ${{ vars.CR_HOST }}
   CR_NAMESPACE: ${{ vars.CR_NAMESPACE }}
+  DEPLOY_ENV: ${{ github.event.inputs.environment }}
   DOCKERFILE_PATH: ${{ github.event.inputs.dockerfile_path || '.' }}
   DOCKERFILE_TARGET: runtime # follow value in docker file
+
 jobs:
-  build:
-    name: Build Image
+  check_release_ref:
+    name: Check release_ref is deployable
     runs-on: ubuntu-latest
+    steps:
+      - name: Check release_ref
+        run: |
+          if [[ "$RELEASE_REF" =~ ^(rel/[0-9]+\.[0-9]+|v[0-9]+\.[0-9]+\.[0-9]+|[a-z0-9-]+-v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "OK: $RELEASE_REF"
+          else
+            echo "::error::release_ref must be a rel/x.y branch or a release tag v1.2.3 / <workspace>-v1.2.3 (got: $RELEASE_REF)"
+            exit 1
+          fi
+
+  deploy_to_cr:
+    name: Build and push image to Container Registry
+    needs: check_release_ref
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }} # approval only avalible for Github Free(public repo) and Enterprise(all repos)
     steps:
       - name: Show Workflow Inputs
         run: |
-          echo "branch/tag: ${{ github.event.inputs.tag_gr }}"
-          echo "image name: ${{ github.event.inputs.cr_imagename }}"
-          echo "image tag: ${{ github.event.inputs.tag_ci }}"
-          echo "docker file path: ${{ github.event.inputs.dockerfile_path }}"
-  request-approval:
-    name: Request Deployment Approval
-    needs: [build]
-    runs-on: ubuntu-latest
-    environment:
-      # "production" is a GitHub Environment configured with required reviewers.
-      # Add your authorized users/teams there in:
-      #   Settings → Environments → production → Required reviewers
-      # ← configure required reviewers here in GitHub Settings
-      name: production
-    steps:
-      - name: Approval gate
-        run: echo "✅ Approved — deploying ${{ github.event.inputs.tag_ci }}"
-
-  deploy_to_cr:
-    runs-on: ubuntu-latest
-    name: Deploying CR
-    needs: [request-approval]
-    steps:
+          echo "branch/tag: $RELEASE_REF"
+          echo "image tag: $CR_TAG"
+          echo "image name: $CR_IMAGENAME"
+          echo "docker file path: $DOCKERFILE_PATH"
+          echo "deploy env: $DEPLOY_ENV"
       - name: Add checkout plugin
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.inputs.tag_gr }}
+          ref: ${{ github.event.inputs.release_ref }}
       - name: Build and push image to CR
         run: |
           # cat password.txt |
           echo "$CR_PASSWORD" | docker login --username "$CR_USERNAME" --password-stdin "$CR_HOST"
           docker build -f "apps/$CR_IMAGENAME/Dockerfile" \
-            -t "$CR_HOST/$CR_NAMESPACE/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}" \
+            -t "$CR_HOST/$CR_NAMESPACE/$CR_IMAGENAME:$CR_TAG" \
             --target "$DOCKERFILE_TARGET" \
             "$DOCKERFILE_PATH" || exit 1
-          docker push "$CR_HOST/$CR_NAMESPACE/$CR_IMAGENAME:${{ github.event.inputs.tag_ci }}"
+          docker push "$CR_HOST/$CR_NAMESPACE/$CR_IMAGENAME:$CR_TAG"
           docker logout
