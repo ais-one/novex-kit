@@ -68,7 +68,7 @@ https://code.visualstudio.com/docs/copilot/copilot-smart-actions
 https://learn.microsoft.com/en-us/training/modules/generate-documentation-using-github-copilot-tools/
 
 
-### TBD - generate JSDOC for all function
+### TODO - generate JSDOC for all function
 
 Using Automatic Inline Suggestions
 This method leverages Copilot's ability to provide context-aware code completions. 

@@ -86,7 +86,7 @@ node --test-reporter=spec --experimental-test-coverage --experimental-test-modul
 node --test-reporter=spec --test --test-only --test-isolation=process --test-concurrency=1 ./__tests__/integration/category.route.test.ts
 ```
 
-Per-workspace `test` scripts run `test:unit` and `test:integration` (some also chain a `test:schema` step, currently stubbed to `exit 0`) — see each app's `package.json` for its exact composition. Zod schema exports are validated by the root `test:schemas` script (`scripts/test-schemas.ts <schema-dir>`), which the git hooks run for `common/schemas` and `apps/*/schemas`.
+Per-workspace `test` scripts run `test:unit` and `test:integration` (some also chain a `test:schemas` step, currently stubbed to `exit 0`) — see each app's `package.json` for its exact composition. Zod schema exports are validated by the root `test:schemas` script (`scripts/test-schemas.ts <schema-dir>`), which the git hooks run for `common/schemas` and `apps/*/schemas`.
 
 ## Backend architecture: generated CRUD + OpenAPI
 

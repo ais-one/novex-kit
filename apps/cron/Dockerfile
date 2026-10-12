@@ -10,7 +10,7 @@
 # option to use dedicated (extra fee) or static egress IPs
 
 # docker login --username $CR_USERNAME --password-stdin $CR_HOST
-# docker build -t $CR_HOST/$CR_NAMESPACE/$CR_IMAGENAME:${{ github.event.inputs.cr_tag }} \
+# docker build -t $CR_HOST/$CR_NAMESPACE/$CR_IMAGENAME:${{ inputs.cr_tag }} \
 #  --target $DOCKERFILE_TARGET \
 #  --build-arg ARG_API_PORT=3000 \
 #  $DOCKERFILE_PATH || exit 1001

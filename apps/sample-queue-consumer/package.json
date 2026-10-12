@@ -12,8 +12,8 @@
     "kafka:offset": "node ../../scripts/kafka-offset.ts",
     "test:unit": "node --test-reporter=spec --experimental-test-coverage --experimental-test-module-mocks --test --test-only ./src/**/__tests__/*.test.ts",
     "test:integration": "exit 0",
-    "test:schema": "exit 0",
-    "test": "npm run test:unit && npm run test:integration && npm run test:schema"
+    "test:schemas": "exit 0",
+    "test": "npm run test:unit && npm run test:integration && npm run test:schemas"
   },
   "dependencies": {
     "@apps/sample-common": "file:../sample-common",

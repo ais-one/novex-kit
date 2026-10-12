@@ -64,14 +64,15 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Display Inputs
-        run: echo "${{ toJSON(github.event.inputs) }}"
-
+      - name: Show inputs
+        env:
+          INPUTS: ${{ toJSON(inputs) }}
+        run: echo "$INPUTS"
       # done this way because of SYNC_TOKEN
       - uses: actions/checkout@v7
         with:
           token: ${{ secrets.SYNC_TOKEN }}
-          ref: ${{ github.event.inputs.ref }}
+          ref: ${{ inputs.ref }}
           fetch-depth: 1
 
       - name: Create sync branch
@@ -86,7 +87,7 @@ jobs:
       # scratch clone so there's nothing for the copy step below to bring in.
       - name: Clone upstream template (strip protected paths)
         env:
-          UPSTREAM_BRANCH: ${{ github.event.inputs.upstream_branch || 'main' }}
+          UPSTREAM_BRANCH: ${{ inputs.upstream_branch || 'main' }}
         run: |
           git clone --depth 1 --branch "$UPSTREAM_BRANCH" "${{ env.UPSTREAM_URL }}" /tmp/upstream-src
           rm -rf /tmp/upstream-src/apps /tmp/upstream-src/db /tmp/upstream-src/.git

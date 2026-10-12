@@ -40,6 +40,7 @@ End Users and Contributors: **BEFORE** making **ANY** changes. Read the followin
   - [Design Features](docs/NOTES.md#design-features)
   - [OPTIONAL: Roadmap](docs/NOTES.md#roadmap)
   - [OPTIONAL: repo custom properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization)
+- [Testing](docs/testing.md)
 
 ## CI/CD
 

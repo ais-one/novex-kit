@@ -4,7 +4,7 @@ This repository uses native Git hooks in `.githooks/`.
 
 - Pre-commit scans staged changes for secrets (gitleaks), then runs Biome checks on affected directories and schema validation tests where applicable.
 - Commit-msg validates the message against Conventional Commits (`feat`, `fix`, `chore` only).
-- Pre-push runs workspace tests.
+- Pre-push runs unit tests (`test:unit`) in every workspace that has them.
 
 To skip hooks temporarily:
 ```bash
@@ -62,7 +62,7 @@ Runs automatically on every `git push`:
 
 | Check | Details |
 |-------|---------|
-| **Workspace tests** | Runs `npm run test --workspace=<ws>` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test` script, touched or not. Unit + integration only — e2e is disabled for now. |
+| **Workspace unit tests** | Runs `npm run test:unit --workspace=<ws>` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test:unit` script, touched or not, and blocks the push if any fail. Workspaces without `test:unit` (or with an unreadable `package.json`) are listed as **Skipped**; if none has the script, the hook warns that no unit tests ran. Integration and e2e tests aren't run here — integration runs in CI (`Tests` workflow, currently disabled), e2e is disabled for now; schema tests run in pre-commit. |
 
 TODO:
 - Type checking with tsc --noEmit, since it needs the whole project and is too slow per commit.

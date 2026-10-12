@@ -28,10 +28,10 @@ jobs:
   #   steps:
   #     - uses: actions/checkout@v3
   #       with:
-  #         ref: ${{ github.event.inputs.tag }}
+  #         ref: ${{ inputs.tag }}
   #     - run: git config --global user.name 'ais-one'
   #     - run: git config --global user.email 'aaronjxz@gmail.com'
-  #     - run: npm version patch --workspace=libs/${{ github.event.inputs.pkg }}
+  #     - run: npm version patch --workspace=libs/${{ inputs.pkg }}
   #     - run: |
   #         git add .
   #         git commit -m "inc patch ver"
@@ -45,9 +45,13 @@ jobs:
       matrix:
         node: ["24"] # lts?
     steps:
+      - name: Show inputs
+        env:
+          INPUTS: ${{ toJSON(inputs) }}
+        run: echo "$INPUTS"
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.inputs.tag }}
+          ref: ${{ inputs.tag }}
       - uses: ./.github/actions/setup-node-npm-install
         with:
           node-version: ${{ matrix.node }}
@@ -55,7 +59,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       # Setup .npmrc file to publish to npm
       - run: echo "checking out branch/tag ${GITHUB_REF##*/}"
-      # - run: npm install --production --workspace=libs/${{ github.event.inputs.pkg }} # NOT NEEDED CURRENTLY
-      - run: npm publish --access public --workspace=common/${{ github.event.inputs.pkg }}
+      # - run: npm install --production --workspace=libs/${{ inputs.pkg }} # NOT NEEDED CURRENTLY
+      - run: npm publish --access public --workspace=common/${{ inputs.pkg }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}

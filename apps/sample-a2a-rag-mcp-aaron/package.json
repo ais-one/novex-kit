@@ -12,7 +12,7 @@
     "a2a:demo": "node a2a/demo.ts",
     "test:unit": "echo \"Error: no test specified\" && exit 0",
     "test:integration": "echo \"Error: no test specified\" && exit 0",
-    "test:schema": "echo \"Error: no test specified\" && exit 0",
+    "test:schemas": "echo \"Error: no test specified\" && exit 0",
     "test": "echo \"Error: no test specified\" && exit 0",
     "test:e2e": "exit 0"
   },
