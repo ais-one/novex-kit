@@ -159,11 +159,7 @@ Every workflow in [.github/workflows](../.github/workflows) — this table is th
 | [ci-pr-title.yml](../.github/workflows/ci-pr-title.yml) | PR into `rel/x.y` (opened / edited / synchronized / reopened) | PR title must follow Conventional Commits — it becomes the squash commit git-cliff reads; standalone so a title edit re-runs only this check | `PR Title Format` (rel/x.y) |
 | [ci-source-branch.yml](../.github/workflows/ci-source-branch.yml) | PR into `main` (incl. retargeted) | only `rel/x.y` branches from this repo may merge into `main` — see [protected-branches-main](#ruleset---protected-branches-main) | `Allowed Source Branch` (main) |
 | [release.yml](../.github/workflows/release.yml) | manual, from a `rel/x.y` branch | computes the next version + notes with git-cliff, creates the tag and GitHub release — see [Release Management](#release-management) | — |
-<<<<<<< HEAD
-| [deploy-cr.yml](../.github/workflows/deploy-cr.yml) | manual | build an app image and push it to a container registry | — |
-=======
-| [deploy-cr.yml](../.github/workflows/deploy-cr.yml) | manual, pick `environment` (development / staging / production) | build an app image from `release_ref` and push it to a container registry. `release_ref` must be a `rel/x.y` branch or a release tag (`v1.2.3`, `<ws>-v1.2.3`) — checked before approval; then waits for approval if that environment has required reviewers | — |
->>>>>>> c85d8fac561493c6f89f59ef5b86f6e91b6b05b5
+| [deploy-cr.yml](../.github/workflows/deploy-cr.yml) | manual, pick `environment` (staging / production) | build an app image from `release_ref` and push it to a container registry. `release_ref` must be a `rel/x.y` branch or a release tag (`v1.2.3`, `<ws>-v1.2.3`) — checked before approval; then waits for approval if that environment has required reviewers | — |
 | [deploy-sae.yml](../.github/workflows/deploy-sae.yml) | manual | deploy a pushed image to an Alibaba Cloud SAE application | — |
 | [deploy-npm.yml](../.github/workflows/deploy-npm.yml) | manual | publish a workspace package to npm | — |
 | [deploy-bucket.yml](../.github/workflows/deploy-bucket.yml) | manual | build a Vue frontend and upload it to an object-storage bucket | — |
