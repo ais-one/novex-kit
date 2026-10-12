@@ -172,13 +172,13 @@ Secrets and variables each workflow uses are listed in [Secrets And Variables](#
 
 The PR pipeline: `ci.yml` → Lint → (PRs into `rel/x.y` only) Tests + Quality, plus the standalone `ci-pr-title.yml` and `ci-source-branch.yml` checks — all listed in [Workflows](#workflows). Tests and Quality only run once Lint passes.
 
-Changes to `.github/` can go in the same PR as other code. Review of them is enforced by [CODEOWNERS](../.github/CODEOWNERS) (`/.github/` entry) — enable **Require review from Code Owners** in the branch protection rules / ruleset for `main` and ``rel/[0-9]*.[0-9]*``.
+Changes to `.github/` can go in the same PR as other code. Review of them is enforced by [CODEOWNERS](../.github/CODEOWNERS) (`/.github/` entry) — enable **Require review from Code Owners** in the branch protection rules / ruleset for `main` and `rel/[0-9]*.[0-9]*`.
 
-The configured branch protection rules apply uniformly across day-to-day work (`rel/[0-9]*.[0-9]*` branches), production merges (`main`), and emergency hotfixes.
+The configured branch protection rules apply uniformly to release-line branches (`rel/[0-9]*.[0-9]*`), the stable branch (`main`), and release tags (`v[0-9]*.[0-9]*.[0-9]*`, `*-v[0-9]*.[0-9]*.[0-9]*`).
 
 #### CI Workflow
 
-1. PR submitted to a release branch (`rel/x.y`)
+1. PR submitted to a release-line branch (`rel/x.y`)
 2. CI runs on PR submitted
   - format + lint check (Biome) and commit message check — in [ci-lint.yml](../.github/workflows/ci-lint.yml), called from [ci.yml](../.github/workflows/ci.yml) on every branch except `main`
   - repo-wide schema check, no autofix

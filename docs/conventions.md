@@ -27,7 +27,7 @@ This document defines repository-wide coding and runtime standards that apply ac
 - Browser and Isomorphic code must use Javascript only
 - Named exports preferred (use export default only for a single class, config, or plugin)
 - do not use named exports and export default in same file
-- do not create barrel index.js/index.ts files
+- do not create barrel files (modules that only re-export other modules, e.g. `export * from`) — an `index.ts` with its own logic, like `common/compiled/node/services/index.ts`, is not a barrel
 - Prefer native platform features — test runner, datetime, fetch, npm, git hooks — over heavy libraries where possible
 - Use `zod` for all input validation and OpenAPI schema generation
 - When globals are needed, namespace them under one object and key them with a `Symbol`:

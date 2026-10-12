@@ -72,6 +72,8 @@ TODO:
 
 ## Branching And Workflow
 
+Always work on a new branch, never directly on `main` or `rel/*`.
+
 ### Branch & Tag Names
 
 - <feat/fix/chore>/scope/<...>
@@ -83,7 +85,7 @@ TODO:
 - main
 
 Examples:
-- release branch: rel/1.1
+- release-line branch: rel/1.1
 - patch tags: v1.1.1
 - beta release: rel/1.1-beta.4
 
@@ -188,6 +190,15 @@ When choosing a scope in `czg`:
 - Use `docs` for documentation-only changes.
 - Use `ci` for workflow, hook, or automation changes.
 - Use `repo` for root-level or cross-cutting changes that do not fit a single workspace.
+
+---
+
+## Pull Requests
+* Follow the branch naming and merge flow in [docs/git.md](../docs/git.md#branching-and-workflow): `feat/`, `fix/`, `chore/` from the right `rel/x.y` branch, PRs back into it; fixes go to every affected release line ([Fixes Across Release Lines](../docs/git.md#fixes-across-release-lines)).
+* Don't open PRs against `main` — only `rel/x.y` branches merge there.
+* PR titles must be Conventional Commits (e.g. `fix(auth): handle expired token`); they become the squash commit used for versions and release notes. Change GitHub's suggested title (the branch name) before merging.
+* For changes and feature requests, include a clear description of the problem, the proposed behavior, and any relevant example, request, or UI/API markup.
+* Reference the issue that the PR resolves, for example `Fixes #1234` or `Resolves #6458`.
 
 ---
 

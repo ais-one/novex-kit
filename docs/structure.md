@@ -2,7 +2,7 @@
 
 The single source of truth for the repo layout — what each folder, app, package and schema is for. Imported into [CLAUDE.md](../CLAUDE.md), so keep it accurate and concise.
 
-`apps/` and `db/` are **userland** (protected from upstream template sync); everything else is template-owned — see the [README](../README.md).
+`apps/`, `db/` and `.github/workflows/local-*.yml` are **userland** (protected from upstream template sync); everything else is template-owned — see the [README](../README.md).
 
 ```
 apps/                # backend and frontend apps (npm workspace)

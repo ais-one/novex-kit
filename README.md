@@ -2,49 +2,58 @@
 
 [novex-kit](https://github.com/ais-one/novex-kit) is a monorepo **template** for building full-stack JavaScript applications, micro-services and frontends with NodeJS (**version 24 or Higher**). VueJS and ExpressJS are highlighted but end-user is free to implement their own JS/TS stack.
 
-The folder contents are as follows:
-- `apps`: **userland** backend and frontend application workspaces
-- `db`: **userland** database schemas, migrations and seeds (one workspace per PostgreSQL schema)
-- `scripts`: deployment, service mocks and documentation scripts
-- `common`: shared JavaScript used by `apps` / `scripts`
-- `docs`: for documentation
+## Important Information
 
-Full layout — every app, package and schema: [docs/structure.md](docs/structure.md).
+### For End-user
 
-**IMPORTANT!**
+- This is a template repo. **Do NOT** use directly. Create End-user repo based on novex-kit template
+- **ONLY** make modifications to the following in their own repository.
+  - anything in side the following folders
+    - `apps`: workspace codes, documents, scripts, etc.
+    - `db`: database schemas, migrations and seeds, etc. (one workspace per PostgreSQL schema)
+  - the following files at repo root
+    - `package.json`
+    - `package-lock.json`
+  - `local-` prefixed workflows in `./github/workflows` folder
+- **NEVER!!!** touch anything else. If you need to override or create features
+  - please do it in the `apps` folder if urgent
+  - raise and issue or submit a PR contirbution
+- End-users can pull in template updates using the [Sync Upstream Template](docs/githubmd#sync-upstream-template) workflow
 
-End Users and Contributors: **BEFORE** making **ANY** changes. Read the following:
+### For Contributor (or Maintainer)
 
+- fork/clone the repo to improve/maintain the framework
 - For Contributors, read [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) and [.github/SECURITY.md](.github/SECURITY.md) before opening issues or pull requests.
-- This is a template repo. **Do NOT** use directly. Create your new repo using this as the template
-- The `apps` folder is for **userland** workspace codes, documents, scripts, etc.
-- The `db` folder is for **userland** schemas, migrations, seeds, etc.
-- End-users **MUST** work within these folders
-- Template maintainers **MUST** work outside `apps` and `db` folders
-- End-users can pull in template updates using the [Sync Upstream Template](docs/github.md#sync-upstream-template) workflow — it prepares a `chore/sync-upstream` branch; you open and review the PR.
-- End-users can fork and make PR for requested features, or roll out their own in the `apps` folder.
-- only the `package.json` and `package-lock.json` files outside the `apps` can be modified (Note that a Sync Upstream Template will replace those file with the upstream ones)
+
+### Folder Layout
+
+Full folder layout — every app, package and schema: [docs/structure.md](docs/structure.md).
+
+### Instructions
+
+Both End-user and Contributor must read and follow the documentation below.
+
+- Install packages from root level only, if it is used by workspace, name the workspace
 - git related
   - Setup [hooks](docs/git.md#hooks)
   - Read on [branch naming and workflows](docs/git.md#branching-and-workflow)
   - Read on [commit messaging](docs/git.md#commit-message)
+  - Read on [Pull Requests](docs/git.md#pull-requests)
 - github related Setup your downstream repository
   - [rulesets](docs/github.md#rulesets)
   - [environment](docs/github.md#repository-environment)
   - [Advanced Security](docs/github.md#advanced-security)
   - [CI](docs/github.md#ci)
+  - [The full workflow list](docs/github.md#workflows).
   - [Release Management](docs/github.md#release-management)
 - READ
+  - [Design Features](docs/NOTES.md#design-features)
   - [Engineering standards](docs/conventions.md) format, lint, commit message, language, tooling, etc.
   - [Housekeeping](docs/housekeeping.md) dependency and GitHub Actions updates — Dependabot plus on-demand Claude Code commands
-  - [Design Features](docs/NOTES.md#design-features)
+  - [Testing](docs/testing.md)
   - [OPTIONAL: Roadmap](docs/NOTES.md#roadmap)
   - [OPTIONAL: repo custom properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization)
-- [Testing](docs/testing.md)
 
-## CI/CD
-
-The full workflow list — triggers, purpose and required checks — is in [docs/github.md](docs/github.md#workflows).
 
 ## Quickstart
 

@@ -34,4 +34,4 @@ Then import concrete modules directly, for example:
 import { auditContext } from '@apps/sample-common/express/audit/audit-context';
 ```
 
-Avoid barrel `index.ts` files. Export concrete modules from their own files.
+Avoid barrel files (modules that only re-export other modules). Export concrete modules from their own files.
