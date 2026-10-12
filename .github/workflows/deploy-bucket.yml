@@ -146,28 +146,5 @@ jobs:
           aws s3 sync dist "s3://$BUCKET" \
             --delete \
             --endpoint-url https://${{ vars.ENDPOINT }}
-  deploy-ghp: # Alibaba Cloud OSS via AWS CLI
-    needs: build
-    environment: production # see deploy-oss for setup
-    if: inputs.provider == 'ghp'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: my-build
-          path: ${{ github.workspace }}/apps/${{ inputs.app }}/dist
-      - name: Run deploy script
-        # remember to change user.name and user.email
-        run: |
-          git config user.name "Your username" && git config user.email "your email"
-          git checkout --orphan gh-pages
-          npx vite build --mode "$DEPLOY_ENV"
-          git --work-tree dist add --all
-          git --work-tree dist commit -m 'Deploy'
-          git push origin HEAD:gh-pages --force
-          rm -r dist
-          git checkout -f "${GITHUB_REF##*/}"
-          git branch -D gh-pages
 
 # https://cli.vuejs.org/guide/deployment.html#github-pages
