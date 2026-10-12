@@ -94,16 +94,19 @@ Both tag formats are created by the Release workflow (`release.yml`) — see [Re
   - Restrict deletions
   - Block force pushes
 
-
-
 ### Repository Environment
 
-1. Settings → Environments → production (create New environment if it doesn't exist yet).
-2. Under Environment secrets, add the secrets listed in [Environment Workflow Secrets](#environment-workflow-secrets).
-3. On the same page, set up the rules:
-  - Required reviewers: add the people or teams who may approve deploys.
-  - Prevent self-review: optional; stops whoever started the run from approving it.
-  - Deployment branches and tags: "Selected branches and tags", for example main and rel/*.
+1. Create `production` and `staging` environments.
+  - Settings → Environments → create New environment.
+  - there is NO NEED for `development` environment as it is on local machine
+2. Set up the rules:
+  - Approval (only available on Github Free public repo and Githun Enterprise all repo)
+    - Required reviewers: add the people or teams who may approve deploys.
+    - [if > 1 maintainer] Prevent self-review: optional; stops whoever started the run from approving it.
+  - Deployment branches and tags: "Selected branches and tags". This rule checks the branch a workflow is **run from** ("Use workflow from"), not a branch or tag it checks out — `deploy-cr.yml` checks its `release_ref` input itself.
+    - use `main` and `rel/[0-9]*.[0-9]*`
+3. Under Environment secrets, add the secrets listed in [Environment Workflow Secrets](#environment-workflow-secrets).
+4. Same for Environment variables if any
 
 ### Advanced Security
 
@@ -156,7 +159,7 @@ Every workflow in [.github/workflows](../.github/workflows) — this table is th
 | [ci-pr-title.yml](../.github/workflows/ci-pr-title.yml) | PR into `rel/x.y` (opened / edited / synchronized / reopened) | PR title must follow Conventional Commits — it becomes the squash commit git-cliff reads; standalone so a title edit re-runs only this check | `PR Title Format` (rel/x.y) |
 | [ci-source-branch.yml](../.github/workflows/ci-source-branch.yml) | PR into `main` (incl. retargeted) | only `rel/x.y` branches from this repo may merge into `main` — see [protected-branches-main](#ruleset---protected-branches-main) | `Allowed Source Branch` (main) |
 | [release.yml](../.github/workflows/release.yml) | manual, from a `rel/x.y` branch | computes the next version + notes with git-cliff, creates the tag and GitHub release — see [Release Management](#release-management) | — |
-| [deploy-cr.yml](../.github/workflows/deploy-cr.yml) | manual | build an app image and push it to a container registry | — |
+| [deploy-cr.yml](../.github/workflows/deploy-cr.yml) | manual, pick `environment` (development / staging / production) | build an app image from `release_ref` and push it to a container registry. `release_ref` must be a `rel/x.y` branch or a release tag (`v1.2.3`, `<ws>-v1.2.3`) — checked before approval; then waits for approval if that environment has required reviewers | — |
 | [deploy-sae.yml](../.github/workflows/deploy-sae.yml) | manual | deploy a pushed image to an Alibaba Cloud SAE application | — |
 | [deploy-npm.yml](../.github/workflows/deploy-npm.yml) | manual | publish a workspace package to npm | — |
 | [deploy-bucket.yml](../.github/workflows/deploy-bucket.yml) | manual | build a Vue frontend and upload it to an object-storage bucket | — |
