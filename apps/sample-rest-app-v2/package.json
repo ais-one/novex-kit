@@ -10,8 +10,8 @@
     "start": "node --watch --watch-preserve-output --trace-warnings src/index.ts",
     "test:unit": "node --test-reporter=spec --experimental-test-coverage --experimental-test-module-mocks --test --test-only ./src/**/__tests__/unit/*.test.ts",
     "test:integration": "node --test-reporter=spec --test --test-only ./src/**/__tests__/integration/*.test.ts",
-    "test:schema": "exit 0",
-    "test": "npm run test:unit && npm run test:integration && npm run test:schema"
+    "test:schemas": "exit 0",
+    "test": "npm run test:unit && npm run test:integration && npm run test:schemas"
   },
   "dependencies": {
     "@apps/sample-common": "file:../sample-common",

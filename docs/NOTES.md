@@ -1,15 +1,8 @@
 ## Description
 
-This document is for
-- design preferences
-- open questions
-- caveats
-- migration notes
-- ideas that are not yet stable policy
+This document is for `design preferences`, `open questions`, `caveats`, `migration notes`, `ideas that are not yet stable policy`
 
 ## Design Features
-
-Coding, typing, logging, config and commit rules live in [conventions.md](conventions.md) — only design rationale and preferences not yet policy are kept here.
 
 - Typescript preferences (on top of [conventions.md](conventions.md))
   - avoid enums, instead... use const object pattern / string literal unions
@@ -48,10 +41,6 @@ Coding, typing, logging, config and commit rules live in [conventions.md](conven
   - Typescript to zod, convert code to TS for node runtime...
   - audit_logs
 - **BACKLOG**
-  - safeJSON
-  - remove barrel index.js files...
-    - common/compiled/vue/index.js
-    - common/compiled/node/services/index.ts.
   - re-enable E2E tests — uncomment the `e2e-tests` job in `.github/workflows/ci-tests.yml` and add a `test:e2e` step to `.githooks/pre-push` (both marked `TODO`); needs servers/ports handled in CI (e.g. `sample-api` / `sample-common` start on 8080)
 - **REVIEW**
   - visualize package sizes with rollup-plugin-visualizer

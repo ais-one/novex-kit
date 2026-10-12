@@ -1,6 +1,7 @@
 #!/bin/sh
 # .githooks/pre-push
-# Pre-push hook: runs workspace tests (unit + integration, no e2e) and schema validation tests before allowing a push.
+# Pre-push hook: runs `test:unit` in every workspace that has it before allowing a push
+# (integration and e2e tests run in CI / manually; schema tests run in pre-commit).
 #
 # Install: runs automatically on `npm install` (re-run: npm run prepare)
 # Skip:    git push --no-verify
@@ -9,21 +10,23 @@ HOOK_NAME=pre-push
 # shellcheck source=.githooks/_common.sh
 . "$(dirname "$0")/_common.sh"
 
-# ── 1. Tests for every workspace ──────────────────────────────────────────────
-# Runs each workspace's `test` script (unit + integration; no e2e), touched or not.
-# TODO: e2e tests disabled for now - to re-enable, also run `test:e2e` per workspace below.
+# ── 1. Unit Tests for every workspace ──────────────────────────────────────────────
 TEST_EXIT=0
+TESTED=0
 for WS in apps/* common/compiled/* common/vanilla/* db/* scripts/*; do
   [ -f "$WS/package.json" ] || continue
-  if node -e "const p=require('./${WS}/package.json'); process.exit(p.scripts&&p.scripts['test']?0:1)" 2>/dev/null; then
-    print_info "Running tests for workspace: $WS"
-    npm run test --workspace="$WS"
+  if node -e "const p=require('./${WS}/package.json'); process.exit(p.scripts&&p.scripts['test:unit']?0:1)" 2>/dev/null; then
+    TESTED=$((TESTED + 1))
+    print_info "Running unit tests for workspace: $WS"
+    npm run test:unit --workspace="$WS"
     if [ $? -ne 0 ]; then
-      print_error "Tests failed for workspace: $WS"
+      print_error "Unit tests failed for workspace: $WS"
       TEST_EXIT=1
     else
-      print_success "Tests passed for workspace: $WS"
+      print_success "Unit tests passed for workspace: $WS"
     fi
+  else
+    print_info "Skipped $WS (no test:unit script, or package.json unreadable)"
   fi
 done
 
@@ -32,7 +35,11 @@ if [ $TEST_EXIT -ne 0 ]; then
   exit 1
 fi
 
-print_success "Workspace tests passed."
+if [ $TESTED -eq 0 ]; then
+  print_warning "No workspace has a test:unit script - no unit tests were run."
+else
+  print_success "Unit tests passed in $TESTED workspace(s)."
+fi
 
 # ── 2. Type checking tsc --noEmit ────────────────────────────────────────────
 
