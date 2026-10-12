@@ -20,6 +20,10 @@ on:
         description: "Branch or tag"
         default: "main"
         required: true
+env:
+  PKG: ${{ inputs.pkg }}
+  TAG: ${{ inputs.tag }}
+
 jobs:
   # COMMENTED BECAUSE: cannot push to protected branch
   # inc_patch_ver:
@@ -31,7 +35,7 @@ jobs:
   #         ref: ${{ inputs.tag }}
   #     - run: git config --global user.name 'ais-one'
   #     - run: git config --global user.email 'aaronjxz@gmail.com'
-  #     - run: npm version patch --workspace=libs/${{ inputs.pkg }}
+  #     - run: npm version patch --workspace=libs/$PKG
   #     - run: |
   #         git add .
   #         git commit -m "inc patch ver"
@@ -59,7 +63,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       # Setup .npmrc file to publish to npm
       - run: echo "checking out branch/tag ${GITHUB_REF##*/}"
-      # - run: npm install --production --workspace=libs/${{ inputs.pkg }} # NOT NEEDED CURRENTLY
-      - run: npm publish --access public --workspace=common/${{ inputs.pkg }}
+      # - run: npm install --production --workspace=libs/${PKG # NOT NEEDED CURRENTLY
+      - run: npm publish --access public --workspace=common/$PKG
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
