@@ -64,6 +64,6 @@ jobs:
       # Setup .npmrc file to publish to npm
       - run: echo "checking out branch/tag ${GITHUB_REF##*/}"
       # - run: npm install --production --workspace=libs/${PKG # NOT NEEDED CURRENTLY
-      - run: npm publish --access public --workspace=common/$PKG
+      - run: npm publish --access public --workspace="common/$PKG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
