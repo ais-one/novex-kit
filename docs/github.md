@@ -273,7 +273,7 @@ Downstream repos created from this template pull in template updates with the [u
 
 - **Inputs:** `upstream_branch` — the upstream branch to sync from (default `main`); `ref` — the downstream branch to update (default: the branch the workflow is run from, usually your active `rel/x.y`).
 - **Secret:** `SYNC_TOKEN` — a PAT with `repo` + `workflow` scopes (fine-grained: Contents and Workflows read/write; no pull-request permission needed). The built-in `GITHUB_TOKEN` can't write `.github/workflows/` files. Setup steps are in the workflow's header comment; the secret is listed in [Secrets And Variables](#secrets-and-variables).
-- **Result:** the workflow **force-pushes the branch `chore/sync-upstream`** and stops — it never pushes to your target branch and **does not open a PR**. Open a PR from `chore/sync-upstream` into the target `rel/x.y` yourself, review the diff, and merge it like any other PR (its CI and required checks apply). Its commit is `chore: sync from upstream template`. If upstream has no changes, the run ends green with an *Already up to date* notice and pushes nothing.
+- **Result:** the workflow **force-pushes the branch `chore/sync-upstream`** and stops — it never pushes to your target branch and **does not open a PR**. Open a PR from `chore/sync-upstream` into the target `rel/x.y` yourself, review the diff, and merge it like any other PR (its CI and required checks apply). If upstream has no changes, the run ends green with an *Already up to date* notice and pushes nothing, else it commits and push to `chore/sync-upstream` branch.
 
 #### What it does
 
