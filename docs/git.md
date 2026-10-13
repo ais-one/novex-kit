@@ -2,7 +2,7 @@
 
 This repository uses native Git hooks in `.githooks/`.
 
-- Pre-commit scans staged changes for secrets (gitleaks), then runs Biome checks on affected directories and schema validation tests where applicable.
+- Pre-commit scans staged files for secrets (secretlint), then runs Biome checks on affected directories and schema validation tests where applicable.
 - Commit-msg validates the message against Conventional Commits (`feat`, `fix`, `chore` only).
 - Pre-push runs unit tests (`test:unit`) in every workspace that has them.
 
@@ -34,7 +34,7 @@ Runs automatically on every `git commit`:
 
 | Check | Details |
 |-------|---------|
-| **Secret scan (gitleaks)** | Runs `gitleaks git --pre-commit --staged` on the staged changes and **blocks the commit** if it finds a secret (output is redacted). Needs the `gitleaks` binary (v8.19+, not an npm package): `brew install gitleaks`, or see [gitleaks releases](https://github.com/gitleaks/gitleaks/releases). If it isn't installed the hook prints a warning and continues. False positive: add a `gitleaks:allow` comment on that line, or add the finding's fingerprint to `.gitleaksignore`. |
+| **Secret scan (secretlint)** | Runs [secretlint](https://github.com/secretlint/secretlint) (recommended preset, config in [.secretlintrc.json](../.secretlintrc.json)). Refer to [pre-commit hook](../.githooks/pre-commit)|
 | **Biome format & lint** | Runs `npx biome check` on each affected directory (`common/vanilla/iso`, `common/compiled/node`, `common/compiled/vue`, `common/vanilla/web`, `apps`, `scripts`). Run `npm run check:write` to auto-fix. |
 | **Schema validation tests** | Runs `npm run test:schemas -- <folder>` for each affected schema directory (`common/schemas`, `apps/*/schemas`). |
 
@@ -74,34 +74,25 @@ TODO:
 
 Always work on a new branch, never directly on `main` or `rel/*`.
 
-### Branch & Tag Names
+### Branch(or line) & Tag Names
 
-- <feat/fix/chore>/scope/<...>
-- rel/<current release version>, rel/<next release version>
-  - can add -rc.1, -beta.1 suffixes as needed
-- hotfix/<scope>/<...>
-- v<version> (root tag)
-- <path-with-dashes>-v<version> (workspace tag, e.g. `apps-sample-api-v1.2.3`)
-- main
+Use the table below to find out where a branch starts and where it merges. Example state: `rel/1.0` is released and in production (`v1.0.x`), `rel/1.1` is the next release, still in development.
+
+|Type|Format|Branch From|Merge To|Lifetime|Notes|
+|----|------|-----------|--------|--------|-----|
+|Working branch|`<feat/chore>/scope/<...>`|next-release line (`rel/1.1`)|next-release line (`rel/1.1`) via PR Squash|short-lived: delete after PR merges|
+|Fix branch|`<fix/chore>/<scope>/<...>`| the line it's for — or, if the bug is in several lines, the commit they all share | one PR into **every supported line that has the bug** | short-lived: delete after **all** its PRs merge | Bug fixes — see [Fixes Across Release Lines](#fixes-across-release-lines) |
+|Hotfix branch| `hotfix/<scope>/<...>` | the commit all affected lines share, usually the production tag | one PR per affected line; the production line is released **immediately** | short-lived: delete after **all** its PRs merge | Urgent production fixes — same flow as `fix, chore` |
+|release line|`rel/1.0`| `main` | `main` at `v1.0.0` and after every patch release (`v1.0.x`) | long-lived, until the line is no longer supported | Before `v1.0.0`: where day-to-day work lands. After: **maintenance** — fixes only |
+|next-release line|`rel/1.1`| `main`, after `v1.0.0` | `main` at `v1.1.0`, then as above | long-lived | next release — new features land here once `rel/1.0` is released |
+|Production tag|`v1.2.3`(root)<br><br>`<workspace>-v1.2.3`(workspace)|`rel/1.0`| NA | NA | `v1.0.0` initial release, `v1.0.x` after each patch release (scheduled fixes or a hotfix) |
+|Stable branch|`main`| - | - | permanent | Stable branch — what's in production |
 
 Examples:
 - release-line branch: rel/1.1
 - patch tags: v1.1.1
-- beta release: rel/1.1-beta.4
 
 ### Branch Creation And Merge Flow
-
-Use the table below to find out where a branch starts and where it merges. Example state: `rel/1.0` is released and in production (`v1.0.x`), `rel/1.1` is the next release, still in development.
-
-| Branch/Tag | Branch From | Merge to | Lifetime | Notes |
-|---|---|---|---|---|
-| `main` | - | - | permanent | Stable branch — what's in production |
-| `rel/1.0` | `main` | `main` at `v1.0.0` and after every patch release (`v1.0.x`) | long-lived, until the line is no longer supported | Before `v1.0.0`: where day-to-day work lands. After: **maintenance** — fixes only |
-| `rel/1.1` | `main`, after `v1.0.0` | `main` at `v1.1.0`, then as above | long-lived | The next release — new features land here once `rel/1.0` is released |
-| `feat/*`, `chore/*` | the next-release line (`rel/1.1`) | that line, via PR (squash) | short-lived: delete after the PR merges | Day-to-day work. A `chore` a maintenance line needs too (e.g. a security bump) follows the `fix/*` route |
-| `fix/*` | the line it's for — or, if the bug is in several lines, the commit they all share | one PR into **every supported line that has the bug** | short-lived: delete after **all** its PRs merge | Bug fixes — see [Fixes Across Release Lines](#fixes-across-release-lines) |
-| `hotfix/*` | the commit all affected lines share, usually the production tag | one PR per affected line; the production line is released **immediately** | short-lived: delete after **all** its PRs merge | Urgent production fixes — same flow as `fix/*` |
-| `tag: v1.0.0` | `rel/1.0` | — | - | `v1.0.0` initial release, `v1.0.x` after each patch release (scheduled fixes or a hotfix) |
 
 The consistent rule is: **tags always come from `rel/[0-9]*.[0-9]*`**, never directly from `main`, and **`main` only receives merges from `rel/[0-9]*.[0-9]*`**. Main is the destination, not the source of truth for what shipped.
 

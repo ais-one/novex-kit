@@ -26,9 +26,6 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
 # VS Code
 brew install --cask visual-studio-code
 
-# gitleaks - secret scan in the pre-commit hook (skipped with a warning if missing)
-brew install gitleaks
-
 # optional: full uninstall / cleanup — do not paste with the install line above
 # brew uninstall --cask --zap visual-studio-code
 # leftover folders to delete manually if needed:

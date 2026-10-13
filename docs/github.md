@@ -132,7 +132,7 @@ A pushed secret can't be fully removed from GitHub — commits stay reachable by
 
 | Layer | Where | Effect |
 |---|---|---|
-| **gitleaks pre-commit hook** | developer machine, on `git commit` | blocks the commit — see [pre-commit hook](git.md#pre-commit-hook). Bypassable with `--no-verify`, and skipped (with a warning) if `gitleaks` isn't installed |
+| **secretlint pre-commit hook** | developer machine, on `git commit` | blocks the commit — see [pre-commit hook](git.md#pre-commit-hook). Bypassable with `--no-verify`, and skipped (with a warning) if `npm install` hasn't been run |
 | **GitHub push protection** | GitHub, on `git push` | **rejects the push** for known secret formats (cloud keys, tokens, …) — the only server-side block on github.com. Enable under Settings → Advanced Security → Secret scanning → Push protection (free on public repos; private org repos need GitHub Secret Protection) |
 | **Gitleaks secret scan** (Quality workflow) | CI, on PRs into ``rel/[0-9]*.[0-9]*`` | fails `Quality Summary`, so the PR can't merge — the secret is already on the PR branch on GitHub, but never reaches `rel/*` or `main` |
 | **Secret scanning alerts** | GitHub, after the fact | alerts on secrets already in the repo |
@@ -343,10 +343,8 @@ Note this edit is itself in a template-owned file, so the next sync replaces it 
 |Vars|Workflow|Use|
 |----|--------|---|
 |ENDPOINT|deploy-bucket|Alibaba Cloud OSS endpoint, e.g. oss-ap-southeast-1.aliyuncs.com. Used by both the ossutil job and the AWS CLI job|
+|CR_EE_INSTANCE_ID|deploy-sae|ACR Enterprise instance ID. Only needed if the image is in ACR Enterprise Edition|
 |CR_HOST|deploy-cr|Container registry host.|
 |CR_HOST_VPC|deploy-sae|Container registry host VPC.|
-|CR_IMAGENAME|deploy-cr,deploy-sae|Image name. Defaults to the repo name|
 |CR_NAMESPACE|deploy-cr,deploy-sae|Container registry namespace|
-|SAE_APP_ID|deploy-sae|SAE application ID. A workflow input can override it|
 |SAE_REGION|deploy-sae|SAE region. Defaults to ap-southeast-1|
-|SAE_ACR_INSTANCE_ID|deploy-sae|ACR Enterprise instance ID. Only needed if the image is in ACR Enterprise Edition|

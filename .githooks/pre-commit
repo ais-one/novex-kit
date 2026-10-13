@@ -1,6 +1,6 @@
 #!/bin/sh
 # .githooks/pre-commit
-# Pre-commit hook: scans staged changes for secrets (gitleaks), runs Biome
+# Pre-commit hook: scans staged files for secrets (secretlint), runs Biome
 # checks per-directory for staged files, and zod schema tests when schema
 # files are staged.
 #
@@ -14,25 +14,26 @@ HOOK_NAME=pre-commit
 # ── Collect all staged files ─────────────────────────────────────────────────
 STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
 
-# ── 1. Secret scan (gitleaks) ────────────────────────────────────────────────
-# Blocks the commit if the staged changes contain a secret - once pushed, a
-# secret can't be fully removed from GitHub, only rotated.
-# gitleaks is a standalone binary (not an npm package): brew install gitleaks
-# Missing binary = warning only, so a fresh clone can still commit; CI (Quality
-# workflow) and GitHub push protection are the later safety nets.
-# False positive: add `gitleaks:allow` in a comment on that line, or add the
-# finding's fingerprint to .gitleaksignore.
+# ── 1. Secret scan (secretlint) ──────────────────────────────────────────────
+# blocks the commit if a staged file contains a secret
+# scans each staged file as is in working tree, not staged snapshot.
+# found secret output is masked
+# secretlint is a root devDependency (config: .secretlintrc.json), installed by `npm install` in project root.
+# secretlint not installed = prints warning and continue;
+# false positive: add a `secretlint-disable-line` comment on that line (e.g. `<!-- secretlint-disable-line -->` in Markdown), or add the path to `.secretlintignore`. 
+
+SECRETLINT=node_modules/.bin/secretlint
 if [ -n "$STAGED" ]; then
-  if command -v gitleaks >/dev/null 2>&1; then
-    print_info "Scanning staged changes for secrets (gitleaks)…"
-    if ! gitleaks git --pre-commit --staged --redact --no-banner --verbose; then
-      print_error "gitleaks found a potential secret in the staged changes (see above)."
-      print_error "Remove it, unstage it, or mark a false positive with 'gitleaks:allow'."
+  if [ -x "$SECRETLINT" ]; then
+    print_info "Scanning staged files for secrets (secretlint)…"
+    if ! git diff --cached --name-only --diff-filter=ACMR -z | xargs -0 "$SECRETLINT" --maskSecrets; then
+      print_error "secretlint found a potential secret in the staged files (see above)."
+      print_error "Remove it, unstage it, or mark a false positive with 'secretlint-disable-line'."
       exit 1
     fi
     print_success "No secrets found ✓"
   else
-    print_warning "gitleaks not installed - secret scan skipped. Install: brew install gitleaks"
+    print_warning "secretlint not installed - secret scan skipped. Run: npm install"
   fi
 fi
 

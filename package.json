@@ -47,11 +47,13 @@
     "@biomejs/biome": "2.5.15",
     "@playwright/test": "^1.64.0",
     "@redocly/cli": "^2.62.1",
+    "@secretlint/secretlint-rule-preset-recommend": "13.0.7",
     "@types/express": "^5.0.6",
     "@vitejs/plugin-vue": "^6.0.10",
     "jscpd": "5.4.1",
     "msw": "^3.0.3",
     "prettier": "3.9.10",
+    "secretlint": "13.0.7",
     "start-server-and-test": "^3.0.13",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"

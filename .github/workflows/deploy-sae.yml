@@ -7,17 +7,14 @@
 # - ACCESS_KEY_ID: access key ID of a RAM user with SAE deploy permission (e.g. AliyunSAEFullAccess)
 # - ACCESS_KEY_SECRET: access key secret of the RAM user
 # Setup the following vars
+# - CR_EE_INSTANCE_ID: (optional) ACR Enterprise Edition instance ID, required if the image is in ACR EE
 # - CR_HOST_VPC: container registry host - use the VPC endpoint if SAE pulls over VPC (e.g. xxx-registry-vpc.ap-southeast-1.cr.aliyuncs.com)
 # - CR_NAMESPACE: container registry namespace
-# - CR_IMAGENAME: The image name. If not specified, the repository name will be used
-# - SAE_APP_ID: SAE application ID
 # - SAE_REGION: SAE region, defaults to ap-southeast-1
-# - SAE_ACR_INSTANCE_ID: (optional) ACR Enterprise Edition instance ID, required if the image is in ACR EE
 # Specify the following inputs
 # - cr_imagename
 # - cr_tag
 # - sae_app_id
-# - timeout_s
 name: 1 DEPLOY - Alibaba Cloud SAE
 
 on:
@@ -36,20 +33,16 @@ on:
         description: "SAE application ID - leave blank to use GITHUB variables"
         default: ""
         required: false
-      timeout_s:
-        description: "max seconds to wait for deployment to complete"
-        default: "600"
-        required: true
 
 env:
-  CR_TAG: ${{ inputs.cr_tag }}
-  CR_IMAGENAME: ${{ inputs.cr_imagename }}
+  CR_EE_INSTANCE_ID: ${{ vars.CR_EE_INSTANCE_ID || '' }}
   CR_HOST_VPC: ${{ vars.CR_HOST_VPC }}
   CR_NAMESPACE: ${{ vars.CR_NAMESPACE }}
-  SAE_APP_ID: ${{ inputs.sae_app_id || vars.SAE_APP_ID }}
   SAE_REGION: ${{ vars.SAE_REGION || 'ap-southeast-1' }}
-  SAE_ACR_INSTANCE_ID: ${{ vars.SAE_ACR_INSTANCE_ID }}
-  TIMEOUT_S: ${{ inputs.timeout_s }}
+  CR_IMAGENAME: ${{ inputs.cr_imagename }}
+  CR_TAG: ${{ inputs.cr_tag }}
+  SAE_APP_ID: ${{ inputs.sae_app_id }}
+  TIMEOUT_S: 300
   POLL_S: 15
 jobs:
   deploy_to_sae:
@@ -68,10 +61,6 @@ jobs:
         env:
           INPUTS: ${{ toJSON(inputs) }}
         run: echo "$INPUTS"
-      - name: Approved
-        run: |
-          echo "✅ Approved — deploying $CR_HOST_VPC/$CR_NAMESPACE/$CR_IMAGENAME:$CR_TAG"
-          echo "SAE app: $SAE_APP_ID ($SAE_REGION)"
       - name: Install Aliyun Cli
         uses: aliyun/setup-aliyun-cli-action@09a5f86915bb556e27bf050e9a5e339aeb073df5 # v1
         with:
@@ -88,10 +77,11 @@ jobs:
         id: deploy
         run: |
           IMAGE_URL="$CR_HOST_VPC/$CR_NAMESPACE/$CR_IMAGENAME:$CR_TAG"
+          echo "SAE app: $SAE_APP_ID ($SAE_REGION)"
           echo "image: $IMAGE_URL"
           args=(--AppId "$SAE_APP_ID" --PackageType Image --ImageUrl "$IMAGE_URL")
-          if [ -n "$SAE_ACR_INSTANCE_ID" ]; then
-            args+=(--AcrInstanceId "$SAE_ACR_INSTANCE_ID")
+          if [ -n "$CR_EE_INSTANCE_ID" ]; then
+            args+=(--AcrInstanceId "$CR_EE_INSTANCE_ID")
           fi
           RESP=$(aliyun sae POST /pop/v1/sam/app/deployApplication \
             --endpoint "sae.$SAE_REGION.aliyuncs.com" \
