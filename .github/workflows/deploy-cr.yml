@@ -12,7 +12,6 @@
 # Setup the following vars
 # - CR_HOST: container registry host (for deployment)
 # - CR_NAMESPACE: container registry namespace (for deployment)
-# - CR_IMAGENAME: The image name (= app folder under apps/). If not specified, the repository name will be used
 # Specify the following inputs
 # - release_ref: rel/x.y branch or release tag to build (rel/1.0, v1.2.3, apps-sample-api-v1.2.3)
 # - cr_imagename

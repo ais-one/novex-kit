@@ -1,37 +1,3 @@
-## Digital Ocean CR
-# username and password is same api token generated in DO dashboard
-# CR_HOST=registry.digitalocean.com
-# CR_NAMESPACE=ais-one
-
-## Digital Ocean App Platform:
-# set liveness probe
-# set Public HTTP port to 4000
-# add VPC if need to connect to other services
-# option to use dedicated (extra fee) or static egress IPs
-
-# docker login --username $CR_USERNAME --password-stdin $CR_HOST
-# docker build -t $CR_HOST/$CR_NAMESPACE/$CR_IMAGENAME:${{ inputs.cr_tag }} \
-#  --target $DOCKERFILE_TARGET \
-#  --build-arg ARG_API_PORT=3000 \
-#  $DOCKERFILE_PATH || exit 1001
-# ARG <name>[=<default value>]
-# E.G.
-# ARG SETTINGS
-# RUN ./run/init-stuff $SETTINGS
-#
-# ENV PORT $ARG_API_PORT
-# ENV API_PORT $ARG_API_PORT
-#
-
-# Run from repo root
-# docker build -f apps/cron/Dockerfile -t cron:latest .
-# docker build \
-#   -f apps/cron/Dockerfile \
-#   --build-arg APP_NAME=cron \
-#   --build-arg API_PORT=4000 \
-#   -t novex-kit/cron:latest \
-#   .
-
 # Set Node Version - version 24
 ARG NODE_VERSION=24
 ARG API_PORT=4000

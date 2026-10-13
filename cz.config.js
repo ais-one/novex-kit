@@ -24,5 +24,6 @@ export default {
     { value: 'chore', name: 'chore:    Docs, CI, test, refactor, or maintenance work' },
   ],
   defaultType: 'feat',
+  markBreakingChangeMode: true,
   scopes: ['NA', ...workspaceScopes],
 };

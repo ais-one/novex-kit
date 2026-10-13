@@ -137,5 +137,5 @@ jobs:
             echo "::notice title=Already up to date::No changes from upstream - nothing pushed"
             exit 0
           fi
-          git commit -m "chore: sync from upstream template"
+          git commit -m "chore(repo): sync from upstream template"
           git push origin "$SYNC_BRANCH" --force --no-verify
