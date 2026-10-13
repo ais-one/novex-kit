@@ -219,7 +219,7 @@ For raw SQL (triggers, functions, REVOKE/GRANT) that drizzle-kit cannot generate
 | Environment | URL |
 |---|---|
 | Local dev (PGlite) | `postgresql://postgres:postgres@127.0.0.1:5432/db_express?sslmode=disable` |
-| Staging / production (real PostgreSQL) | `postgresql://<user>:<pass>@<host>:5432/<db>` |
+| Staging / production (real PostgreSQL) | `postgresql://<user>:<pass>@<host>:5432/<db>` <!-- secretlint-disable-line --> |
 
 The `.env` files in each schema subdirectory contain the local `DATABASE_URL`. drizzle-kit reads it automatically.
 

@@ -132,7 +132,7 @@ A pushed secret can't be fully removed from GitHub — commits stay reachable by
 
 | Layer | Where | Effect |
 |---|---|---|
-| **gitleaks pre-commit hook** | developer machine, on `git commit` | blocks the commit — see [pre-commit hook](git.md#pre-commit-hook). Bypassable with `--no-verify`, and skipped (with a warning) if `gitleaks` isn't installed |
+| **secretlint pre-commit hook** | developer machine, on `git commit` | blocks the commit — see [pre-commit hook](git.md#pre-commit-hook). Bypassable with `--no-verify`, and skipped (with a warning) if `npm install` hasn't been run |
 | **GitHub push protection** | GitHub, on `git push` | **rejects the push** for known secret formats (cloud keys, tokens, …) — the only server-side block on github.com. Enable under Settings → Advanced Security → Secret scanning → Push protection (free on public repos; private org repos need GitHub Secret Protection) |
 | **Gitleaks secret scan** (Quality workflow) | CI, on PRs into ``rel/[0-9]*.[0-9]*`` | fails `Quality Summary`, so the PR can't merge — the secret is already on the PR branch on GitHub, but never reaches `rel/*` or `main` |
 | **Secret scanning alerts** | GitHub, after the fact | alerts on secrets already in the repo |
@@ -273,7 +273,7 @@ Downstream repos created from this template pull in template updates with the [u
 
 - **Inputs:** `upstream_branch` — the upstream branch to sync from (default `main`); `ref` — the downstream branch to update (default: the branch the workflow is run from, usually your active `rel/x.y`).
 - **Secret:** `SYNC_TOKEN` — a PAT with `repo` + `workflow` scopes (fine-grained: Contents and Workflows read/write; no pull-request permission needed). The built-in `GITHUB_TOKEN` can't write `.github/workflows/` files. Setup steps are in the workflow's header comment; the secret is listed in [Secrets And Variables](#secrets-and-variables).
-- **Result:** the workflow **force-pushes the branch `chore/sync-upstream`** and stops — it never pushes to your target branch and **does not open a PR**. Open a PR from `chore/sync-upstream` into the target `rel/x.y` yourself, review the diff, and merge it like any other PR (its CI and required checks apply). Its commit is `chore: sync from upstream template`. If upstream has no changes, the run ends green with an *Already up to date* notice and pushes nothing.
+- **Result:** the workflow **force-pushes the branch `chore/sync-upstream`** and stops — it never pushes to your target branch and **does not open a PR**. Open a PR from `chore/sync-upstream` into the target `rel/x.y` yourself, review the diff, and merge it like any other PR (its CI and required checks apply). If upstream has no changes, the run ends green with an *Already up to date* notice and pushes nothing, else it commits and push to `chore/sync-upstream` branch.
 
 #### What it does
 
@@ -343,10 +343,8 @@ Note this edit is itself in a template-owned file, so the next sync replaces it 
 |Vars|Workflow|Use|
 |----|--------|---|
 |ENDPOINT|deploy-bucket|Alibaba Cloud OSS endpoint, e.g. oss-ap-southeast-1.aliyuncs.com. Used by both the ossutil job and the AWS CLI job|
+|CR_EE_INSTANCE_ID|deploy-sae|ACR Enterprise instance ID. Only needed if the image is in ACR Enterprise Edition|
 |CR_HOST|deploy-cr|Container registry host.|
 |CR_HOST_VPC|deploy-sae|Container registry host VPC.|
-|CR_IMAGENAME|deploy-cr,deploy-sae|Image name. Defaults to the repo name|
 |CR_NAMESPACE|deploy-cr,deploy-sae|Container registry namespace|
-|SAE_APP_ID|deploy-sae|SAE application ID. A workflow input can override it|
 |SAE_REGION|deploy-sae|SAE region. Defaults to ap-southeast-1|
-|SAE_ACR_INSTANCE_ID|deploy-sae|ACR Enterprise instance ID. Only needed if the image is in ACR Enterprise Edition|

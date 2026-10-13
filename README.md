@@ -16,8 +16,8 @@
     - `package-lock.json`
   - `local-` prefixed workflows in `./github/workflows` folder
 - **NEVER!!!** touch anything else. If you need to override or create features
-  - please do it in the `apps` folder if urgent
-  - raise and issue or submit a PR contirbution
+  - do it in the `apps` folder if urgent
+  - raise an issue or submit a PR contribution
 - End-users can pull in template updates using the [Sync Upstream Template](docs/githubmd#sync-upstream-template) workflow
 
 ### For Contributor (or Maintainer)
