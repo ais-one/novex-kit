@@ -3,7 +3,7 @@ import { cancelScheduledEmail, sendBulkDynamicEmail, sendBulkEmail } from '@comm
 import type { SendGridAuth, SgAttachment, SgPersonalization, SgSendEmailOpts } from '@common/node/comms/sendgrid/types';
 import { enqueueBroadcast } from '@common/node/comms/service/outbox';
 import { send } from '@common/node/comms/service/send';
-import type { SendRequest } from '@common/node/comms/service/types';
+import type { BroadcastRequest, SendRequest } from '@common/node/comms/service/types';
 import { resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
 import type { Request, Response } from 'express';
 import express from 'express';
@@ -197,7 +197,7 @@ export default express
         recipients: recipients as string[],
         type: type === 'attachment' ? 'html_attachments' : type,
         payload,
-      });
+      } as unknown as BroadcastRequest);
       res.json({ ok: true, ...result });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });

@@ -1,7 +1,7 @@
 import { authUser } from '@common/node/auth/jwt';
 import { enqueueBroadcast } from '@common/node/comms/service/outbox';
 import { send } from '@common/node/comms/service/send';
-import type { SendRequest } from '@common/node/comms/service/types';
+import type { BroadcastRequest, SendRequest } from '@common/node/comms/service/types';
 import { resolveCommsConfigByIdentity, resolveCommsCredentials } from '@common/node/comms/tenant/resolver';
 import { parseWebhook, verifyWebhookSignature } from '@common/node/comms/whatsapp2/inbound';
 import {
@@ -322,7 +322,7 @@ export default express
         recipients: recipients as string[],
         type,
         payload,
-      });
+      } as unknown as BroadcastRequest);
       res.json({ ok: true, ...result });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });

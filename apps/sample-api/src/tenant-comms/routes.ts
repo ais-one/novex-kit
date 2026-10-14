@@ -137,7 +137,7 @@ export default express
   // ── GET /tenant-comms/:channel ────────────────────────────────────────────
   // Get a specific channel config for the authenticated tenant.
   // Credentials are masked in the response.
-  .get('/:channel', authUser, async (req: Request, res: Response) => {
+  .get('/:channel', authUser, async (req: Request<{ channel: string }>, res: Response) => {
     const tenantId = getTenantId(req);
     if (!tenantId) {
       res.status(401).json({ ok: false, error: 'Authenticated user with tenant_id is required' });

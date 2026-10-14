@@ -86,7 +86,7 @@ export default express
 
   // ── GET /api/sample-api/sendgrid/templates/:id ──────────────────────────────
   // Get a single template with all its versions.
-  .get('/:id', authUser, async (req: Request, res: Response) => {
+  .get('/:id', authUser, async (req: Request<{ id: string }>, res: Response) => {
     const apiKey = await getApiKey(req, res);
     if (!apiKey) return;
 
@@ -100,7 +100,7 @@ export default express
 
   // ── PATCH /api/sample-api/sendgrid/templates/:id ────────────────────────────
   // Rename a template. Body: { name, configLabel? }
-  .patch('/:id', authUser, async (req: Request, res: Response) => {
+  .patch('/:id', authUser, async (req: Request<{ id: string }>, res: Response) => {
     const apiKey = await getApiKey(req, res);
     if (!apiKey) return;
 
@@ -119,7 +119,7 @@ export default express
 
   // ── POST /api/sample-api/sendgrid/templates/:id/duplicate ──────────────────
   // Duplicate a template. Body: { name?, configLabel? }
-  .post('/:id/duplicate', authUser, async (req: Request, res: Response) => {
+  .post('/:id/duplicate', authUser, async (req: Request<{ id: string }>, res: Response) => {
     const apiKey = await getApiKey(req, res);
     if (!apiKey) return;
 
@@ -134,7 +134,7 @@ export default express
 
   // ── DELETE /api/sample-api/sendgrid/templates/:id ───────────────────────────
   // Delete a template and all its versions.
-  .delete('/:id', authUser, async (req: Request, res: Response) => {
+  .delete('/:id', authUser, async (req: Request<{ id: string }>, res: Response) => {
     const apiKey = await getApiKey(req, res);
     if (!apiKey) return;
 
@@ -148,7 +148,7 @@ export default express
 
   // ── POST /api/sample-api/sendgrid/templates/:id/versions ───────────────────
   // Create a new version. Body: SgTemplateVersionData & { configLabel? }
-  .post('/:id/versions', authUser, async (req: Request, res: Response) => {
+  .post('/:id/versions', authUser, async (req: Request<{ id: string }>, res: Response) => {
     const apiKey = await getApiKey(req, res);
     if (!apiKey) return;
 
@@ -167,7 +167,7 @@ export default express
 
   // ── PATCH /api/sample-api/sendgrid/templates/:id/versions/:vid ─────────────
   // Update a version's content, subject or name.
-  .patch('/:id/versions/:vid', authUser, async (req: Request, res: Response) => {
+  .patch('/:id/versions/:vid', authUser, async (req: Request<{ id: string; vid: string }>, res: Response) => {
     const apiKey = await getApiKey(req, res);
     if (!apiKey) return;
 
@@ -182,7 +182,7 @@ export default express
 
   // ── POST /api/sample-api/sendgrid/templates/:id/versions/:vid/activate ─────
   // Activate a version (make it the live version for this template).
-  .post('/:id/versions/:vid/activate', authUser, async (req: Request, res: Response) => {
+  .post('/:id/versions/:vid/activate', authUser, async (req: Request<{ id: string; vid: string }>, res: Response) => {
     const apiKey = await getApiKey(req, res);
     if (!apiKey) return;
 
@@ -196,7 +196,7 @@ export default express
 
   // ── DELETE /api/sample-api/sendgrid/templates/:id/versions/:vid ────────────
   // Permanently delete a template version.
-  .delete('/:id/versions/:vid', authUser, async (req: Request, res: Response) => {
+  .delete('/:id/versions/:vid', authUser, async (req: Request<{ id: string; vid: string }>, res: Response) => {
     const apiKey = await getApiKey(req, res);
     if (!apiKey) return;
 

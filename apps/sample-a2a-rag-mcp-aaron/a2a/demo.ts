@@ -21,11 +21,11 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { getAgentCard, sendTask } from './a2a-client.ts';
 import { connectMcp } from './mcp-client.ts';
 
-interface SampleDoc {
+type SampleDoc = {
   id: string;
   title: string;
   content: string;
-}
+};
 
 const MCP_URL = process.env.MCP_SERVER_URL ?? 'http://localhost:3000/mcp';
 const SPECIALIST_URL = 'http://localhost:3101';
