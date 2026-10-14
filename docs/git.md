@@ -63,9 +63,9 @@ Runs automatically on every `git push`:
 | Check | Details |
 |-------|---------|
 | **Workspace unit tests** | Runs `npm run test:unit --workspace=<ws>` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test:unit` script, touched or not, and blocks the push if any fail. Workspaces without `test:unit` (or with an unreadable `package.json`) are listed as **Skipped**; if none has the script, the hook warns that no unit tests ran. Integration and e2e tests aren't run here — integration runs in CI (`Tests` workflow, currently disabled), e2e is disabled for now; schema tests run in pre-commit. |
+| **Type checking** | Runs `tsc --noEmit -p <dir>` for every `apps/*` app with a `tsconfig.json`, plus the shared group projects `common/`, `db/` and `scripts/`, and blocks the push if any fail. Done here rather than in pre-commit since it needs the whole project and is too slow per commit. |
 
 TODO:
-- Type checking with tsc --noEmit, since it needs the whole project and is too slow per commit.
 - Unit tests related to the changed files, not the full suite.
 
 ---

@@ -85,6 +85,7 @@ const provision = async (): Promise<void> => {
       }
 
       await admin.alterConfigs({
+        validateOnly: false,
         resources: [
           {
             type: ConfigResourceTypes.TOPIC,

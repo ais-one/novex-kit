@@ -12,8 +12,7 @@
   "main": "logger.ts",
   "scripts": {
     "test": "node --experimental-test-coverage --experimental-test-module-mocks --test-reporter=spec --test __test__/*.test.ts",
-    "cover": "node --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=lcov.info --test __test__/*.spec.ts",
-    "typecheck": "tsc --noEmit"
+    "cover": "node --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=lcov.info --test __test__/*.spec.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1149.0",

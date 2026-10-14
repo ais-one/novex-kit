@@ -95,10 +95,10 @@ export default express
     express.json({
       limit: '5mb',
       verify: (req, _res, buf) => {
-        req.rawBody = buf;
+        (req as Request).rawBody = buf;
       },
     }),
-    async (req: Request, res: Response) => {
+    async (req: Request<{ label: string }>, res: Response) => {
       const { label } = req.params;
 
       // Resolve config by label
@@ -220,7 +220,7 @@ export default express
     express.json({
       limit: '5mb',
       verify: (req, _res, buf) => {
-        req.rawBody = buf;
+        (req as Request).rawBody = buf;
       },
     }),
     async (req: Request, res: Response) => {

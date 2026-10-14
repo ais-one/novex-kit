@@ -1,7 +1,7 @@
 import { authUser } from '@common/node/auth/jwt';
 import { enqueueBroadcast } from '@common/node/comms/service/outbox';
 import { send } from '@common/node/comms/service/send';
-import type { SendRequest } from '@common/node/comms/service/types';
+import type { BroadcastRequest, SendRequest } from '@common/node/comms/service/types';
 import { handleUpdate } from '@common/node/comms/telegram2/inbound';
 import {
   copyMessage,
@@ -337,7 +337,7 @@ export default express
         recipients: recipients as string[],
         type: type === 'message' ? 'text' : type,
         payload,
-      });
+      } as unknown as BroadcastRequest);
       res.json({ ok: true, ...result });
     } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err instanceof Error ? err.message : 'An unexpected error occurred' });

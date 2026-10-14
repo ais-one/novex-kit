@@ -10,7 +10,6 @@
     "demo": "node demo/demo.ts",
     "agent-demo": "node demo/agent-demo.ts",
     "lint": "biome check --config-path ../../biome-node.json",
-    "typecheck": "tsc --noEmit",
     "test:unit": "echo \"Error: no test specified\" && exit 0",
     "test:integration": "echo \"Error: no test specified\" && exit 0",
     "test": "echo \"Error: no test specified\" && exit 0",

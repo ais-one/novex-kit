@@ -5,11 +5,11 @@ import path from 'node:path';
 import { getAgentCard, sendTask } from '../src/a2a/client.ts';
 import { connectMcp } from '../src/lib/mcp-client.ts';
 
-interface SampleDoc {
+type SampleDoc = {
   id: string;
   title: string;
   content: string;
-}
+};
 
 const MCP_URL = process.env.MCP_SERVER_URL ?? 'http://localhost:3200/mcp';
 const SPECIALIST_URL = 'http://localhost:3202';
