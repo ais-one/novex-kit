@@ -77,3 +77,6 @@ Options:
 - **Pre-release tags, not branches** — keep releasing from `rel/1.1`, add a `prerelease` bump to `release.yml` producing `v1.1.0-beta.1`, `v1.1.0-rc.1` (git-cliff and the tag-ruleset patterns would need to accept the suffix; mark them as GitHub pre-releases, not "Latest").
 - **Pre-release branches** — allow `rel/x.y-*` in `release.yml` and decide whether they may merge into `main` (probably not).
 
+4. Explicitly implementing csurf protection
+
+See [js/missing-token-validation](../.github/codeql/codeql-config.yml) in CodeQL config.
