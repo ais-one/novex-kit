@@ -12,8 +12,7 @@
     "test:integration": "node --test-reporter=spec --test --test-only --test-isolation=process --test-concurrency=1 ./__tests__/integration/*.test.ts",
     "test:integration:oidc": "node --test-reporter=spec --test --test-only ./__tests__/integration/oidc.routes.test.ts",
     "test:integration:saml": "node --test-reporter=spec --test --test-only ./__tests__/integration/saml.routes.test.ts",
-    "test": "npm run test:unit && npm run test:integration",
-    "typecheck": "tsc --noEmit"
+    "test": "npm run test:unit && npm run test:integration"
   },
   "dependencies": {
     "@common/iso": "file:../../common/vanilla/iso",

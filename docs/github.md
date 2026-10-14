@@ -121,6 +121,7 @@ Advanced Security [Configuration Page](https://github.com/settings/security_anal
 **Workflow ([ci-quality.yml](../.github/workflows/ci-quality.yml))**
 - **Semgrep** (`sast-private-repo-semgrep`, private/internal repos only) — static analysis on PRs into ``rel/[0-9]*.[0-9]*``. Fails the job on findings, so it blocks `Quality Summary`. The SARIF report is kept as a build artifact, not uploaded to the Code scanning tab.
 - **CodeQL** (`sast-public-repo-codeql`, public repos only) — scans `javascript-typescript` and `actions` (workflow files) with the `security-extended` query suite, `build-mode: none`.
+  - Rule exclusions live in [.github/codeql/codeql-config.yml](../.github/codeql/codeql-config.yml), passed to the init step as `config-file:`. Currently excluded: `js/missing-rate-limiting` (rate limiting is expected at the gateway/load balancer — confirm for your deployment) and `js/missing-token-validation` (CSRF — mitigated only by the auth cookies' `sameSite: "lax"`, so never set `COOKIE_OPTS.sameSite` to `"none"` and never change state on a GET route; add a CSRF check before using cookie auth across sites). To exclude another rule, add an `exclude: { id: <rule-id> }` entry under `query-filters` with a comment giving the reason. Exclusions are repo-wide (they can't be scoped to paths); for a one-off false positive, dismiss the alert under **Security** → **Code scanning** instead — CodeQL has no inline suppression comments for JS/TS. Alerts from a newly excluded rule close as fixed after the next CodeQL run on the branch.
   - Skipped on private repos (they need GitHub Code Security). If you have it, remove the `github.event.repository.visibility == 'public'` condition on the `sast-public-repo-codeql` job (and change the `sast-private-repo-semgrep` condition if you don't want both).
   - The job succeeds even when it finds issues — results go to **Security** → **Code scanning**. To block merges on findings, add a **Require code scanning results** rule (tool: CodeQL) to the ``rel/[0-9]*.[0-9]*`` ruleset — it compares against CodeQL results on the target branch itself, which this setup doesn't produce (CodeQL only runs on PRs), so it can show "Waiting for Code Scanning results"; it may also just be results still processing — refresh after the CodeQL job finishes.
 
@@ -153,7 +154,7 @@ Every workflow in [.github/workflows](../.github/workflows) — this table is th
 | Workflow | Trigger | What it does | Required check |
 |---|---|---|---|
 | [ci.yml](../.github/workflows/ci.yml) | PR into any branch except `main` | CI entry point (owns triggers + concurrency): runs Lint on every PR; for PRs into `rel/x.y` also Tests and Quality, in parallel once Lint passes — see [CI](#ci) | — (its jobs report the checks below) |
-| [ci-lint.yml](../.github/workflows/ci-lint.yml) | called by `ci.yml` (`workflow_call`) | commit message format, Biome (whole repo), workflow YAML (prettier + actionlint) — see [Lint Checks](#lint-checks) | `Lint / Lint Summary` (rel/x.y) |
+| [ci-lint.yml](../.github/workflows/ci-lint.yml) | called by `ci.yml` (`workflow_call`) | commit message format, Biome (whole repo), TypeScript type check (`tsc --noEmit`), workflow YAML (prettier + actionlint) — see [Lint Checks](#lint-checks) | `Lint / Lint Summary` (rel/x.y) |
 | [ci-tests.yml](../.github/workflows/ci-tests.yml) | called by `ci.yml` (`workflow_call`) | schema, unit and integration tests in every workspace that has the script — **currently disabled** (`if: false`), e2e commented out | `Tests / Test Summary` (rel/x.y) |
 | [ci-quality.yml](../.github/workflows/ci-quality.yml) | called by `ci.yml` (`workflow_call`) | Gitleaks, npm audit, dependency review, SAST (CodeQL public / Semgrep private), coverage (Codecov), jscpd — see [Quality Workflow](#quality-workflow) | `Quality / Quality Summary` (rel/x.y) |
 | [ci-pr-title.yml](../.github/workflows/ci-pr-title.yml) | PR into `rel/x.y` (opened / edited / synchronized / reopened) | PR title must follow Conventional Commits — it becomes the squash commit git-cliff reads; standalone so a title edit re-runs only this check | `PR Title Format` (rel/x.y) |
@@ -180,7 +181,7 @@ The configured branch protection rules apply uniformly to release-line branches 
 
 1. PR submitted to a release-line branch (`rel/x.y`)
 2. CI runs on PR submitted
-  - format + lint check (Biome) and commit message check — in [ci-lint.yml](../.github/workflows/ci-lint.yml), called from [ci.yml](../.github/workflows/ci.yml) on every branch except `main`
+  - format + lint check (Biome), TypeScript type check and commit message check — in [ci-lint.yml](../.github/workflows/ci-lint.yml), called from [ci.yml](../.github/workflows/ci.yml) on every branch except `main`
   - repo-wide schema check, no autofix
   - testing of all workspaces, no autofix
   - repo-wide package audit (`NPM audit`), no autofix
@@ -196,6 +197,7 @@ PRs into `main` skip this CI: only `rel/x.y` may merge into `main` (`Allowed Sou
 
 - **Commit Message Format** — every commit in the PR must follow Conventional Commits (`feat|fix|chore`).
 - **Biome Checks** — `biome ci .` on the whole repository.
+- **TypeScript Type Check** — `tsc --noEmit -p <dir>` for every `apps/*` app with a `tsconfig.json`, plus the shared group projects `common/`, `db/` and `scripts/` — the same projects as the [pre-push hook](git.md#pre-push-hook), so a push made with `--no-verify` is still caught here.
 - **Lint Workflow YAML** — `prettier --check` on `.github/workflows/*.yml` and `.github/actions/**/*.yml`, then `actionlint` (with shellcheck for `run:` scripts) on `.github/workflows/*.yml`. Drafts in `.github/workflows/todo/` are skipped (GitHub does not run workflows in subfolders). Known false positives are ignored in [.github/actionlint.yaml](../.github/actionlint.yaml). Check locally with `npm run ci:lint-yml`; fix with `npx prettier --write ".github/workflows/*.yml" ".github/actions/**/*.yml"` (prettier is a pinned root devDependency).
 - **Lint Summary** (`Lint / Lint Summary`) — the single required check for lint: fails if any job above fails or is cancelled. Add new lint jobs to `ci-lint.yml` and to its `needs:`.
 

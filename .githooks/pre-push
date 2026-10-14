@@ -1,6 +1,6 @@
 #!/bin/sh
 # .githooks/pre-push
-# Pre-push hook: runs `test:unit` in every workspace that has it before allowing a push
+# Pre-push hook: runs `test:unit` in every workspace that has it, then `tsc --noEmit -p` on every TS project, before allowing a push
 # (integration and e2e tests run in CI / manually; schema tests run in pre-commit).
 #
 # Install: runs automatically on `npm install` (re-run: npm run prepare)
@@ -42,6 +42,33 @@ else
 fi
 
 # ── 2. Type checking tsc --noEmit ────────────────────────────────────────────
+# One run per TS project: each app's own tsconfig, plus the shared group
+# tsconfigs for common/, db/ and scripts/ (see CLAUDE.md - TypeScript configuration).
+TYPE_EXIT=0
+TYPECHECKED=0
+for PROJ in apps/* common db scripts; do
+  [ -f "$PROJ/tsconfig.json" ] || continue
+  TYPECHECKED=$((TYPECHECKED + 1))
+  print_info "Type checking project: $PROJ"
+  npx --no-install tsc --noEmit -p "$PROJ"
+  if [ $? -ne 0 ]; then
+    print_error "Type check failed for project: $PROJ"
+    TYPE_EXIT=1
+  else
+    print_success "Type check passed for project: $PROJ"
+  fi
+done
+
+if [ $TYPE_EXIT -ne 0 ]; then
+  print_error "Fix type errors before pushing. Use 'git push --no-verify' to bypass."
+  exit 1
+fi
+
+if [ $TYPECHECKED -eq 0 ]; then
+  print_warning "No tsconfig.json found - no type checking was run."
+else
+  print_success "Type check passed in $TYPECHECKED project(s)."
+fi
 
 # ── 3. Security audit ────────────────────────────────────────────────────────
 # Run This In CI only

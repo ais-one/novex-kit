@@ -83,7 +83,7 @@ export default express
 
   // ── POST /api/sample-api/whatsapp/templates/:id ──────────────────────────
   // Body: { components, configLabel? }
-  .post('/:id', authUser, async (req: Request, res: Response) => {
+  .post('/:id', authUser, async (req: Request<{ id: string }>, res: Response) => {
     const creds = await getCredentials(req, res);
     if (!creds) return;
 

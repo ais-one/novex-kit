@@ -1,0 +1,19 @@
+# CodeQL config for the sast-public-repo-codeql job in ci-quality.yml.
+# The query suite stays in the workflow (`queries: security-extended`); these
+# filters apply on top of it. Exclusions are repo-wide - they cannot be scoped
+# to paths. Give every excluded rule a reason (SOC2 audit trail).
+name: CodeQL config
+
+query-filters:
+  # Rate limiting is expected to be enforced outside the app (API gateway /
+  # load balancer / ingress), not per Express route.
+  # TODO: confirm where rate limiting lives for your deployment and update this reason.
+  - exclude:
+      id: js/missing-rate-limiting
+  # CSRF ("cookie middleware serving a request handler without CSRF protection").
+  # Auth cookies set by common/compiled/node/auth/jwt.ts use COOKIE_OPTS.sameSite
+  # "lax", so browsers don't send them on cross-site POST/PUT/PATCH/DELETE.
+  # Only holds while sameSite is never "none" and no route changes state on GET;
+  # revisit (add a CSRF check) before using cookie auth across sites.
+  - exclude:
+      id: js/missing-token-validation

@@ -7,7 +7,8 @@
     "noEmit": true,
     "strict": true,
     "skipLibCheck": true,
-    "erasableSyntaxOnly": true
+    "erasableSyntaxOnly": true,
+    "allowJs": true
   },
   "include": ["src/**/*.ts", "global.d.ts"]
 }
