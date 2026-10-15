@@ -12,13 +12,15 @@
     - `apps`: workspace codes, documents, scripts, etc.
     - `db`: database schemas, migrations and seeds, etc. (one workspace per PostgreSQL schema)
   - the following files at repo root
+    - **replaced on every template sync** — re-apply your changes after each sync
     - `package.json`
     - `package-lock.json`
-  - `local-` prefixed workflows in `./github/workflows` folder
+  - `local-` prefixed files in `.github/workflows` folder
+  - `local-` prefixed folders in `.github/actions` folder
 - **NEVER!!!** touch anything else. If you need to override or create features
   - do it in the `apps` folder if urgent
   - raise an issue or submit a PR contribution
-- End-users can pull in template updates using the [Sync Upstream Template](docs/githubmd#sync-upstream-template) workflow
+- End-users can pull in template updates using the [Sync Upstream Template](docs/github.md#sync-upstream-template) workflow
 
 ### For Contributor (or Maintainer)
 

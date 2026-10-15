@@ -167,8 +167,8 @@ Root `npm run` scripts (from the root `package.json`):
 |---|---|
 | `check` | Biome check, no writes — run before committing |
 | `check:write` | Biome check with `--write` — auto-fixes lint and format |
-| `ci:biome` | `biome ci .` — what the CI `Lint / Biome Checks` job runs |
-| `ci:lint-yml` | prettier check of `.github/workflows/*.yml` and `.github/actions/**/*.yml` (CI `Lint / Lint Workflow YAML`); fix with `npx prettier --write` on the same globs |
+| `ci:biome` | `biome ci .` — what the `format-lint` step of CI `Lint / Lint Check` runs |
+| `ci:lint-yml` | prettier check of `.github/workflows/*.yml` and `.github/actions/**/*.yml` (the `lint-github-yaml` step of CI `Lint / Lint Check`); fix with `npx prettier --write` on the same globs |
 | `ci:audit` | `npm audit --audit-level=high --omit=dev` (CI `Quality / NPM audit`) |
 | `ci:dup` | jscpd duplication check (CI `Quality / Duplication Check`) |
 | `test:workspaces` | `npm run test` in every workspace that has a `test` script |
@@ -186,7 +186,7 @@ Workspace management:
 - Check outdated packages: `npm outdated -ws`
 - Update packages within their ranges: `npm update --save`
 - Run a script in one workspace: `npm run <script> --workspace=<path>`
-- Coverage locally: `npm run test:unit --workspace=<path>` (prints a coverage table); the merged lcov report is produced in CI (`Quality / Test Coverage`)
+- Coverage locally: `npm run test:unit --workspace=<path>` (prints a coverage table); the merged lcov report is produced in CI (the `unit` step of `Tests / Test Check`)
 
 OpenAPI docs are generated per package, not from the root: `cd common/schemas && npm run docs:generate` for the shared schemas (output `common/schemas/docs/openapi/openapi.merged.yaml`), or `npm run docs:generate` inside `db/<schema>/` for that schema's CRUD docs — see [scripts/generators/README.md](../scripts/generators/README.md).
 

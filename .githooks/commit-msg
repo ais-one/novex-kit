@@ -25,13 +25,13 @@ case "$SUBJECT" in
 esac
 
 # Conventional Commits pattern: type(scope?)[!]: description (same as CI)
-PATTERN='^(feat|fix|chore)(\([^)]+\))?!?: .{1,}$'
+PATTERN='^(feat|fix|hotfix|chore)(\([^)]+\))?!?: .{1,}$'
 
 if ! printf '%s\n' "$SUBJECT" | grep -Eq "$PATTERN"; then
   print_error "Commit message subject does not follow Conventional Commits format."
   print_error "  Got:      $SUBJECT"
   print_info  "  Expected: type(scope): description"
-  print_info  "  Types:    feat|fix|chore"
+  print_info  "  Types:    feat|fix|hotfix|chore"
   print_info  "  Note:     use chore for docs|style|refactor|perf|test|build|ci|revert changes"
   print_info  "  Tip:      use 'npx czg' to generate a valid message interactively."
   exit 1
