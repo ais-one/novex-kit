@@ -24,7 +24,7 @@ A monorepo template for building full-stack JavaScript applications with Node.js
 
 A file-specific `exclude` still lives on the group's `tsconfig.json` where needed — e.g. `common/tsconfig.json` excludes the standalone `oss-uploader`/`s3-uploader` usage/server scripts under `compiled/node/services/oss-files/` from the main project.
 
-Type checking runs `tsc --noEmit -p <dir>` on every project with a `tsconfig.json` (each `apps/*` app, plus `common/`, `db/`, `scripts/`) — in the pre-push hook and in CI (`Lint / TypeScript Type Check`). There are no per-workspace `typecheck` npm scripts; a new app is picked up as long as it has its own `tsconfig.json`. All projects currently pass with zero errors — keep it that way.
+Type checking runs `tsc --noEmit -p <dir>` on every project with a `tsconfig.json` (each `apps/*` app, plus `common/`, `db/`, `scripts/`) — in the pre-push hook and in CI (the `ts-lint` step of `Lint / Lint Check`). There are no per-workspace `typecheck` npm scripts; a new app is picked up as long as it has its own `tsconfig.json`. All projects currently pass with zero errors — keep it that way.
 
 `apps/*` is the exception: `apps/tsconfig.base.json` is a separate, near-duplicate base file (not yet migrated to extend the root one), and each app keeps its **own** `tsconfig.json` rather than a shared group file, since apps' `include` lists differ (each has its own `src/**`, `global.d.ts`, `__tests__/**`). The clean-architecture apps (`sample-common`, `sample-queue-consumer`, `sample-rest-app-v2`) go further and use fully standalone `strict: true` configs that don't extend any shared base at all — see [Clean architecture](#clean-architecture-controller--service--repository) below.
 
@@ -190,7 +190,7 @@ Each deployable app has its own multi-stage `apps/<app>/Dockerfile`, built from 
 
 Every workflow — trigger, purpose, required check — is listed in `docs/github.md#workflows` (the single source of truth); CI pipeline details in `docs/github.md#ci`.
 
-- When a workflow adds or drops a `secrets.*` / `vars.*` reference, update `docs/github.md#secrets-and-variables`.
+- When a workflow adds or drops a `secrets.*` / `vars.*` reference, update `docs/github.md#repo-secrets-and-variables`.
 - Secrets must never be stored in the repo — inject them via the deployment platform or CI/CD secrets store.
 
 ## Authorization
@@ -218,11 +218,11 @@ Route middleware available after `authUser`:
 
 | File | Purpose |
 |---|---|
-| `.github/CONTRIBUTING.md` | Contributor guide — issue reporting and PR rules (branch and commit rules link to `docs/git.md`) |
+| `.github/CONTRIBUTING.md` | Contributor guide — issue reporting and security disclosure (PR rules: `docs/git.md#pull-requests`) |
 | `docs/conventions.md` | Coding, tooling, commit, and runtime standards |
 | `docs/structure.md` | Repo layout — every app, `common/*` package (import name, workspace or not) and `db/*` schema; imported under Repository structure |
 | `docs/create-app.md` | Creating apps — `create:app` CLI (backend templates, naming rules, post-create steps, adding a template), copying `sample-api`, and creating a Vue frontend |
-| `docs/git.md` | Git hooks (setup via `npm install` → `.githooks/setup.sh`, what each hook checks), branch/tag naming, merge flow, hotfix flow, commit messages |
+| `docs/git.md` | Git hooks (setup via `npm install` → `.githooks/setup.sh`, what each hook checks), branch/tag naming, merge flow, hotfix flow, commit messages, pull requests |
 | `docs/github.md` | GitHub repo settings (rulesets, environments, code scanning, Dependabot), CI workflows and required checks, release management |
 | `docs/install.md` | Backend, frontend setup, development guide, and workspace reference |
 | `docs/design/authn.md` | Authentication setup — SAML 2.0 and OIDC provider configuration |
@@ -232,8 +232,8 @@ Route middleware available after `authUser`:
 | `.claude/skills/structured-logging/SKILL.md` | Per-layer logging, error handling, and request-ID tracing conventions |
 | `.claude/skills/openapi-docs/SKILL.md` | Per-app OpenAPI 3.1 spec from zod DTOs (`src/openapi.ts` → `docs/openapi/<app>.yaml`) |
 | `docs/cloud/` | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare |
-| `docs/github.md#secrets-and-variables` | GitHub Secrets and Variables required by the workflows |
-| `docs/release-troubleshooting.md` | Troubleshooting the manual Release workflow (`release.yml`, git-cliff) |
+| `docs/github.md#repo-secrets-and-variables` | GitHub Secrets and Variables required by the workflows |
+| `docs/github.md#troubleshooting` | Troubleshooting the manual Release workflow (`release.yml`, git-cliff) |
 | `docs/NOTES.md` | Design decisions, caveats, open questions, TODOs |
 | `docs/housekeeping.md` | Dependency/Actions updates — Dependabot config plus the `/housekeeping-scan-actions`, `/housekeeping-update-packages`, `/housekeeping-update-node-npm` and `/housekeeping-check-tsconfig` Claude Code commands |
 | `scripts/generators/README.md` | `generate-crud.ts` / `generate-openapi.ts` flags, config file, override recipes |

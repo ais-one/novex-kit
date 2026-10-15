@@ -1,26 +1,34 @@
-## Test workflow - schema, unit and integration tests for every workspace that has the matching script.
+## Test workflow - schema, unit (with coverage) and integration tests for every workspace that has the matching script.
 ## Called by ci.yml after lint passes (PRs into rel/x.y only) - no triggers of its own.
+## One job, one install: schema -> unit + coverage -> Codecov upload -> integration (only if unit passed).
+## Add new test kinds as steps in the `test-check` job.
 name: CI Tests
 
 on:
   workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: false # without it the Codecov upload is skipped; unit tests still run
 
 permissions:
   contents: read
 
 jobs:
-  schema-tests:
-    name: Schema Validation Tests
-    if: false
+  test-check:
+    name: Test Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
       - name: Set up workspace
+        id: setup
         uses: ./.github/actions/setup-node-npm-install
 
+      # TODO: schema tests disabled for now - remove `false &&` to re-enable.
       - name: Schema tests for common/schemas and apps/*/schemas
+        id: schema
+        if: ${{ false && !cancelled() && steps.setup.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -31,68 +39,84 @@ jobs:
             npm run test:schemas -- "$dir"
           done
 
-  unit-tests:
-    name: Unit Tests
-    if: false
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      # The ONLY CI run of unit tests - do not remove without adding a plain
+      # `npm run test:unit --workspaces --if-present` step in its place.
+      - name: Run unit tests with coverage
+        id: unit
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$PWD/coverage/workspaces"
+          mkdir -p "$out"
+          workspaces=$(npm query .workspace | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).map(w=>w.location).join("\n")))')
+          while IFS= read -r ws; do
+            [ -n "$ws" ] || continue
+            script=$(node -p "require('./$ws/package.json').scripts?.['test:unit'] ?? ''")
+            if [[ "$script" != *"--test-reporter=spec"* ]]; then
+              echo "No node --test unit tests in $ws - skipping"
+              continue
+            fi
+            dest="$out/${ws//\//-}.lcov"
+            echo "Running unit tests with coverage for workspace: $ws"
+            (cd "$ws" && sh -c "${script/--test-reporter=spec/--test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=$dest}")
+            # a stubbed script (e.g. `exit 0 || node --test ...`) writes no report
+            if [ ! -s "$dest" ]; then
+              echo "No coverage produced for $ws (test:unit disabled?) - skipping"
+              rm -f "$dest"
+              continue
+            fi
+            # lcov SF: paths are relative to the workspace - rewrite them relative to the repo root
+            node -e 'const fs=require("fs"),p=require("path");const [f,ws]=process.argv.slice(1);fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace(/^SF:(.*)$/gm,(_,s)=>"SF:"+p.relative(process.cwd(),p.resolve(ws,s))))' "$dest" "$ws"
+          done <<< "$workspaces"
+          shopt -s nullglob
+          files=("$out"/*.lcov)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No coverage reports produced"
+            : > coverage/lcov.info
+          else
+            cat "${files[@]}" > coverage/lcov.info
+          fi
+        # Re-runs each workspace's own `test:unit` script (node --test) with an
+        # extra lcov reporter injected next to the existing spec reporter, so
+        # coverage always matches what the workspace itself runs. Workspaces
+        # whose test:unit has no --test-reporter=spec (stubs) are skipped.
+        # Runs the script via `sh -c`, not `npm run`: no pre/post hooks, and
+        # node_modules/.bin is not on PATH - keep test:unit starting with `node`.
 
-      - name: Set up workspace
-        uses: ./.github/actions/setup-node-npm-install
+      # CODECOV_TOKEN is exposed to these two steps only, not to test code.
+      # `secrets` can't be used in a step `if:` - check it here and expose a flag.
+      - name: Check for CODECOV_TOKEN
+        id: codecov
+        if: ${{ !cancelled() && steps.unit.outcome == 'success' }}
+        shell: bash
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          if [ -n "$CODECOV_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Codecov skipped::CODECOV_TOKEN secret not set - coverage report not uploaded"
+          fi
 
-      - name: Run unit tests in every workspace that has test:unit
-        run: npm run test:unit --workspaces --if-present
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() && steps.codecov.outputs.enabled == 'true' }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # required even for public repos now
+          files: ./coverage/lcov.info
+          disable_search: true # only upload the merged report, not coverage/workspaces/*.lcov too
+          fail_ci_if_error: true
 
-  integration-tests:
-    name: Integration Tests
-    needs: unit-tests
-    if: false && github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up workspace
-        uses: ./.github/actions/setup-node-npm-install
-
+      # TODO: integration tests disabled for now - remove `false &&` to re-enable.
       - name: Run integration tests in every workspace that has test:integration
+        id: integration
+        if: ${{ false && !cancelled() && steps.unit.outcome == 'success' }}
         run: npm run test:integration --workspaces --if-present
 
-  # TODO: e2e tests disabled for now - restore this job to re-enable them.
-  # e2e-tests:
-  #   name: E2E Tests
-  #   needs: integration-tests
-  #   if: github.event_name == 'pull_request'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v7
-  #
-  #     - name: Set up workspace
-  #       uses: ./.github/actions/setup-node-npm-install
-  #
-  #     - name: Run e2e tests in every workspace that has test:e2e
-  #       run: npm run test:e2e --workspaces --if-present
-
-  # ---------------------------------------------------------------------
-  # Summary gate - use this single job as your one required branch-protection check
-  # ---------------------------------------------------------------------
-  test-summary:
-    name: Test Summary
-    runs-on: ubuntu-latest
-    needs: [schema-tests, unit-tests, integration-tests] # add e2e-tests here when re-enabled
-    # `skipped` passes (disabled jobs); `failure` and `cancelled` fail the gate
-    if: always()
-    steps:
-      - name: Check all jobs succeeded
-        env:
-          HAS_FAILURE: ${{ contains(needs.*.result, 'failure') }}
-          HAS_CANCELLED: ${{ contains(needs.*.result, 'cancelled') }}
-        run: |
-          if [[ "$HAS_FAILURE" == "true" || "$HAS_CANCELLED" == "true" ]]; then
-            echo "::error::One or more test jobs failed or were cancelled."
-            exit 1
-          fi
-          echo "All test gates passed."
+      # TODO: e2e tests disabled for now - restore this step to re-enable them.
+      # - name: Run e2e tests in every workspace that has test:e2e
+      #   id: e2e
+      #   if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
+      #   run: npm run test:e2e --workspaces --if-present

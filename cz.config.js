@@ -22,6 +22,7 @@ export default {
     { value: 'feat', name: 'feat:     A user-visible feature' },
     { value: 'fix', name: 'fix:      A user-visible bug fix' },
     { value: 'chore', name: 'chore:    Docs, CI, test, refactor, or maintenance work' },
+    { value: 'hotfix', name: 'hotfix:   Emergency production bug fix' },
   ],
   defaultType: 'feat',
   markBreakingChangeMode: true,

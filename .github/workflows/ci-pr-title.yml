@@ -1,4 +1,4 @@
-## PR title lint - the PR title must follow Conventional Commits (feat|fix|chore only).
+## PR title lint - the PR title must follow Conventional Commits (feat|fix|hotfix|chore only).
 ## PRs into rel/x.y are squash-merged, so the title becomes the commit on rel/x.y that
 ## git-cliff reads for versions and release notes; ci.yml only checks the PR's own commits.
 ## Runs only on PRs into rel/x.y: PRs into main are merge commits (title unused) and PRs into
@@ -28,13 +28,13 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          PATTERN='^(feat|fix|chore)(\([^)]+\))?!?: .{1,}$'
+          PATTERN='^(feat|fix|hotfix|chore)(\([^)]+\))?!?: .{1,}$'
           if [[ "$PR_TITLE" =~ $PATTERN ]]; then
             echo "PR title OK: $PR_TITLE"
           else
             echo "::error::Non-conventional PR title: $PR_TITLE"
             echo "  Expected: type(scope): description"
-            echo "  Types:    feat|fix|chore"
+            echo "  Types:    feat|fix|hotfix|chore"
             echo "  Note:     use chore for docs|style|refactor|perf|test|build|ci|revert changes"
             echo "  Why:      PRs are squash-merged - the title becomes the commit git-cliff reads"
             exit 1

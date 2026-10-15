@@ -28,6 +28,7 @@ topo_order = false
 sort_commits = "newest"
 commit_parsers = [
   { message = "^feat", group = "<!-- 0 -->Features" },
+  { message = "^hotfix", group = "<!-- 1 -->Fixes" },
   { message = "^fix", group = "<!-- 1 -->Fixes" },
   { message = "^chore\\(release\\)", skip = true },
   { message = "^chore", group = "<!-- 2 -->Chores" },

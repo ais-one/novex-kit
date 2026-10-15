@@ -15,8 +15,8 @@
     "cover": "node --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=lcov.info --test __test__/*.spec.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1149.0",
-    "@aws-sdk/s3-request-presigner": "^3.1149.0",
+    "@aws-sdk/client-s3": "^3.1152.0",
+    "@aws-sdk/s3-request-presigner": "^3.1152.0",
     "@common/iso": "file:../../vanilla/iso",
     "@node-saml/node-saml": "^5.1.0",
     "@openfga/sdk": "^0.9.7",
@@ -47,7 +47,7 @@
     "uuid": "^14.0.3",
     "web-push": "^3.6.7",
     "ws": "^8.22.0",
-    "zod": "^4.6.6",
+    "zod": "^4.6.7",
     "zod-openapi": "^6.0.2"
   },
   "devDependencies": {
