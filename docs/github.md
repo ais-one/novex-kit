@@ -18,7 +18,7 @@ Create branch rulesets: **Settings** → **Rulesets** → **Rulesets** → **New
   - Restrict deletions
   - **Require a pull request before merging**
     - Require at least 1 approval (0 if sole maintainer)
-    - Require review from Code Owners (>1 maintainter)
+    - Require review from Code Owners (>1 maintainer)
     - Dismiss stale approvals on new commits
     - Require conversation resolution before merging
     - Methods Allowed: Select ALL
@@ -63,10 +63,7 @@ Little is lost: `pull_request` checks already run against a test merge of the he
   - Require a pull request before merging
     - Methods Allowed: Squash
   - Require status checks to pass
-    - `PR Title Format` (from `ci-pr-title.yml`)
-    - `Lint / Lint Check` (the single job of `ci-lint.yml`)
-    - `Quality / Quality Summary` (the single gate job of `ci-quality.yml`)
-    - `Tests / Test Check` (the single job of `ci-tests.yml`)
+    - every check marked `(rel/x.y)` in the **Required check** column of [Workflows](#workflows)
   - Require code scanning results
     - CodeQL
     - on public repo, `sast-public-repo-codeql` job itself does not fail on findings, so without this rule CodeQL is report-only.
@@ -119,7 +116,7 @@ Advanced Security [Configuration Page](https://github.com/settings/security_anal
 - **CodeQL** (`sast-public-repo-codeql`, public repos only) — scans `javascript-typescript` and `actions` (workflow files) with the `security-extended` query suite, `build-mode: none`.
   - Rule exclusions live in [.github/codeql/codeql-config.yml](../.github/codeql/codeql-config.yml), passed to the init step as `config-file:`. Currently excluded: `js/missing-rate-limiting` (rate limiting is expected at the gateway/load balancer — confirm for your deployment) and `js/missing-token-validation` (CSRF — mitigated only by the auth cookies' `sameSite: "lax"`, so never set `COOKIE_OPTS.sameSite` to `"none"` and never change state on a GET route; add a CSRF check before using cookie auth across sites).
   - Skipped on private repos (they need GitHub Code Security). If you have it, remove the `github.event.repository.visibility == 'public'` condition on the `sast-public-repo-codeql` job (and change the `sast-private-repo-semgrep` condition if you don't want both).
-  - The job succeeds even when it finds issues — results go to **Security** → **Code scanning**. To block merges on findings, add a **Require code scanning results** rule (tool: CodeQL) to the [protected-branches-release](#protected-branches-release) ruleset
+  - The job succeeds even when it finds issues — results go to **Security** → **Code scanning**. Merges are blocked on findings by the **Require code scanning results** rule in [protected-branches-release](#ruleset---protected-branches-release).
 
 #### Secret Scanning
 
@@ -148,27 +145,26 @@ Every workflow in [.github/workflows](../.github/workflows) — this table is th
 | Workflow | Trigger | What it does | Required check |
 |---|---|---|---|
 | [ci.yml](../.github/workflows/ci.yml) | PR into any branch except `main` | CI entry point (owns triggers + concurrency): runs Lint on every PR; for PRs into `rel/x.y` also Tests and Quality, in parallel once Lint passes — see [CI](#ci) | — (its jobs report the checks below) |
-| [ci-lint.yml](../.github/workflows/ci-lint.yml) | called by `ci.yml` (`workflow_call`) | commit message format, Biome (whole repo), TypeScript type check (`tsc --noEmit`), workflow YAML (prettier + actionlint), as steps of one job — see [Lint Checks](#lint-checks) | `Lint / Lint Check` (rel/x.y) |
-| [ci-tests.yml](../.github/workflows/ci-tests.yml) | called by `ci.yml` (`workflow_call`) | schema, unit (with coverage → Codecov) and integration tests, as steps of one job — schema and integration **currently disabled** (`false &&`), e2e commented out — see [Tests Workflow](#tests-workflow) | `Tests / Test Check` (rel/x.y) |
-| [ci-quality.yml](../.github/workflows/ci-quality.yml) | called by `ci.yml` (`workflow_call`) | Gitleaks, npm audit, dependency review, SAST (CodeQL public / Semgrep private), jscpd — see [Quality Workflow](#quality-workflow) | `Quality / Quality Summary` (rel/x.y) |
+| [ci-lint.yml](../.github/workflows/ci-lint.yml) | called by `ci.yml` (`workflow_call`) | commit message format, Biome (whole repo), TypeScript type check (`tsc --noEmit`), workflow YAML (prettier + actionlint), as steps of one job | `Lint / Lint Check` (rel/x.y) |
+| [ci-tests.yml](../.github/workflows/ci-tests.yml) | called by `ci.yml` (`workflow_call`) | schema, unit (with coverage → Codecov) and integration tests, as steps of one job — schema and integration **currently disabled** (`false &&`), e2e commented out | `Tests / Test Check` (rel/x.y) |
+| [ci-quality.yml](../.github/workflows/ci-quality.yml) | called by `ci.yml` (`workflow_call`) | Gitleaks, npm audit, dependency review, SAST (CodeQL public / Semgrep private), jscpd | `Quality / Quality Summary` (rel/x.y) |
 | [ci-pr-title.yml](../.github/workflows/ci-pr-title.yml) | PR into `rel/x.y` (opened / edited / synchronized / reopened) | PR title must follow Conventional Commits — it becomes the squash commit git-cliff reads; standalone so a title edit re-runs only this check | `PR Title Format` (rel/x.y) |
 | [ci-source-branch.yml](../.github/workflows/ci-source-branch.yml) | PR into `main` (incl. retargeted) | only `rel/x.y` branches from this repo may merge into `main` — see [protected-branches-main](#ruleset---protected-branches-main) | `Allowed Source Branch` (main) |
 | [release.yml](../.github/workflows/release.yml) | manual, from a `rel/x.y` branch | computes the next version + notes with git-cliff, creates the tag and GitHub release — see [Release Management](#release-management) | — |
-| [deploy-cr.yml](../.github/workflows/deploy-cr.yml) | manual, pick `environment` (staging / production) | build an app image from `release_ref` and push it to a container registry. `release_ref` must be a `rel/x.y` branch or a release tag (`v1.2.3`, `<ws>-v1.2.3`) — checked before approval; then waits for approval if that environment has required reviewers | — |
+| [deploy-cr.yml](../.github/workflows/deploy-cr.yml) | manual, pick `environment` (staging / production) | build an app image from `release_ref` and push it to a container registry. `release_ref` must be a `rel/x.y` branch or a release tag (`v1.2.3`, `<workspace-path>-v1.2.3`) — checked before approval; then waits for approval if that environment has required reviewers | — |
 | [deploy-sae.yml](../.github/workflows/deploy-sae.yml) | manual | deploy a pushed image to an Alibaba Cloud SAE application | — |
 | [deploy-npm.yml](../.github/workflows/deploy-npm.yml) | manual | publish a workspace package to npm | — |
 | [deploy-bucket.yml](../.github/workflows/deploy-bucket.yml) | manual | build a Vue frontend and upload it to an object-storage bucket | — |
 | [update-template.yml](../.github/workflows/update-template.yml) | manual | sync upstream template changes into a `chore/sync-upstream` branch for review — see [Sync Upstream Template](#sync-upstream-template) | — |
 | [maintenance.yml](../.github/workflows/maintenance.yml) | manual | delete old workflow artifacts | — |
 
-Secrets and variables each workflow uses are listed in [Secrets And Variables](#secrets-and-variables) — keep that file in sync when a workflow adds or drops a `secrets.*` / `vars.*` reference. Secrets must never be stored in the repo.
+Secrets and variables each workflow uses are listed in [Repo Secrets And Variables](#repo-secrets-and-variables) — keep that section in sync when a workflow adds or drops a `secrets.*` / `vars.*` reference. Secrets must never be stored in the repo.
 
 ### CI
 
 PR submitted to `main` branch
 
 - Triggers [`Allowed Source Branch Workflow`](../.github/workflows/ci-source-branch.yml)
-  - ensures only `rel/*` branches are merged to `main`
   - All required checks are passed in PR to `rel/*` branches
   - Dependabot still flag CVE alerts
 
@@ -180,7 +176,7 @@ PR submitted to a release-line branch  (`rel/x.y`)
   - calls [`Quality Workflow`](../.github/workflows/ci-quality.yml) if `Lint Workflow` passes
     - refer to workflow file for details
     - TODO Setup: Create as Actions secret `GITLEAKS_LICENSE`. For GitHub **organization** repo, get free license key from [gitleaks.io](https://gitleaks.io/). For **personal** repo, set as any value to enable scan. Every Gitleaks step is gated on this secret, so **without it the scan is skipped on any repo**.
-    - TODO Setup: Enable the **Dependency graph** (Settings → Advanced Security) — `dependency-review-action` needs it. On private repos the job is skipped (it needs GitHub Code Security); if you have it, remove the visibility condition on the `dependency-audit` job.
+    - `dependency-review-action` needs the **Dependency graph** (enabled in [Code Scanning](#code-scanning)). On private repos the job is skipped (it needs GitHub Code Security); if you have it, remove the visibility condition on the `dependency-audit` job.
   - calls [`Tests Workflow`](../.github/workflows/ci-tests.yml) if `Lint Workflow` passes
     - refer to workflow file for details
     - TODO Setup:
@@ -190,10 +186,7 @@ PR submitted to a release-line branch  (`rel/x.y`)
 - Recommend to open a draft PR for CI feedback before review
 - Only allow merge if all checks pass and approvals are met
 
-
-The PR pipeline: `ci.yml` → Lint → (PRs into `rel/x.y` only) Tests + Quality, plus the standalone `ci-pr-title.yml` and `ci-source-branch.yml` checks — all listed in [Workflows](#workflows). Tests and Quality only run once Lint passes.
-
-Changes to `.github/` can go in the same PR as other code. Review of them is enforced by [CODEOWNERS](../.github/CODEOWNERS) (`/.github/` entry) — enable **Require review from Code Owners** in the branch protection rules / ruleset for `main` and `rel/[0-9]*.[0-9]*`.
+Changes to `.github/` can go in the same PR as other code. Review of them is enforced by [CODEOWNERS](../.github/CODEOWNERS) (`/.github/` entry) through the **Require review from Code Owners** rule in [protected-branches-all](#ruleset---protected-branches-all).
 
 
 ---
@@ -204,7 +197,7 @@ Releases are cut manually by the Release workflow [.github/workflows/release.yml
 
 - **Tags are the source of truth for versions.** Nothing is committed back to the branch (no version bump in `package.json`, no `CHANGELOG.md`), so the workflow needs no branch-protection bypass, GitHub App or PAT — its own `GITHUB_TOKEN` is enough.
 - Run it from a `rel/<major>.<minor>` branch (e.g. `rel/1.0`); any other branch, including `main`, fails fast.
-- Troubleshooting lives in [release-troubleshooting.md](./release-troubleshooting.md).
+- Troubleshooting: see [Troubleshooting](#troubleshooting) below.
 
 #### Components and tags
 
@@ -236,6 +229,18 @@ npx git-cliff --tag-pattern '^v[0-9]+\.[0-9]+\.[0-9]+$' --unreleased --strip all
 
 Because `package.json` versions aren't bumped in the repo, a deploy job that needs the version should read it from the tag it checked out, e.g. `npm version "${TAG##*v}" --no-git-tag-version --workspace=<path>` before building or publishing.
 
+#### Troubleshooting
+
+Tip: run with `dry-run` checked first — the job summary shows the computed tag and release notes without creating anything.
+
+- **"Releases are only cut from rel/<major>.<minor> branches"** — dispatched from another branch. Re-run and pick the `rel/<major>.<minor>` branch in "Use workflow from".
+- **"… is not a workspace with a package.json"** — `workspace` must be `.` or a repo-relative folder with a `package.json` (e.g. `apps/sample-api`; leading `./` / trailing `/` fine). Absolute paths and `..` are rejected.
+- **"<tag> already exists - no new commits …"** — no commits for that component since its last tag (for a workspace, only commits touching its path count). Check the changes were merged into the branch you ran from.
+- **Version not what you expected** — a first release uses `package.json` as-is (edit it, or create a baseline tag e.g. `apps-sample-api-v0.0.6` on an older commit); for `auto` see the [bump rules](#inputs) or pass `bump`; only tags matching the component's pattern count (bare `0.6.11` is ignored).
+- **Commit missing from the release notes** — non-Conventional-Commit messages are skipped (git-cliff logs how many), and so is `chore(release)…`. With squash merges, check the PR title.
+- **403 / "Resource not accessible by integration"** — Settings → Actions → General → Workflow permissions must allow `contents: write`; a tag ruleset restricting creation blocks `GITHUB_TOKEN` (see [protected-tags](#ruleset---protected-tags)).
+- **Another workflow didn't run on release** — events from `GITHUB_TOKEN` don't trigger workflows. Dispatch the deploy workflow manually with the new tag, or call it from `release.yml` via `workflow_call`.
+
 ---
 
 ### Sync Upstream Template
@@ -249,7 +254,7 @@ Workflow Inputs are
   - `ref` — downstream branch to base on to create `chore/sync-upstream` branch.
 
 Repo Secret required by the Workflow
-  - `SYNC_TOKEN` — a PAT with `repo` + `workflow` scopes (fine-grained: Contents and Workflows read/write; no pull-request permission needed). The built-in `GITHUB_TOKEN` can't write `.github/workflows/` files. Setup steps are in the [workflow's](../.github/workflows/update-template.yml) header comment; secret is listed in [Secrets And Variables](#secrets-and-variables).
+  - `SYNC_TOKEN` — a PAT with `repo` + `workflow` scopes (fine-grained: Contents and Workflows read/write; no pull-request permission needed). The built-in `GITHUB_TOKEN` can't write `.github/workflows/` files. Setup steps are in the [workflow's](../.github/workflows/update-template.yml) header comment; secret is listed in [Repo Secrets And Variables](#repo-secrets-and-variables).
 
 If upstream has no changes, the run ends with success message, else `chore/sync-upstream` branch based on the input `ref` branch is created. Use PR to merge `chore/sync-upstream` to `ref` (e.g. `rel/1.0`) branch
 
@@ -264,7 +269,7 @@ The following downstream paths are **NEVER** overwritten or deleted by the sync:
 
 ---
 
-### Secrets And Variables
+### Repo Secrets And Variables
 
 #### Environment Workflow Secrets
 |Secret|Workflow|Note|
@@ -281,8 +286,8 @@ The following downstream paths are **NEVER** overwritten or deleted by the sync:
 |CR_PASSWORD|deploy-cr||
 |NPM_AUTH_TOKEN|deploy-npm||
 |SYNC_TOKEN|update-template||
-|CODECOV_TOKEN|ci-tests|optional - if not set, the Codecov upload is skipped; unit tests still run|
-|GITLEAKS_LICENSE|ci-quality|optional - if not set, the Gitleaks secret scan is skipped; Gitleaks itself requires a license for repos owned by a GitHub organization|
+|CODECOV_TOKEN|ci-tests|optional — setup in [CI](#ci)|
+|GITLEAKS_LICENSE|ci-quality|optional — setup in [CI](#ci)|
 |GITHUB_TOKEN|ci-quality,deploy-bucket,release|provided automatically by GitHub|
 |SEMGREP_APP_TOKEN|ci-quality|optional - only for the commented-out paid Semgrep step; not needed by default|
 

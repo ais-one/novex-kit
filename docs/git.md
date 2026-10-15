@@ -4,7 +4,7 @@ This repository uses native Git hooks in `.githooks/`.
 
 - Pre-commit scans staged files for secrets (secretlint), then runs Biome checks on affected directories and schema validation tests where applicable.
 - Commit-msg validates the message against Conventional Commits (`feat`, `fix`, `hotfix`, `chore` only).
-- Pre-push runs unit tests (`test:unit`) in every workspace that has them.
+- Pre-push runs unit tests (`test:unit`) in every workspace that has them, then type checks (`tsc --noEmit`) every TypeScript project.
 
 To skip hooks temporarily:
 ```bash
@@ -44,7 +44,7 @@ Runs automatically on every `git commit`, after pre-commit, and checks the commi
 
 | Check | Details |
 |-------|---------|
-| **Conventional Commits format** | The **subject line** (first non-empty, non-comment line — the line CI and git-cliff read) must match `type(scope): description` — `^(feat\|fix\|hotfix\|chore)(\([^)]+\))?!?: .+`. Only `feat`, `fix`, `hotfix` and `chore` are allowed (use `chore` for docs, style, refactor, perf, test, build, ci and revert changes — see [conventions.md](conventions.md)); the scope is optional; `!` before `:` marks a breaking change. |
+| **Conventional Commits format** | refer to [# Commit Message](#commit-message) |
 | **Skipped messages** | Messages starting with `Merge `, `fixup! ` or `squash! ` (git-generated) are not checked — the same list as CI. `git revert`'s default `Revert "…"` message **is** checked and rejected: reword it to `chore: revert …` (e.g. `git revert --edit <sha>`). |
 
 On failure the hook prints the rejected message and the expected format. Use `npx czg` to compose a valid message interactively — see [Commit Message](#commit-message).
@@ -76,10 +76,10 @@ Use the table below to find out where a branch starts and where it merges.
 |Type|Format|Branch/Create From|Merge To|Lifetime|Notes|
 |----|------|-----------|--------|--------|-----|
 |Stable branch|`main`| - | - | permanent | Stable branch — what's in production |
-|Release branch|`rel/x.y`|`main` (when initial release tag is created from next-release line)|`main` (from current-release line) after each release tag via PR **merge** commit|removed when release line is no longer supported|current-release line (e.g. `rel/1.0`)<br>next-release line (e.g. `rel/1.1` or `rel/2.0`)|
+|Release branch|`rel/x.y`|`main` (when initial release tag is created from next-release line)|`main` (from current-release line) after each release tag via PR **merge** commit (never squash — the line merges into `main` repeatedly)|removed when release line is no longer supported|current-release line (e.g. `rel/1.0`)<br>next-release line (e.g. `rel/1.1` or `rel/2.0`)|
 |Working branches|`feat,fix,chore`|next-release line|next-release line via PR **Squash**|delete after PR merge|
 |Hotfix branch|`hotfix`|current release line|production line is released **immediately**, next-release-line|short-lived: delete after **all** its PRs merge [Fixes Across Release Lines](#fixes-across-release-lines)|
-|Release tags|`v<major>.<minor>.<patch>`(root framework)<br><br>`<workspace>-v<major>.<minor>.<patch>`(app/db workspaces)|`rel/1.0`| NA | NA | `<patch> = 0` initial release, `<patch> > 0` for subsequent release tags |
+|Release tags|`v<major>.<minor>.<patch>`(root framework)<br><br>`<workspace-path>-v<major>.<minor>.<patch>`(app/db workspaces — path with `/` → `-`, e.g. `apps-sample-api-v1.2.3`)|`rel/1.0`| NA | NA | `<patch> = 0` initial release, `<patch> > 0` for subsequent release tags |
 
 ### Fixes Across Release Lines
 
@@ -135,9 +135,8 @@ Caveats:
 
 ## Commit Message
 
-For standardized [Conventional Commits](https://www.conventionalcommits.org/) messages, use **czg** instead of `git commit -m "…"`:
+Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) — compose them with **czg** (below) instead of `git commit -m "…"`.
 
-- Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/).
 - Only `feat`, `fix`, `hotfix`, and `chore` may be used as the top-level commit types.
   - `feat` — new behaviour the user/consumer sees
   - `fix` — corrects broken behaviour
@@ -156,8 +155,6 @@ Install globally for convenience:
 npm install -g czg
 ```
 
-Use the repository commit conventions in [conventions.md](conventions.md) for allowed commit types and breaking-change notation.
-
 When choosing a scope in `czg`:
 
 - Prefer a real workspace scope such as `apps/...` or `common/...` when the change is limited to one workspace.
@@ -169,26 +166,9 @@ When choosing a scope in `czg`:
 
 ## Pull Requests
 
-* Follow the branch naming and merge flow in [docs/git.md](../docs/git.md#branching-and-workflow): `feat/`, `fix/`, `chore/` from the right `rel/x.y` branch, PRs back into it; fixes go to every affected release line ([Fixes Across Release Lines](../docs/git.md#fixes-across-release-lines)).
+* Follow [Branching And Workflow](#branching-and-workflow): `feat/`, `fix/`, `chore/` from the right `rel/x.y` branch, PRs back into it (squash merge); fixes go to every affected release line ([Fixes Across Release Lines](#fixes-across-release-lines)).
 * Don't open PRs against `main` — only `rel/x.y` branches merge there.
 * PR titles must be Conventional Commits (e.g. `fix(auth): handle expired token`); they become the squash commit used for versions and release notes. Change GitHub's suggested title (the branch name) before merging.
+  * Repo setting: **Settings** → **General** → **Pull Requests** → **Allow squash merging** → **Default commit message** = **Pull request title** (or **Pull request title and description**). The GitHub default uses the commit message instead of the title when the PR has a single commit, which would bypass the title check.
 * For changes and feature requests, include a clear description of the problem, the proposed behavior, and any relevant example, request, or UI/API markup.
 * Reference the issue that the PR resolves, for example `Fixes #1234` or `Resolves #6458`.
-
----
-
-## NOTES
-
-For information only
-
-### Rebase Or Merge
-
-Use the repo workflow rather than a per-team merge style.
-
-- Day-to-day feature and fix PRs should use squash merge.
-  - The PR title becomes the squash commit message, so it must follow Conventional Commits — enforced by `PR Title Format` ([ci-pr-title.yml](../.github/workflows/ci-pr-title.yml)).
-  - Set **Settings** → **General** → **Pull Requests** → **Allow squash merging** → **Default commit message** to **Pull request title** (or **Pull request title and description**). The GitHub default uses the commit message instead of the title when the PR has a single commit, which would bypass the title check.
-- Open `feat/*` and `chore/*` PRs into the next-release `rel/[0-9]*.[0-9]*` branch.
-- Send `fix/*` and `hotfix/*` to every supported line that has the bug — one branch from the commit those lines share, one PR per line; a hotfix is released from the production line immediately, then that line is merged into `main` — see [Fixes Across Release Lines](#fixes-across-release-lines).
-
-This keeps the commit history git-cliff reads clean and matches the contributor workflow in [.github/CONTRIBUTING.md](../.github/CONTRIBUTING.md).

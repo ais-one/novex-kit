@@ -53,8 +53,7 @@ This document defines repository-wide coding and runtime standards that apply ac
 
 ## Configuration And Secrets Standard
 
-- Secrets must not be committed to the repository.
-- Secrets must be stored in environment variables or a secret manager.
+- Secrets must be stored in uncommited `.env` files for local `development` environment or a secret manager for `staging` and `production`.
 - JSON config files must be used only for non-sensitive structured settings.
 
 ### Logging Restrictions
