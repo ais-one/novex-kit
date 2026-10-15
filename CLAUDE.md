@@ -24,7 +24,7 @@ A monorepo template for building full-stack JavaScript applications with Node.js
 
 A file-specific `exclude` still lives on the group's `tsconfig.json` where needed — e.g. `common/tsconfig.json` excludes the standalone `oss-uploader`/`s3-uploader` usage/server scripts under `compiled/node/services/oss-files/` from the main project.
 
-Type checking runs `tsc --noEmit -p <dir>` on every project with a `tsconfig.json` (each `apps/*` app, plus `common/`, `db/`, `scripts/`) — in the pre-push hook and in CI (`Lint / TypeScript Type Check`). There are no per-workspace `typecheck` npm scripts; a new app is picked up as long as it has its own `tsconfig.json`. All projects currently pass with zero errors — keep it that way.
+Type checking runs `tsc --noEmit -p <dir>` on every project with a `tsconfig.json` (each `apps/*` app, plus `common/`, `db/`, `scripts/`) — in the pre-push hook and in CI (the `ts-lint` step of `Lint / Lint Check`). There are no per-workspace `typecheck` npm scripts; a new app is picked up as long as it has its own `tsconfig.json`. All projects currently pass with zero errors — keep it that way.
 
 `apps/*` is the exception: `apps/tsconfig.base.json` is a separate, near-duplicate base file (not yet migrated to extend the root one), and each app keeps its **own** `tsconfig.json` rather than a shared group file, since apps' `include` lists differ (each has its own `src/**`, `global.d.ts`, `__tests__/**`). The clean-architecture apps (`sample-common`, `sample-queue-consumer`, `sample-rest-app-v2`) go further and use fully standalone `strict: true` configs that don't extend any shared base at all — see [Clean architecture](#clean-architecture-controller--service--repository) below.
 

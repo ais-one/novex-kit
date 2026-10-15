@@ -1,14 +1,14 @@
 # .github/workflows/ci-quality.yml
 #
-# Wires together 7 quality/security checks, summarised by one required PR status check:
+# Wires together 6 quality/security checks, summarised by one required PR status check:
 #   1. Gitleaks          - secret scanning
 #   2. npm audit         - known CVEs in production npm dependencies
 #   2B. Dependency review - blocks PRs that introduce vulnerable dependencies (PRs, public repos only)
 #   3. Semgrep CE        - SAST, blocking (private/internal repos only)
 #   3B. CodeQL           - SAST via code scanning (public repos only; blocks merges
 #                          only with a "Require code scanning results" ruleset)
-#   4. Coverage          - test coverage via Codecov
-#   5. jscpd             - copy-paste/duplication detection (OPTIONAL - see toggle below)
+#   4. jscpd             - copy-paste/duplication detection (OPTIONAL - see toggle below)
+#   (Test coverage / Codecov lives in ci-tests.yml, with the unit tests it runs.)
 #
 # To leave out jscpd entirely: delete the `duplication` job below, and remove
 # it from the `needs:` list on `quality-summary`. Alternatively, keep it
@@ -191,76 +191,7 @@ jobs:
           category: "/language:${{ matrix.language }}"
 
   # ---------------------------------------------------------------------
-  # 2. Test coverage - Codecov
-  # ---------------------------------------------------------------------
-  coverage:
-    name: Test Coverage
-    runs-on: ubuntu-latest
-    env:
-      # `secrets` can't be used in a step `if:` - expose it via env instead.
-      # Empty when the secret isn't set (or on fork PRs), so the upload is skipped.
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up workspace
-        uses: ./.github/actions/setup-node-npm-install
-
-      - name: Run unit tests with coverage
-        shell: bash
-        run: |
-          set -euo pipefail
-          out="$PWD/coverage/workspaces"
-          mkdir -p "$out"
-          workspaces=$(npm query .workspace | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).map(w=>w.location).join("\n")))')
-          while IFS= read -r ws; do
-            [ -n "$ws" ] || continue
-            script=$(node -p "require('./$ws/package.json').scripts?.['test:unit'] ?? ''")
-            if [[ "$script" != *"--test-reporter=spec"* ]]; then
-              echo "No node --test unit tests in $ws - skipping"
-              continue
-            fi
-            dest="$out/${ws//\//-}.lcov"
-            echo "Running unit tests with coverage for workspace: $ws"
-            (cd "$ws" && sh -c "${script/--test-reporter=spec/--test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=$dest}")
-            # a stubbed script (e.g. `exit 0 || node --test ...`) writes no report
-            if [ ! -s "$dest" ]; then
-              echo "No coverage produced for $ws (test:unit disabled?) - skipping"
-              rm -f "$dest"
-              continue
-            fi
-            # lcov SF: paths are relative to the workspace - rewrite them relative to the repo root
-            node -e 'const fs=require("fs"),p=require("path");const [f,ws]=process.argv.slice(1);fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace(/^SF:(.*)$/gm,(_,s)=>"SF:"+p.relative(process.cwd(),p.resolve(ws,s))))' "$dest" "$ws"
-          done <<< "$workspaces"
-          shopt -s nullglob
-          files=("$out"/*.lcov)
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "No coverage reports produced"
-            : > coverage/lcov.info
-          else
-            cat "${files[@]}" > coverage/lcov.info
-          fi
-        # Re-runs each workspace's own `test:unit` script (node --test) with an
-        # extra lcov reporter injected next to the existing spec reporter, so
-        # coverage always matches what the workspace itself runs. Workspaces
-        # whose test:unit is a stub (no --test-reporter=spec) are skipped.
-
-      - name: Skip Codecov upload (no CODECOV_TOKEN)
-        if: env.CODECOV_TOKEN == ''
-        run: echo "::notice title=Codecov skipped::CODECOV_TOKEN secret not set - coverage report not uploaded"
-
-      - name: Upload coverage to Codecov
-        if: env.CODECOV_TOKEN != ''
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          token: ${{ env.CODECOV_TOKEN }} # required even for public repos now
-          files: ./coverage/lcov.info
-          disable_search: true # only upload the merged report, not coverage/workspaces/*.lcov too
-          fail_ci_if_error: true
-
-  # ---------------------------------------------------------------------
-  # 3. jscpd - duplication detection (OPTIONAL)
+  # 4. jscpd - duplication detection (OPTIONAL)
   # ---------------------------------------------------------------------
   duplication:
     name: Duplication Check (jscpd)
@@ -293,7 +224,6 @@ jobs:
         dependency-audit,
         sast-private-repo-semgrep,
         sast-public-repo-codeql,
-        coverage,
         duplication,
       ] # remove `duplication` here if you drop that job
     # dependency-audit and the two sast-* jobs may be `skipped` (repo visibility) - `skipped` passes;

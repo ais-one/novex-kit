@@ -3,7 +3,7 @@
 This repository uses native Git hooks in `.githooks/`.
 
 - Pre-commit scans staged files for secrets (secretlint), then runs Biome checks on affected directories and schema validation tests where applicable.
-- Commit-msg validates the message against Conventional Commits (`feat`, `fix`, `chore` only).
+- Commit-msg validates the message against Conventional Commits (`feat`, `fix`, `hotfix`, `chore` only).
 - Pre-push runs unit tests (`test:unit`) in every workspace that has them.
 
 To skip hooks temporarily:
@@ -36,12 +36,7 @@ Runs automatically on every `git commit`:
 |-------|---------|
 | **Secret scan (secretlint)** | Runs [secretlint](https://github.com/secretlint/secretlint) (recommended preset, config in [.secretlintrc.json](../.secretlintrc.json)). Refer to [pre-commit hook](../.githooks/pre-commit)|
 | **Biome format & lint** | Runs `npx biome check` on each affected directory (`common/vanilla/iso`, `common/compiled/node`, `common/compiled/vue`, `common/vanilla/web`, `apps`, `scripts`). Run `npm run check:write` to auto-fix. |
-| **Schema validation tests** | Runs `npm run test:schemas -- <folder>` for each affected schema directory (`common/schemas`, `apps/*/schemas`). |
-
-TODO:
-- include --write for fixing files and restaging ?
-- Zod validation of config files, running only when matching config files are staged ?
-- OpenAPI spec linting ?
+| **Schema validation tests** | Runs `npm run test:schemas -- <folder>` for each affected schema directory (`common/schemas`, `apps/*/schemas`). **TODO:** Zod validation of staged config files? OpenAPI spec linting ?|
 
 ### commit-msg hook
 
@@ -49,12 +44,12 @@ Runs automatically on every `git commit`, after pre-commit, and checks the commi
 
 | Check | Details |
 |-------|---------|
-| **Conventional Commits format** | The **subject line** (first non-empty, non-comment line — the line CI and git-cliff read) must match `type(scope): description` — `^(feat\|fix\|chore)(\([^)]+\))?!?: .+`. Only `feat`, `fix` and `chore` are allowed (use `chore` for docs, style, refactor, perf, test, build, ci and revert changes — see [conventions.md](conventions.md)); the scope is optional; `!` before `:` marks a breaking change. |
+| **Conventional Commits format** | The **subject line** (first non-empty, non-comment line — the line CI and git-cliff read) must match `type(scope): description` — `^(feat\|fix\|hotfix\|chore)(\([^)]+\))?!?: .+`. Only `feat`, `fix`, `hotfix` and `chore` are allowed (use `chore` for docs, style, refactor, perf, test, build, ci and revert changes — see [conventions.md](conventions.md)); the scope is optional; `!` before `:` marks a breaking change. |
 | **Skipped messages** | Messages starting with `Merge `, `fixup! ` or `squash! ` (git-generated) are not checked — the same list as CI. `git revert`'s default `Revert "…"` message **is** checked and rejected: reword it to `chore: revert …` (e.g. `git revert --edit <sha>`). |
 
 On failure the hook prints the rejected message and the expected format. Use `npx czg` to compose a valid message interactively — see [Commit Message](#commit-message).
 
-The same pattern is checked again in CI (`Lint / Commit Message Format`) for every commit in a PR, and on the PR title (`PR Title Format`).
+The same pattern is checked again in CI (the `commit-lint` step of `Lint / Lint Check`) for every commit in a PR, and on the PR title (`PR Title Format`).
 
 ### pre-push hook
 
@@ -62,8 +57,8 @@ Runs automatically on every `git push`:
 
 | Check | Details |
 |-------|---------|
-| **Workspace unit tests** | Runs `npm run test:unit --workspace=<ws>` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test:unit` script, touched or not, and blocks the push if any fail. Workspaces without `test:unit` (or with an unreadable `package.json`) are listed as **Skipped**; if none has the script, the hook warns that no unit tests ran. Integration and e2e tests aren't run here — integration runs in CI (`Tests` workflow, currently disabled), e2e is disabled for now; schema tests run in pre-commit. |
-| **Type checking** | Runs `tsc --noEmit -p <dir>` for every `apps/*` app with a `tsconfig.json`, plus the shared group projects `common/`, `db/` and `scripts/`, and blocks the push if any fail. Not in pre-commit: `tsc` checks the working tree, not the staged snapshot, and a change to shared code (e.g. `common/compiled/node`) can break any project, so it can't be scoped to staged files the way Biome is. The same check runs in CI (`Lint / TypeScript Type Check`), which catches a `--no-verify` push. |
+| **Workspace unit tests** | Runs `npm run test:unit --workspace=<ws>` for every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) that has a `test:unit` script, touched or not, and blocks the push if any fail. Workspaces without `test:unit` (or with an unreadable `package.json`) are listed as **Skipped**; if none has the script, the hook warns that no unit tests ran.|
+| **Type checking** | Runs `tsc --noEmit -p <dir>` for every `apps/*` app with a `tsconfig.json`, plus the shared group projects `common/`, `db/` and `scripts/`, and blocks the push if any fail.|
 
 TODO:
 - Unit tests related to the changed files, not the full suite.
@@ -76,27 +71,15 @@ Always work on a new branch, never directly on `main` or `rel/*`.
 
 ### Branch(or line) & Tag Names
 
-Use the table below to find out where a branch starts and where it merges. Example state: `rel/1.0` is released and in production (`v1.0.x`), `rel/1.1` is the next release, still in development.
+Use the table below to find out where a branch starts and where it merges.
 
-|Type|Format|Branch From|Merge To|Lifetime|Notes|
+|Type|Format|Branch/Create From|Merge To|Lifetime|Notes|
 |----|------|-----------|--------|--------|-----|
-|Working branch|`<feat/chore>/scope/<...>`|next-release line (`rel/1.1`)|next-release line (`rel/1.1`) via PR Squash|short-lived: delete after PR merges|
-|Fix branch|`<fix/chore>/<scope>/<...>`| the line it's for — or, if the bug is in several lines, the commit they all share | one PR into **every supported line that has the bug** | short-lived: delete after **all** its PRs merge | Bug fixes — see [Fixes Across Release Lines](#fixes-across-release-lines) |
-|Hotfix branch| `hotfix/<scope>/<...>` | the commit all affected lines share, usually the production tag | one PR per affected line; the production line is released **immediately** | short-lived: delete after **all** its PRs merge | Urgent production fixes — same flow as `fix, chore` |
-|release line|`rel/1.0`| `main` | `main` at `v1.0.0` and after every patch release (`v1.0.x`) | long-lived, until the line is no longer supported | Before `v1.0.0`: where day-to-day work lands. After: **maintenance** — fixes only |
-|next-release line|`rel/1.1`| `main`, after `v1.0.0` | `main` at `v1.1.0`, then as above | long-lived | next release — new features land here once `rel/1.0` is released |
-|Production tag|`v1.2.3`(root)<br><br>`<workspace>-v1.2.3`(workspace)|`rel/1.0`| NA | NA | `v1.0.0` initial release, `v1.0.x` after each patch release (scheduled fixes or a hotfix) |
 |Stable branch|`main`| - | - | permanent | Stable branch — what's in production |
-
-Examples:
-- release-line branch: rel/1.1
-- patch tags: v1.1.1
-
-### Branch Creation And Merge Flow
-
-The consistent rule is: **tags always come from `rel/[0-9]*.[0-9]*`**, never directly from `main`, and **`main` only receives merges from `rel/[0-9]*.[0-9]*`**. Main is the destination, not the source of truth for what shipped.
-
-Merge `rel/x.y` into `main` with a **merge commit, never a squash** — `rel/1.0` is merged into `main` more than once (at `v1.0.0`, then after every patch release), and a squash doesn't record that `rel/1.0` was merged, so the next merge would replay its history and conflict.
+|Release branch|`rel/x.y`|`main` (when initial release tag is created from next-release line)|`main` (from current-release line) after each release tag via PR **merge** commit|removed when release line is no longer supported|current-release line (e.g. `rel/1.0`)<br>next-release line (e.g. `rel/1.1` or `rel/2.0`)|
+|Working branches|`feat,fix,chore`|next-release line|next-release line via PR **Squash**|delete after PR merge|
+|Hotfix branch|`hotfix`|current release line|production line is released **immediately**, next-release-line|short-lived: delete after **all** its PRs merge [Fixes Across Release Lines](#fixes-across-release-lines)|
+|Release tags|`v<major>.<minor>.<patch>`(root framework)<br><br>`<workspace>-v<major>.<minor>.<patch>`(app/db workspaces)|`rel/1.0`| NA | NA | `<patch> = 0` initial release, `<patch> > 0` for subsequent release tags |
 
 ### Fixes Across Release Lines
 
@@ -108,15 +91,14 @@ A bug often exists in more than one release line — e.g. in `rel/1.0` (producti
 - **Every newer line, released or not** — skipping one means the bug comes back when that line ships.
 - Skip a line only when the bug isn't in it (introduced later, or the code was rewritten), or the line no longer gets patches (users should upgrade).
 
-**The flow — one branch, one PR per target, no cherry-picking.** Example: `rel/1.0` is in production (`v1.0.0`), `rel/1.1` and `rel/2.0` are not released yet.
+**The flow — one branch, one PR per target, no cherry-picking.** Example: `rel/1.0` is in production (`v1.0.0`), `rel/1.1` is not released yet.
 
 ```
-hotfix/payment-crash      (or fix/payment-crash - branch from the commit all targets share, here v1.0.0)
+hotfix/payment-crash (or fix/payment-crash - branch from the commit all targets share, here v1.0.0)
   → PR into rel/1.0 (squash)
       → release v1.0.1 from rel/1.0 (Release workflow)   ← hotfix: now; fix: with the next scheduled patch release
       → PR rel/1.0 into main (merge commit)              ← main matches production again
   → PR into rel/1.1 (squash)                             ← no tag; ships in 1.1.0
-  → PR into rel/2.0 (squash)                             ← no tag; ships in 2.0.0
 ```
 
 **1. Create the branch from the shared base**
@@ -156,9 +138,10 @@ Caveats:
 For standardized [Conventional Commits](https://www.conventionalcommits.org/) messages, use **czg** instead of `git commit -m "…"`:
 
 - Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/).
-- Only `feat`, `fix`, and `chore` may be used as the top-level commit types.
+- Only `feat`, `fix`, `hotfix`, and `chore` may be used as the top-level commit types.
   - `feat` — new behaviour the user/consumer sees
   - `fix` — corrects broken behaviour
+  - `hotfix` — urgent fix for broken behaviour in production, released immediately
   - `chore` — everything else: `build`, `ci`, `docs`, `style`, `refactor`, `perf`, `test`, and `revert` style changes
 - Commit messages must use the format `type(scope): short description`.
 - Breaking changes must add `!` before `:` — e.g. `feat(auth)!: replace token format`.
@@ -185,6 +168,7 @@ When choosing a scope in `czg`:
 ---
 
 ## Pull Requests
+
 * Follow the branch naming and merge flow in [docs/git.md](../docs/git.md#branching-and-workflow): `feat/`, `fix/`, `chore/` from the right `rel/x.y` branch, PRs back into it; fixes go to every affected release line ([Fixes Across Release Lines](../docs/git.md#fixes-across-release-lines)).
 * Don't open PRs against `main` — only `rel/x.y` branches merge there.
 * PR titles must be Conventional Commits (e.g. `fix(auth): handle expired token`); they become the squash commit used for versions and release notes. Change GitHub's suggested title (the branch name) before merging.

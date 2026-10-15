@@ -28,7 +28,7 @@ git-cliff found no commits for that component since its last tag, so the "next" 
 
 ## Symptom: A commit is missing from the release notes
 
-Commits that don't parse as Conventional Commits (`feat|fix|chore(scope): ...`) are skipped — the git-cliff log warns how many. Commits starting `chore(release)` are skipped on purpose. With squash merges the PR title becomes the commit message, so check the PR title format.
+Commits that don't parse as Conventional Commits (`feat|fix|hotfix|chore(scope): ...`) are skipped — the git-cliff log warns how many. Commits starting `chore(release)` are skipped on purpose. With squash merges the PR title becomes the commit message, so check the PR title format.
 
 ## Symptom: The tag/release step fails with 403 or "Resource not accessible by integration"
 
