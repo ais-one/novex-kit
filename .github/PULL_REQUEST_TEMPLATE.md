@@ -1,24 +1,26 @@
 ## Pull Request Checklist
 
-- [ ] I read and followed the [Contribution guide](https://github.com/ais-one/novex-kit/blob/main/.github/CONTRIBUTING.md)
+> I read and followed the [Contribution guide](https://github.com/ais-one/novex-kit/blob/main/.github/CONTRIBUTING.md)
 
 ## Summary
 
-- [ ] List Github issue numbers if any (e.g. `#123`, `#987`) or describe what this change does/problem it resolves.
+> List Github issue numbers if any (e.g. `#123`, `#987`) or describe what this change does/problem it resolves.
+
+```text
+
+```
 
 ## Affected Area
 
 Refer To `Files changed` Tab
 
-Downstream templates should not change anything outside the `apps` folder except the `package-lock.json` file
+Downstream repo should not change anything outside the `apps` or `db` folder except the `package.json` and `package-lock.json` files
 
 ## Validation
 
-- [ ] I ran the relevant checks or tests for the affected area
+> Automated tests and converage are run for PR to `rel/*` branches.
 
-Refer to testing and coverage CI run (if any). There should be relevant checks or tests for the affected area.
-
-List below any other commands, tests, or manual checks you ran (if any).
+> List below any additional commands, tests, or relevant checks for the PR.
 
 ```text
 
@@ -26,7 +28,7 @@ List below any other commands, tests, or manual checks you ran (if any).
 
 ## Notes
 
-Include rollout notes, follow-up work, screenshots, or anything reviewers should pay attention to.
+Include rollout notes, follow-up work, screenshots, or anything reviewers should pay attention to. If any.
 
 ```text
 
