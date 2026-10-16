@@ -20,6 +20,8 @@ jobs:
           fetch-depth: 0 # full history so the PR's base..head range resolves
 
       # Called from ci.yml, which only runs on pull_request - checks every commit in the PR.
+      # Warn-only: PRs into rel/x.y are squash-merged, so branch commits are discarded and
+      # only the PR title (enforced by ci-pr-title.yml) reaches the history git-cliff reads.
       # Runs before setup: needs only git, not node_modules.
       - name: Validate commit messages
         id: commit-lint
@@ -31,7 +33,8 @@ jobs:
           set -euo pipefail
 
           PATTERN='^(feat|fix|hotfix|chore)(\([^)]+\))?!?: .{1,}$'
-          FAILED=0
+          # To fail the step instead of warning, uncomment the FAILED lines below
+          # FAILED=0
 
           git log --format="%s" "$PR_BASE_SHA..$PR_HEAD_SHA" > /tmp/commit_msgs.txt
 
@@ -40,15 +43,12 @@ jobs:
               Merge\ *|fixup!\ *|squash!\ *) continue ;;
             esac
             if ! echo "$msg" | grep -Eq "$PATTERN"; then
-              echo "::error::Non-conventional commit message: $msg"
-              echo "  Expected: type(scope): description"
-              echo "  Types:    feat|fix|hotfix|chore"
-              echo "  Note:     use chore for docs|style|refactor|perf|test|build|ci|revert changes"
-              echo "  Tip:      use 'npx czg' locally to generate a valid message."
-              FAILED=1
+              echo "::warning::Incorrect format: $msg"
+              echo "refer to docs/git.md for required format"
+              # FAILED=1
             fi
           done < /tmp/commit_msgs.txt
-          exit $FAILED
+          # exit $FAILED
 
       - name: Set up workspace
         id: setup

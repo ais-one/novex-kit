@@ -49,7 +49,7 @@ Runs automatically on every `git commit`, after pre-commit, and checks the commi
 
 On failure the hook prints the rejected message and the expected format. Use `npx czg` to compose a valid message interactively — see [Commit Message](#commit-message).
 
-The same pattern is checked again in CI (the `commit-lint` step of `Lint / Lint Check`) for every commit in a PR, and on the PR title (`PR Title Format`).
+The same pattern is checked again in CI: every commit in a PR gets a **warning** annotation (the `commit-lint` step of `Lint / Lint Check` — warn-only, since squash merge discards branch commits), and the PR title is **enforced** (`PR Title Format`, required on `rel/x.y`).
 
 ### pre-push hook
 
