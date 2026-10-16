@@ -59,6 +59,15 @@ Both End-user and Contributor must read and follow the documentation below.
 
 ## Quickstart
 
+```bash
+npm run clean:all
+npm install
+cd apps/sample-api
+npm run start
+curl http://127.0.0.1/health
+curl http://127.0.0.1/health/live
+```
+
 ### Getting started with
 - Sample API backend [apps/sample-api](docs/install.md#run-sample-api)
 - Minimal Vue frontend [apps/sample-vue-minimal](docs/install.md#run-minimal-vue-application)

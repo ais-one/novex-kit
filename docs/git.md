@@ -77,7 +77,7 @@ Use the table below to find out where a branch starts and where it merges.
 |----|------|-----------|--------|--------|-----|
 |Stable branch|`main`| - | - | permanent | Stable branch — what's in production |
 |Release branch|`rel/x.y`|`main` (when initial release tag is created from next-release line)|`main` (from current-release line) after each release tag via PR **merge** commit (never squash — the line merges into `main` repeatedly)|removed when release line is no longer supported|current-release line (e.g. `rel/1.0`)<br>next-release line (e.g. `rel/1.1` or `rel/2.0`)|
-|Working branches|`feat,fix,chore`|next-release line|next-release line via PR **Squash**|delete after PR merge|
+|Working branches|`feat,fix,chore`|next-release line|next-release line via PR **Squash**|delete after PR merge|`<type>/[<scope>/][<issue>-]<name>`, e.g. `fix/auth/123-expired-token` or `chore/deps-update` — issue number optional|
 |Hotfix branch|`hotfix`|current release line|production line is released **immediately**, next-release-line|short-lived: delete after **all** its PRs merge [Fixes Across Release Lines](#fixes-across-release-lines)|
 |Release tags|`v<major>.<minor>.<patch>`(root framework)<br><br>`<workspace-path>-v<major>.<minor>.<patch>`(app/db workspaces — path with `/` → `-`, e.g. `apps-sample-api-v1.2.3`)|`rel/1.0`| NA | NA | `<patch> = 0` initial release, `<patch> > 0` for subsequent release tags |
 

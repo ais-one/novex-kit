@@ -5,16 +5,17 @@ import { liveness, readiness } from './controller.ts';
 export const healthRouter = Router({ caseSensitive: true });
 
 /**
- * GET /health
+ * GET /health/live
  * @summary Healthcheck endpoint
  * @tags health
  * @return {object} 200 - success response - application/json
  */
 healthRouter.get('/', liveness); // GET /health
+healthRouter.get('/live', liveness); // GET /health/live
 
 /**
  * GET /health/ready
- * @summary Healthcheck endpoint
+ * @summary Readiness healthcheck endpoint
  * @tags health
  * @return {object} 200 - success response - application/json
  */
