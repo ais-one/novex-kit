@@ -24,7 +24,7 @@ Wraps [kafkajs](https://kafka.js.org/). Each app that uses it instantiates and o
 If `sasl` is set, its password is **not** read from `.env.json` — set it in `.env` / the deployment platform as `KAFKA_CONFIG_SASL_PASSWORD`, per this repo's secrets convention.
 
 ```ts
-import MqKafka from '@apps/sample-common/services/mq/kafka';
+import MqKafka from '@common/node/services/mq/kafka';
 
 const mq = new MqKafka('KAFKA_CONFIG');
 await mq.open(); // on app startup
@@ -38,7 +38,7 @@ Local development: run the mocked broker in `scripts/service-mocks` (`@js-ak/kaf
 
 1. Create `services/mq/sqs.ts` exporting a default class implementing `QueueDriver` from `types.ts` (`open`, `close`, `publish`, `subscribe`, `get`). Use `kafka.ts` as the template for the open/close lifecycle and the `optionName → globalThis.__config` resolution pattern.
 2. Add its config type to `types.ts` (e.g. `SqsConfig`), next to `KafkaConfig`.
-3. In a consuming app, swap `import MqKafka from '@apps/sample-common/services/mq/kafka'` for `import MqSqs from '@apps/sample-common/services/mq/sqs'`, and point its config block at the new shape. Nothing that calls `.publish()`/`.subscribe()` needs to change — it only ever depended on `QueueDriver`.
+3. In a consuming app, swap `import MqKafka from '@common/node/services/mq/kafka'` for `import MqSqs from '@common/node/services/mq/sqs'`, and point its config block at the new shape. Nothing that calls `.publish()`/`.subscribe()` needs to change — it only ever depended on `QueueDriver`.
 
 
 Need to improve on this...
