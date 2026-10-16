@@ -24,8 +24,8 @@
       <button type="button" @click="callMsw">Call MSW Endpoint</button>
     </p>
     <p>
-      <button type="button" @click="(e) => testApi('healthcheck')">Test API</button>
-      <button type="button" @click="(e) => testApi('health-auth')">Test API Auth</button>
+      <button type="button" @click="(e) => testApi('healthcheck')">Test Liveness</button>
+      <button type="button" @click="(e) => testApi('check-db')">Test Readiness</button>
     </p>
     <p>Non-Reactive Data: {{ nonReactiveData }}</p>
     <p>Reactive Data: {{ reactiveData }}</p>

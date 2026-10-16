@@ -76,12 +76,13 @@
   }
 
   async function testAuth() {
-    try {
-      const { data } = await http.get('/api/health-auth')
-      outputEl.innerHTML = JSON.stringify({ 'test auth - ok': data }, null, 2)
-    } catch (e) {
-      outputEl.innerHTML = JSON.stringify({ 'test auth - exception': e }, null, 2)
-    }
+    // TODO
+    // try {
+    //   const { data } = await http.get('/api/health-auth')
+    //   outputEl.innerHTML = JSON.stringify({ 'test auth - ok': data }, null, 2)
+    // } catch (e) {
+    //   outputEl.innerHTML = JSON.stringify({ 'test auth - exception': e }, null, 2)
+    // }
   }
 
   async function testAppAuth() {

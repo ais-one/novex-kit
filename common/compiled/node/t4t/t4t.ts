@@ -133,7 +133,7 @@ const routes = (options?: T4TOptions): express.Router => {
 
   return express
     .Router()
-    .get('/healthcheck', (_req, res) => res.send('t4t ok - 0.0.1'))
+    .get('/live', (_req, res) => res.send('t4t ok - 0.0.1'))
     .get('/config/:table', authUser, generateTable, async (req, res) => {
       if (!(req as T4TRequest).table.view) throw new Error('Forbidden - Table Info');
       res.json((req as T4TRequest).table); // return the table info...

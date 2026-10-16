@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { REQUEST_ID_MESSAGE_HEADER } from '@apps/sample-common/services/mq/types';
 import { ValidationError } from '@common/node/errors/AppError';
 import { createLogger } from '@common/node/logging/context';
+import { REQUEST_ID_MESSAGE_HEADER } from '@common/node/services/mq/types';
 import { connectQueue, disconnectQueue, subscribeToSampleEvents } from '../repositories/external/queue.repository.ts';
 import { processSampleEvent, sampleEventSchema } from '../services/sample-event.service.ts';
 

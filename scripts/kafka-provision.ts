@@ -16,7 +16,7 @@
 //   npm run kafka:provision -- reassign --topic=sample.events --replicationFactor=3
 import '@common/node/logger'; // MqKafka logs via the global `logger` — must be initialized first
 import '@common/node/config';
-import MqKafka from '@apps/sample-common/services/mq/kafka';
+import MqKafka from '@common/node/services/mq/kafka';
 import type { Admin } from 'kafkajs';
 // `ConfigResourceTypes` doesn't resolve via Node's CJS→ESM named-export interop for this
 // package (unlike `Kafka`/`logLevel` elsewhere in this repo) — default-import + destructure
