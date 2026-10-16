@@ -4,6 +4,11 @@
 import crypto from 'node:crypto';
 import OSS from 'ali-oss';
 
+// @types/ali-oss is incomplete: getBucketStat() and res.statusMessage both exist at runtime
+// (ali-oss 6.x lib/common/bucket/getBucketStat, urllib 2.x response) but are not declared.
+type OssWithStat = OSS & { getBucketStat(name?: string): Promise<{ stat?: { ObjectCount?: number } }> };
+const toRes = (res: unknown) => (res ?? {}) as { status?: number; statusMessage?: string };
+
 const { OSS_ACCESS_ID, OSS_ACCESS_KEY, OSS_REGION, OSS_BUCKET } = process.env;
 
 const store =
@@ -33,7 +38,7 @@ interface CallbackConfig {
  */
 const countBucketObjects = async (bucketName: string | null = null): Promise<{ status: number; count: number }> => {
   try {
-    const result = await store?.getBucketStat(bucketName ?? undefined);
+    const result = await (store as OssWithStat | null)?.getBucketStat(bucketName ?? undefined);
     return { status: 200, count: result?.stat?.ObjectCount ?? 0 };
   } catch (e) {
     return { status: (e as { status: number }).status ?? 500, count: 0 };
@@ -55,7 +60,7 @@ const listObjects = async ({
 } = {}): Promise<OssResult & { objects?: unknown[] }> => {
   try {
     const result = await store?.listV2({ prefix, 'max-keys': maxKeys });
-    const { status, statusMessage } = result?.res ?? {};
+    const { status, statusMessage } = toRes(result?.res);
     return { status: status ?? 200, statusMessage, objects: result?.objects };
   } catch (e) {
     return { status: 500, statusMessage: String(e) };
@@ -71,7 +76,7 @@ const listObjects = async ({
 const putObject = async (key: string, payload: string | Buffer | NodeJS.ReadableStream): Promise<OssResult> => {
   try {
     const result = await store?.put(key, payload);
-    const { status, statusMessage } = result?.res ?? {};
+    const { status, statusMessage } = toRes(result?.res);
     return { status: status ?? 200, statusMessage };
   } catch (e) {
     return { status: 500, statusMessage: String(e) };
@@ -86,7 +91,7 @@ const putObject = async (key: string, payload: string | Buffer | NodeJS.Readable
 const getObject = async (key: string): Promise<OssResult & { buffer?: Buffer }> => {
   try {
     const result = await store?.get(key);
-    const { status, statusMessage } = result?.res ?? {};
+    const { status, statusMessage } = toRes(result?.res);
     return { status: status ?? 200, statusMessage, buffer: result?.content };
   } catch (e) {
     return { status: 500, statusMessage: String(e) };
@@ -101,7 +106,7 @@ const getObject = async (key: string): Promise<OssResult & { buffer?: Buffer }> 
 const deleteObjects = async (keys: string[]): Promise<OssResult & { deleted?: unknown[] }> => {
   try {
     const result = await store?.deleteMulti(keys, {});
-    const { status, statusMessage } = result?.res ?? {};
+    const { status, statusMessage } = toRes(result?.res);
     return { status: status ?? 200, statusMessage, deleted: result?.deleted };
   } catch (e) {
     return { status: 500, statusMessage: String(e) };
@@ -118,7 +123,7 @@ const deleteObjects = async (keys: string[]): Promise<OssResult & { deleted?: un
  * @param additional - Optional additional signed headers.
  */
 const getSignedUrl = async (
-  method: string,
+  method: OSS.HTTPMethods,
   expires: number,
   key: string,
   headers: Record<string, unknown> | null = null,
@@ -165,11 +170,13 @@ const getUploadURL = async (
         expires: expiration,
         method: 'PUT',
         'Content-Type': contentType,
-        callback: {
-          url: callbackConfig?.callback_url,
-          body: JSON.stringify({ ...callbackConfig?.body, filename, filepath: fullPath }),
-          contentType: 'application/json',
-        },
+        ...(callbackConfig?.callback_url && {
+          callback: {
+            url: callbackConfig.callback_url,
+            body: JSON.stringify({ ...callbackConfig?.body, filename, filepath: fullPath }),
+            contentType: 'application/json',
+          },
+        }),
       });
     } else {
       url = await store?.signatureUrl(filename);
@@ -338,7 +345,7 @@ export const createMultipartUploadStream = (
 
     const id = await uploadId;
     const result = await store?.completeMultipartUpload(key, id, parts);
-    const { status, statusMessage } = result?.res ?? {};
+    const { status, statusMessage } = toRes(result?.res);
     return { status: status ?? 200, statusMessage };
   };
 
