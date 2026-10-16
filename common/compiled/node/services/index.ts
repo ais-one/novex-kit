@@ -49,7 +49,7 @@ const stop = async () => {
     const promises = Object.keys(servicesConfig).map(name => services[name].close());
     await Promise.allSettled(promises);
   } catch (e) {
-    logger.info(e.toString());
+    logger.info(String(e));
   }
   logger.info('services - stop - end');
 };

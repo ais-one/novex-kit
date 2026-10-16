@@ -20,19 +20,16 @@ export const send = async (sms: string, message: string, from?: string) => {
 export const ismsSend = async (sms: string, message: string, from?: string) => {
   const url = 'https://sms.era.sg/isms_mt.php?';
   try {
-    if (sms && message) {
-      const options = {
-        params: {
-          uid: NEXMO_KEY,
-          pwd: crypto.createHash('md5').update(NEXMO_SECRET).digest('hex'),
-          dnr: sms,
-          snr: from || NEXMO_SENDER,
-          msg: message,
-          split: 5,
-        },
-      };
-      // biome-ignore lint/suspicious/noExplicitAny: options has non-standard `params` field not in RequestInit
-      return await fetch(url, options as any);
+    if (sms && message && NEXMO_SECRET) {
+      const params = new URLSearchParams({
+        uid: NEXMO_KEY ?? '',
+        pwd: crypto.createHash('md5').update(NEXMO_SECRET).digest('hex'),
+        dnr: sms,
+        snr: from || NEXMO_SENDER,
+        msg: message,
+        split: '5',
+      });
+      return await fetch(`${url}${params}`);
     }
   } catch (e) {
     // logger.info('ismsSend', e.toString())

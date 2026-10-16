@@ -9,37 +9,32 @@ export default class Wss {
   private static _instance: Wss | null = null;
 
   _port: number | undefined;
-  _keepAliveMs: number;
-  _wss: WebSocketServer | null;
-  _keepAliveInterval: ReturnType<typeof setInterval> | null;
-  _onClientConnect: (ws: AliveWebSocket) => void;
-  _onClientClose: (ws: AliveWebSocket) => void;
-  _onClientMessage: (data: RawData, isBinary: boolean, ws: AliveWebSocket, wss: WebSocketServer) => Promise<void>;
+  _keepAliveMs = Number(process.env?.WS_KEEPALIVE_MS) || 30000;
+  _wss: WebSocketServer | null = null;
+  _keepAliveInterval: ReturnType<typeof setInterval> | null = null;
+  _onClientConnect: (ws: AliveWebSocket) => void = (_ws: AliveWebSocket) => {};
+  _onClientClose: (ws: AliveWebSocket) => void = (_ws: AliveWebSocket) => {};
+  _onClientMessage: (data: RawData, isBinary: boolean, ws: AliveWebSocket, wss: WebSocketServer) => Promise<void> =
+    async (data, isBinary, ws, wss) => {
+      const message = isBinary ? (data as Buffer) : Buffer.from(data as Buffer).toString('utf8');
+      const logMsg = isBinary ? `[binary ${(data as Buffer).length} bytes]` : String(message);
+      logger.info(`ws message: ${logMsg}`);
+      try {
+        wss.clients.forEach((client: WebSocket) => {
+          if (client !== ws && client.readyState === WebSocket.OPEN) {
+            client.send(message);
+          }
+        });
+        ws.send(message);
+      } catch (e) {
+        logger.info((e as Error).toString());
+      }
+    };
 
   constructor(_options = {}) {
     if (!Wss._instance) {
       Wss._instance = this;
       this._port = process.env?.WS_PORT ? Number(process.env.WS_PORT) : undefined;
-      this._keepAliveMs = Number(process.env?.WS_KEEPALIVE_MS) || 30000;
-      this._wss = null;
-      this._keepAliveInterval = null;
-      this._onClientConnect = (_ws: AliveWebSocket) => {};
-      this._onClientClose = (_ws: AliveWebSocket) => {};
-      this._onClientMessage = async (data: RawData, isBinary: boolean, ws: AliveWebSocket, wss: WebSocketServer) => {
-        const message = isBinary ? (data as Buffer) : Buffer.from(data as Buffer).toString('utf8');
-        const logMsg = isBinary ? `[binary ${(data as Buffer).length} bytes]` : String(message);
-        logger.info(`ws message: ${logMsg}`);
-        try {
-          wss.clients.forEach((client: WebSocket) => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-              client.send(message);
-            }
-          });
-          ws.send(message);
-        } catch (e) {
-          logger.info((e as Error).toString());
-        }
-      };
     }
   }
 

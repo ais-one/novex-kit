@@ -7,6 +7,13 @@ declare var logger: {
 
 declare namespace Express {
   interface Request {
+    user?: {
+      sub?: string | number;
+      roles?: string[];
+      tenant_id?: number;
+      tenant_plan?: string | null;
+      [key: string]: unknown;
+    };
     log: {
       error(msg: unknown, meta?: Record<string, unknown>): void;
       warn(msg: unknown, meta?: Record<string, unknown>): void;
