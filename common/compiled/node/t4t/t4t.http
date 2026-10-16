@@ -13,8 +13,8 @@
 
 # ----------------------------------------
 
-### Healthcheck
-GET {{url}}/healthcheck
+### Liveness Healthcheck
+GET {{url}}/live
 Content-Type: application/json
 
 ### Get table config info

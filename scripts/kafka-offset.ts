@@ -17,7 +17,7 @@
 //   npm run kafka:offset -- set --groupId=sample-queue-consumer --topic=sample.events --partition=0 --timestamp=2026-08-01T00:00:00Z
 import '@common/node/logger'; // MqKafka logs via the global `logger` — must be initialized first
 import '@common/node/config';
-import MqKafka from '@apps/sample-common/services/mq/kafka';
+import MqKafka from '@common/node/services/mq/kafka';
 import type { Admin } from 'kafkajs';
 
 const parseArgs = (argv: string[]): Record<string, string> => {

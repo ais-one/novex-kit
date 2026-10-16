@@ -1,5 +1,5 @@
-import MqKafka from '@apps/sample-common/services/mq/kafka';
-import type { QueueHandler } from '@apps/sample-common/services/mq/types';
+import MqKafka from '@common/node/services/mq/kafka';
+import type { QueueHandler } from '@common/node/services/mq/types';
 
 // Swapping the backend later (e.g. to SQS) means changing this one file — see
 // apps/sample-common/services/mq/README.md — nothing in services/ or consumers/ changes.
