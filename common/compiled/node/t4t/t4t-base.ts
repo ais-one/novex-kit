@@ -1,5 +1,5 @@
 import { Parser } from '@json2csv/plainjs';
-import { parse } from 'csv-parse';
+import { type Parser as CsvParser, parse } from 'csv-parse';
 import type { Response } from 'express';
 import * as svc from '../services/index.ts';
 import { formUniqueKey, isInvalidInput, kvDb2Col, mapRelation } from './t4t-utils.ts';
@@ -25,7 +25,7 @@ const upload = async (req: T4TRequest, res: Response): Promise<void> => {
   const keyMap: Record<string, boolean> = {};
   csvParse(csv)
     .on('error', e => logger.error(e.message))
-    .on('readable', function () {
+    .on('readable', function (this: CsvParser) {
       let record = this.read() as string[] | null;
       while (record) {
         line++;
@@ -45,6 +45,7 @@ const upload = async (req: T4TRequest, res: Response): Promise<void> => {
               break;
             }
           }
+          record = this.read() as string[] | null;
           continue; // ignore first line
         }
         if (!columnsError) {

@@ -49,11 +49,16 @@ export const setup = (getServer: () => any, getServices: () => any) => {
       process.on(signal, gracefulShutdown);
     }); // SIGKILL cannot be caught
     process.on('uncaughtException', (err, origin) => {
-      logger.info(`Uncaught Exception - error: ${err} origin: ${origin}`);
+      logger.error(`Uncaught Exception - error: ${err} origin: ${origin}`, {
+        stack: err.stack,
+        ...(err.cause !== undefined && {
+          cause: err.cause instanceof Error ? err.cause.stack : String(err.cause),
+        }),
+      });
       process.exit(1);
     });
     process.on('unhandledRejection', (reason, promise) => {
-      logger.info(`Unhandled Rejection - promise: ${promise} reason: ${reason}`);
+      logger.error(`Unhandled Rejection - promise: ${promise} reason: ${reason}`);
       process.exit(1);
     });
   }

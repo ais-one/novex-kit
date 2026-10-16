@@ -1,4 +1,4 @@
-import { parse as csvParse } from 'csv-parse';
+import { type Parser as CsvParser, parse as csvParse } from 'csv-parse';
 import type { Response } from 'express';
 import * as svc from '../../services/index.ts';
 import type { T4TRequest } from '../types.ts';
@@ -20,7 +20,7 @@ const upload = async (req: T4TRequest, res: Response): Promise<void> => {
   let columnsError = false;
   csvParse(csv)
     .on('error', e => logger.error(e.message))
-    .on('readable', function () {
+    .on('readable', function (this: CsvParser) {
       let record = this.read() as string[] | null;
       while (record) {
         line++;

@@ -17,31 +17,25 @@ class S3Uploader {
   chunkSize: number;
   maxConcurrent: number;
   /**
-   * @param {object} options
-   * @param {string} options.getSignedUrlEndpoint - Your backend endpoint that returns signed URLs
-   * @param {number} [options.chunkSize]          - Bytes per part (default: 10MB)
-   * @param {number} [options.maxConcurrent]      - Parallel part uploads (default: 3)
+   * `getSignedUrlEndpoint` (required) — your backend endpoint that returns signed URLs.
+   * `chunkSize` — bytes per part (default: 10MB). `maxConcurrent` — parallel part uploads (default: 3).
    */
   constructor(options: Partial<S3UploaderOptions> = {}) {
-    this.endpoint = options.getSignedUrlEndpoint;
-    this.chunkSize = options.chunkSize || CHUNK_SIZE;
-    this.maxConcurrent = options.maxConcurrent || 3;
-
-    if (!this.endpoint) {
+    const endpoint = options.getSignedUrlEndpoint;
+    if (!endpoint) {
       throw new Error('getSignedUrlEndpoint is required');
     }
+    this.endpoint = endpoint;
+    this.chunkSize = options.chunkSize || CHUNK_SIZE;
+    this.maxConcurrent = options.maxConcurrent || 3;
   }
 
   // ─── Public API ─────────────────────────────────────────────────────────────
 
   /**
    * Upload a File or Blob to S3.
-   * @param {File|Blob} file
-   * @param {object}   [opts]
-   * @param {string}   [opts.key]        - S3 object key (defaults to file.name)
-   * @param {Function} [opts.onProgress] - Called with 0–100 progress percentage
-   * @param {AbortSignal} [opts.signal]  - AbortController signal to cancel upload
-   * @returns {Promise<{ key: string, location: string }>}
+   * `opts.key` — S3 object key (defaults to file.name); `opts.onProgress` — called with 0–100;
+   * `opts.signal` — AbortController signal to cancel the upload.
    */
   async upload(file: File | Blob, opts: S3UploadOpts = {}): Promise<{ key: string; location: string }> {
     const key = opts.key || (file instanceof File ? file.name : '');

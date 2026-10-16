@@ -84,8 +84,9 @@ const preRoute = (opts: { skipBodyParsing?: boolean } = {}) => {
     // app.use(helmet.noCache())
     // csurf not needed at the moment
   } catch (e) {
-    logger.error('[helmet setup error]', e.toString());
-    throw e;
+    // duplicate logging — the rethrown error is logged by shutdown.ts's uncaughtException handler (or Node's crash output)
+    // logger.error('[helmet setup error]', String(e));
+    throw new Error('[helmet setup error]', { cause: e });
   }
 
   // -------- CORS --------
@@ -97,8 +98,9 @@ const preRoute = (opts: { skipBodyParsing?: boolean } = {}) => {
     const corsOptions = globalThis.__config?.CORS_OPTIONS;
     app.use(corsOptions ? cors(corsOptions) : cors()); // default { origin: '*' }
   } catch (e) {
-    logger.error('[cors options error]', e.toString());
-    throw e;
+    // duplicate logging — the rethrown error is logged by shutdown.ts's uncaughtException handler (or Node's crash output)
+    // logger.error('[cors options error]', String(e));
+    throw new Error('[cors options error]', { cause: e });
   }
   // additional response headers if CORS headers are missing
   try {
@@ -112,8 +114,9 @@ const preRoute = (opts: { skipBodyParsing?: boolean } = {}) => {
       });
     }
   } catch (e) {
-    logger.error('[response headers setup error]', e.toString());
-    throw e;
+    // duplicate logging — the rethrown error is logged by shutdown.ts's uncaughtException handler (or Node's crash output)
+    // logger.error('[response headers setup error]', String(e));
+    throw new Error('[response headers setup error]', { cause: e });
   }
 
   // express-limiter, compression, use reverse proxy
@@ -142,8 +145,9 @@ const preRoute = (opts: { skipBodyParsing?: boolean } = {}) => {
       });
       app.use(express.urlencoded(BODYPARSER_URLENCODED || { extended: true, limit: '2mb' })); // https://stackoverflow.com/questions/29175465/body-parser-extended-option-qs-vs-querystring/29177740#29177740
     } catch (e) {
-      logger.error('[bodyparser setup error]', e.toString());
-      throw e;
+      // duplicate logging — the rethrown error is logged by shutdown.ts's uncaughtException handler (or Node's crash output)
+      // logger.error('[bodyparser setup error]', String(e));
+      throw new Error('[bodyparser setup error]', { cause: e });
     }
   }
   app.use(cookieParser()); // need this for httpOnly cookie parsing

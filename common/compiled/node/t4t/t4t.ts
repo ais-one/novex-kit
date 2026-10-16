@@ -1,6 +1,6 @@
 // const path = require('path')
 import fs from 'node:fs';
-import type { NextFunction, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import express from 'express';
 import * as yaml from 'js-yaml';
 import multer from 'multer';
@@ -65,7 +65,8 @@ let orgIdKey = '';
 
 // __key is reserved property for identifying row in a table
 // | is reserved for seperating columns that make the multiKey
-const generateTable = async (req: T4TRequest, _res: Response, next: NextFunction): Promise<void> => {
+const generateTable = async (expressReq: Request, _res: Response, next: NextFunction): Promise<void> => {
+  const req = expressReq as T4TRequest; // generateTable is what populates req.table
   // TODO get config info from a table
   const tableKey = req.params.table; // 'books' // its the table name also
 
