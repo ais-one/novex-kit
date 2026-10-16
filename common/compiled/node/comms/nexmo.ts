@@ -23,6 +23,9 @@ export const ismsSend = async (sms: string, message: string, from?: string) => {
     if (sms && message && NEXMO_SECRET) {
       const params = new URLSearchParams({
         uid: NEXMO_KEY ?? '',
+        // MD5 is required by the era.sg iSMS API (pwd = md5(secret)) — external contract, not our own hashing.
+        // CodeQL js/weak-cryptographic-algorithm alert dismissed as "Won't fix" for this line.
+        // nosemgrep
         pwd: crypto.createHash('md5').update(NEXMO_SECRET).digest('hex'),
         dnr: sms,
         snr: from || NEXMO_SENDER,
