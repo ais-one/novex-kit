@@ -23,8 +23,8 @@ const { COOKIE_OPTS } = globalThis.__config?.JWT ?? {};
 
 const {
   AUTH_REFRESH_URL,
-  AUTH_USER_FIELD_ID_FOR_JWT,
-  AUTH_USER_FIELD_LOGIN,
+  AUTH_USER_FIELD_ID_FOR_JWT = '',
+  AUTH_USER_FIELD_LOGIN = '',
   AUTH_USER_FIELDS_JWT_PAYLOAD = '',
 
   JWT_PRIVATE_KEY,
@@ -51,8 +51,10 @@ export const setup = (tokenServiceName = 'keyv', userServiceName = 'knex1', look
   if (rbacConfig?.enabled) rbac.setup(rbacConfig.serviceName ?? userServiceName, lookup);
 };
 
-export const getSecret = mode => {
-  return JWT_ALG.substring(0, 2) !== 'HS' ? (mode === 'sign' ? JWT_PRIVATE_KEY : JWT_CERTIFICATE) : JWT_SECRET;
+export const getSecret = (mode: 'sign' | 'verify'): string => {
+  const secret = JWT_ALG.substring(0, 2) !== 'HS' ? (mode === 'sign' ? JWT_PRIVATE_KEY : JWT_CERTIFICATE) : JWT_SECRET;
+  if (!secret) throw Error(`JWT ${mode} secret/key not configured`);
+  return secret;
 };
 
 export const createToken = async user => {
@@ -142,7 +144,8 @@ export const authUser = async (req, res, next) => {
         // Attach a scoped FGA check helper so route handlers can do ad-hoc checks
         // without importing the fga module directly.
         req.fga = {
-          check: (relation, object) => fga.check(access_result.sub, relation, object),
+          check: async (relation, object) =>
+            access_result.sub ? fga.check(access_result.sub, relation, object) : false,
         };
         // hasRole checks the coarse-grained flat roles array from the JWT.
         // For permission checks use rbac.getUserTenantsData with req.user.tenant_id.
@@ -154,7 +157,7 @@ export const authUser = async (req, res, next) => {
         return res.status(401).json({ message: 'Access Error' });
       }
     } catch (e) {
-      if (e.name === 'TokenExpiredError') {
+      if ((e as Error).name === 'TokenExpiredError') {
         return res.status(401).json({ message: 'Token Expired Error' });
       } else {
         return res.status(401).json({ message: 'Token Error' });

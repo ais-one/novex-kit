@@ -26,16 +26,16 @@
  */
 
 import { OpenFgaClient } from '@openfga/sdk';
+import type { Request, RequestHandler } from 'express';
 
-/** @type {OpenFgaClient | null} */
-let fgaClient = null;
+type FgaConfig = { apiUrl: string; storeId: string; authorizationModelId?: string };
+
+let fgaClient: OpenFgaClient | null = null;
 
 /**
  * Initialise the FGA client. Call once during app startup (e.g. from auth setup).
- *
- * @param {{ apiUrl: string, storeId: string, authorizationModelId?: string }} config
  */
-const setup = config => {
+const setup = (config: FgaConfig): void => {
   if (!config?.apiUrl || !config?.storeId) return;
   fgaClient = new OpenFgaClient({
     apiUrl: config.apiUrl,
@@ -47,11 +47,9 @@ const setup = config => {
 /**
  * List all roles assigned to a user via the `assignee` relation on type `role`.
  * Returns an empty array when FGA is not configured or if the call fails.
- *
- * @param {string|number} userId
- * @returns {Promise<string[]>} role names without the `role:` prefix
+ * Role names are returned without the `role:` prefix.
  */
-const listUserRoles = async userId => {
+const listUserRoles = async (userId: string | number): Promise<string[]> => {
   if (!fgaClient) return [];
   try {
     const { objects } = await fgaClient.listObjects({
@@ -68,13 +66,9 @@ const listUserRoles = async userId => {
 
 /**
  * Check whether a user has a specific relation on an object.
- *
- * @param {string|number} userId
- * @param {string} relation
- * @param {string} object - fully-qualified FGA object, e.g. `role:admin` or `document:42`
- * @returns {Promise<boolean>}
+ * `object` is a fully-qualified FGA object, e.g. `role:admin` or `document:42`.
  */
-const check = async (userId, relation, object) => {
+const check = async (userId: string | number, relation: string, object: string): Promise<boolean> => {
   if (!fgaClient) return false;
   try {
     const { allowed } = await fgaClient.check({
@@ -90,25 +84,17 @@ const check = async (userId, relation, object) => {
 };
 
 /**
- * Write a relationship tuple to the FGA store.
- *
- * @param {string} user   - e.g. `user:1`
- * @param {string} relation
- * @param {string} object - e.g. `role:admin`
+ * Write a relationship tuple to the FGA store, e.g. (`user:1`, `assignee`, `role:admin`).
  */
-const writeTuple = async (user, relation, object) => {
+const writeTuple = async (user: string, relation: string, object: string): Promise<void> => {
   if (!fgaClient) throw new Error('OpenFGA client not initialised');
   await fgaClient.write({ writes: [{ user, relation, object }] });
 };
 
 /**
  * Delete a relationship tuple from the FGA store.
- *
- * @param {string} user
- * @param {string} relation
- * @param {string} object
  */
-const deleteTuple = async (user, relation, object) => {
+const deleteTuple = async (user: string, relation: string, object: string): Promise<void> => {
   if (!fgaClient) throw new Error('OpenFGA client not initialised');
   await fgaClient.write({ deletes: [{ user, relation, object }] });
 };
@@ -116,11 +102,7 @@ const deleteTuple = async (user, relation, object) => {
 /**
  * Express middleware factory — performs an OpenFGA `check` for the authenticated user.
  * Must be used after `authUser` so that `req.user.sub` is available.
- *
- * @param {string} relation
- * @param {string | ((req: import('express').Request) => string)} objectFn
- *   A fixed FGA object string OR a function that derives it from the request.
- * @returns {import('express').RequestHandler}
+ * `objectFn` is a fixed FGA object string OR a function that derives it from the request.
  *
  * @example
  * // Anyone with 'reader' relation on the specific document
@@ -130,16 +112,18 @@ const deleteTuple = async (user, relation, object) => {
  * // Anyone assigned to the 'admin' role
  * router.delete('/users/:id', authUser, requireFga('assignee', 'role:admin'), handler);
  */
-const requireFga = (relation, objectFn) => async (req, res, next) => {
-  const userId = req.user?.sub;
-  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
-  const object = typeof objectFn === 'function' ? objectFn(req) : objectFn;
-  const allowed = await check(userId, relation, object);
-  if (!allowed) {
-    logger.warn({ userId, relation, object }, 'fga: access denied');
-    return res.status(403).json({ error: 'Access denied' });
-  }
-  return next();
-};
+const requireFga =
+  (relation: string, objectFn: string | ((req: Request) => string)): RequestHandler =>
+  async (req, res, next) => {
+    const userId = req.user?.sub;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+    const object = typeof objectFn === 'function' ? objectFn(req) : objectFn;
+    const allowed = await check(userId, relation, object);
+    if (!allowed) {
+      logger.warn({ userId, relation, object }, 'fga: access denied');
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    return next();
+  };
 
 export { check, deleteTuple, listUserRoles, requireFga, setup, writeTuple };

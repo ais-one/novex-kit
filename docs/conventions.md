@@ -2,11 +2,28 @@
 
 This document defines repository-wide coding and runtime standards that apply across the monorepo.
 
-## Required Tooling
+## Format & Lint
 
 - [.editorconfig](../.editorconfig) is the baseline for whitespace and formatting behavior and must be followed.
 - `biome` is the required formatter and linter for this repository
 - Customize own configuration file in your `apps/*` workspace
+
+## Type Check
+
+- [tsconfig.base.json](../tsconfig.base.json) is the base json file with all default settings. The following configs derive from this base
+  - [apps/tsconfig.base.json]
+  - [common/tsconfig.base.json]
+  - [db/tsconfig.base.json]
+  - [scripts/tsconfig.base.json]
+- then in each individual workspace that needs type checking, there is the `tsconfig.json` file and drives from the appropriate base
+
+e.g `apps/sample-api/tsconfig.json` extend `from apps/tsconfig.base.json`
+
+```json
+{
+    "extends": "../tsconfig.base.json",
+}
+```
 
 ## Work Tracking Standard
 

@@ -40,8 +40,8 @@ export const auth = async (req: Request, res: Response): Promise<void> => {
     const TO = req.body.RelayState as string;
     const authenticated = !parsedResponse?.loggedOut;
     const user = {
-      sub: parsedResponse?.profile[samlJwtMap?.id ?? 'nameID'],
-      roles: parsedResponse?.profile[samlJwtMap?.groups ?? 'groups'],
+      sub: parsedResponse?.profile?.[samlJwtMap?.id ?? 'nameID'],
+      roles: parsedResponse?.profile?.[samlJwtMap?.groups ?? 'groups'],
     };
     if (!TO) {
       res.status(200).json({ authenticated, user });
