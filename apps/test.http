@@ -5,7 +5,7 @@
 @url = {{url_dev}}
 
 ### liveness endpoint
-GET {{url}}/health
+GET {{url}}/live
 
 ### Readiness endpoint
 GET {{url}}/health/ready

@@ -71,7 +71,7 @@ npm run start
 | URL | Purpose |
 |---|---|
 | http://127.0.0.1:3000/health | Shared health check — mounted before auth, always unauthenticated |
-| http://127.0.0.1:3000/api/sample-api/healthcheck | App-level health check (the app's own routes are mounted) |
+| http://127.0.0.1:3000/health/live | App-level liveness healthcheck (the app's own routes are mounted) |
 | http://127.0.0.1:3000 | Website served by Express with functional samples and demos |
 | http://127.0.0.1:3000/native/index.html | Unbundled Vue website sample |
 
