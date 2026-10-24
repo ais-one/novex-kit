@@ -71,7 +71,7 @@ A `requestId` that never leaves the process it was minted in isn't tracing — t
 
 ## The logger is an injected dependency, not a global import
 
-Every other file in this repo grabs the bare global `logger` (per `common/compiled/node/logger.ts`'s own module-load side effect and CLAUDE.md's "use the global logger" rule) — that convention stays for infrastructure code (`common/compiled/node/*`, one-off scripts). **Inside clean-architecture layers, it changes**: a service or repository never reaches for the bare global — it receives a logger as a parameter (idiom A) or a constructor dependency (idiom B), the same way it receives a repository. This is what makes `requestId`/`layer`/`fn` context automatic instead of something every call site has to remember to pass, and it's also what makes log output assertable in a test the same way a mocked repository call is.
+Every other file in this repo grabs the bare global `logger` (per `common/compiled/node/logger.ts`'s own module-load side effect and `.claude/CLAUDE.md`'s "use the global logger" rule) — that convention stays for infrastructure code (`common/compiled/node/*`, one-off scripts). **Inside clean-architecture layers, it changes**: a service or repository never reaches for the bare global — it receives a logger as a parameter (idiom A) or a constructor dependency (idiom B), the same way it receives a repository. This is what makes `requestId`/`layer`/`fn` context automatic instead of something every call site has to remember to pass, and it's also what makes log output assertable in a test the same way a mocked repository call is.
 
 Shape (a thin wrapper around the existing global `logger` — not a new transport), real and in use — `common/compiled/node/logging/context.ts`:
 

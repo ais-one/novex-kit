@@ -9,7 +9,7 @@ description: Templates for this repo's controller → service → repository lay
 
 Invoke bare (`/clean-architecture`) for the full pattern. Invoke with an app name (`/clean-architecture <app>`) for `clean-architecture-reviewer` to audit that app against it.
 
-This skill is the detailed reference behind the short policy in root `CLAUDE.md` under "Clean architecture (controller → service → repository)". Read that section first if you haven't — this document expands on it.
+This skill is the detailed reference behind the short policy in `.claude/CLAUDE.md` under "Clean architecture (controller → service → repository)". Read that section first if you haven't — this document expands on it.
 
 For what each layer logs, how errors propagate with their stack intact, and how a `requestId` threads through all three layers (and across a call to another of this repo's own apps), see the companion `structured-logging` skill — the two are meant to be read together when building a new controller/service/repository.
 
@@ -254,7 +254,7 @@ describe.only('reports.service', () => {
 });
 ```
 
-Two rules that silently break this pattern if missed (both already called out in root `CLAUDE.md` → Testing, repeated here because they bite specifically at the service/repository boundary):
+Two rules that silently break this pattern if missed (both already called out in `.claude/CLAUDE.md` → Testing, repeated here because they bite specifically at the service/repository boundary):
 
 1. **`mock.module()` must run before the module under test is imported.** Put the `mock.module()` calls at the top of the file, before any static `import` of the service, and use a dynamic `await import()` for the service itself — as above. A static `import` at the top of the test file loads (and caches) the real repository before the mock is registered.
 2. **The `.ts`-extension rule depends on *how* the specifier resolves — get this wrong and you get `Cannot find module`, not a clear error:**
@@ -298,7 +298,7 @@ Either idiom must satisfy the same rule: **a service never imports a concrete DB
 
 - **Unit tests** (`__tests__/unit/*.test.ts` — copy `apps/sample-rest-app-v2`'s layout and `test:unit`/`test:integration` scripts specifically; `sample-queue-consumer` keeps tests flat in `src/__tests__/` and its `test:unit` glob would not pick up a `unit/` subfolder): mock every repository a service depends on; mock the underlying driver (`fetch`, the DB client) for any repository test that has non-trivial mapping/error-handling logic worth covering. Never touch a real DB or network.
 - **Integration tests** (`__tests__/integration/*.test.ts` — matches the `test:integration` script pattern already used in `apps/sample-rest-app-v2`): allowed to hit a real or sandboxed dependency. Use `@common/node/tests/http-request` for real HTTP calls and `@common/node/tests/http-mocks` for Express req/res stubs when you want a unit-style test of a controller without spinning up a server.
-- All tests use `describe.only()` / `it.only()` — see root `CLAUDE.md` → Testing. A test written without `.only()` silently never runs.
+- All tests use `describe.only()` / `it.only()` — see `.claude/CLAUDE.md` → Testing. A test written without `.only()` silently never runs.
 
 ## Directory layout template
 
@@ -327,7 +327,7 @@ Naming: `kebab-case` files, one export family per file, `*.routes.ts` / `*.contr
 
 ### A TypeScript-execution nuance across apps
 
-`common/compiled/node` and the templates above use **native Node TS execution** (`node file.ts`, per root `CLAUDE.md` and `docs/conventions.md`) — relative imports keep the `.ts` extension (`from '../services/db/schema.ts'`). An app with its own `tsc`/`tsx` build step instead follows the NodeNext convention of a `.js` extension inside `.ts` source (`from '../services/foo.service.js'`) — check the app's own `package.json` scripts to see which one it uses. Follow whichever convention the app you're editing already uses; for a new app or feature, default to native execution with `.ts` extensions, matching `docs/conventions.md`'s stated direction ("avoid compilation, use NodeJS native typescript").
+`common/compiled/node` and the templates above use **native Node TS execution** (`node file.ts`, per `.claude/CLAUDE.md` and `docs/conventions.md`) — relative imports keep the `.ts` extension (`from '../services/db/schema.ts'`). An app with its own `tsc`/`tsx` build step instead follows the NodeNext convention of a `.js` extension inside `.ts` source (`from '../services/foo.service.js'`) — check the app's own `package.json` scripts to see which one it uses. Follow whichever convention the app you're editing already uses; for a new app or feature, default to native execution with `.ts` extensions, matching `docs/conventions.md`'s stated direction ("avoid compilation, use NodeJS native typescript").
 
 ## Do / Don't
 
@@ -364,8 +364,8 @@ Hosts `services/mq/` (the Kafka-backed `QueueDriver` — see its `README.md`) an
 
 ## References
 
-- Root `CLAUDE.md` → "Clean architecture (controller → service → repository)" (short policy), "Testing" (`.only()`, `mock.module()`, shared test utilities).
-- `common/compiled/node/auth/store.ts` — real named-export repository, mocked via `mock.module()` in the root `CLAUDE.md` example.
+- `.claude/CLAUDE.md` → "Clean architecture (controller → service → repository)" (short policy), "Testing" (`.only()`, `mock.module()`, shared test utilities).
+- `common/compiled/node/auth/store.ts` — real named-export repository, mocked via `mock.module()` in the `.claude/CLAUDE.md` example.
 - `common/compiled/node/health/{controller,router}.ts` — real thin controller + router split.
 - `common/compiled/node/tests/{http-mocks,http-request}.ts` — shared test utilities for controller-level and integration tests.
 - `apps/sample-common/services/mq/{types,kafka}.ts` + `__tests__/unit/kafka.test.ts` — real strict-mode TypeScript repository-layer driver, with a real crash bug (a caught failure in `open()` left state that made an uncaught failure in `subscribe()` possible) found by actually booting it, not just by the unit tests.

@@ -10,7 +10,7 @@ You audit code in this repo against two related things: the controller → servi
 
 Read these three files in full — they are the live, authoritative rules. Do not rely on memory of a prior run; they may have changed.
 
-1. Root `CLAUDE.md`, sections "Clean architecture (controller → service → repository)" and "Logging and tracing" (and "Testing" for the `.only()` / `mock.module()` rules they reference).
+1. `.claude/CLAUDE.md`, sections "Clean architecture (controller → service → repository)" and "Logging and tracing" (and "Testing" for the `.only()` / `mock.module()` rules they reference).
 2. `.claude/skills/clean-architecture/SKILL.md` — the full layering/mockability reference, including the Do/Don't list.
 3. `.claude/skills/structured-logging/SKILL.md` — the full logging/tracing/error-handling reference, including the field shapes and the naming convention checklist.
 

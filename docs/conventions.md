@@ -38,7 +38,7 @@ e.g `apps/sample-api/tsconfig.json` extend `from apps/tsconfig.base.json`
 
 - Use only ES Modules - JS Standards compliant, no CommonJS
 - NodeJS applications or applications requiring compilation like Vue / React may use Native NodeJS **Typescript** (recommended) or **Javascript**
-  - Exception: new backend apps using the controller → service → repository layering must be **Typescript with `strict: true`** (see [CLAUDE.md](../CLAUDE.md#clean-architecture-controller--service--repository) and the `clean-architecture` skill)
+  - Exception: new backend apps using the controller → service → repository layering must be **Typescript with `strict: true`** (see [CLAUDE.md](../.claude/CLAUDE.md#clean-architecture-controller--service--repository) and the `clean-architecture` skill)
   - NodeJS TS (runtime) + `tsc --noEmit` (static type check) + `zod` (dynamic validation)  
   - `common/compiled/node` uses Typescript (`common/compiled/vue` is still Javascript)
 - Browser and Isomorphic code must use Javascript only

@@ -10,7 +10,7 @@ A monorepo template for building full-stack JavaScript applications with Node.js
 
 ## Repository structure
 
-@docs/structure.md
+@../docs/structure.md
 
 ## TypeScript configuration
 
@@ -123,7 +123,7 @@ Backend (`create:app` CLI from a clean-architecture template, or copy `sample-ap
 
 `docs/conventions.md` is the single source of truth for coding, typing, export, config/secrets, logging and commit standards — edit it there, not here. It is imported below so it is always in context:
 
-@docs/conventions.md
+@../docs/conventions.md
 
 Lint/format with `biome`: `npm run check` reports only (no writes); `npm run check:write` auto-fixes.
 
@@ -168,15 +168,15 @@ Full mechanism, field shapes, the request-ID propagation rules, and the per-app 
 
 ## Commit conventions
 
-Single source of truth [](docs/git.md#commit-message)
+Single source of truth [](../docs/git.md#commit-message)
 
 ## Git hooks
 
-Single source of truth [](docs/git.md#hooks)
+Single source of truth [](../docs/git.md#hooks)
 
 ## Branch conventions
 
-Single source of truth [](docs/git.md#branching-and-workflow)
+Single source of truth [](../docs/git.md#branching-and-workflow)
 
 ## Updating from upstream template
 

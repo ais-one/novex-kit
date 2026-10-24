@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: ["24"] # lts?
+        node: ["24.22.1"]
     steps:
       - name: Show inputs
         env:

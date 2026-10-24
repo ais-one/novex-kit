@@ -1,6 +1,6 @@
 ## Repository Structure
 
-The single source of truth for the repo layout — what each folder, app, package and schema is for. Imported into [CLAUDE.md](../CLAUDE.md), so keep it accurate and concise.
+The single source of truth for the repo layout — what each folder, app, package and schema is for. Imported into [CLAUDE.md](../.claude/CLAUDE.md), so keep it accurate and concise.
 
 ```
 apps/                # backend and frontend apps (npm workspace)

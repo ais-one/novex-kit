@@ -8,7 +8,7 @@ This document is for `design preferences`, `open questions`, `caveats`, `migrati
   - avoid enums, instead... use const object pattern / string literal unions
   - avoid legacy decorators
   - avoid using <any>, use <unknown>
-- npm workspaces naming (microservices & shared libraries) — see the repository structure in [CLAUDE.md](../CLAUDE.md#repository-structure)
+- npm workspaces naming (microservices & shared libraries) — see the repository structure in [CLAUDE.md](../.claude/CLAUDE.md#repository-structure)
   - apps : microservices or applications (frontend or backend)
     - <tenant1>-common
     - <tenant1>-<app1>

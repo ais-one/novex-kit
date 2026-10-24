@@ -50,7 +50,7 @@
     "@secretlint/secretlint-rule-preset-recommend": "13.0.7",
     "@types/express": "^5.0.6",
     "@vitejs/plugin-vue": "^6.0.10",
-    "jscpd": "5.4.1",
+    "jscpd": "5.4.2",
     "msw": "^3.0.3",
     "prettier": "3.9.10",
     "secretlint": "13.0.7",

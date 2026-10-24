@@ -13,7 +13,7 @@ The following templates are currently available:
 | `sample-rest-app`       | REST API application       |
 | `sample-queue-consumer` | Queue consumer application |
 
-Reference template apps live under `apps/` — [`apps/sample-rest-app-v2`](../apps/sample-rest-app-v2) and [`apps/sample-queue-consumer`](../apps/sample-queue-consumer) — alongside every other app. Both follow the repo's clean architecture (controller → service → repository, strict TypeScript) — see [CLAUDE.md](../CLAUDE.md#clean-architecture-controller--service--repository).
+Reference template apps live under `apps/` — [`apps/sample-rest-app-v2`](../apps/sample-rest-app-v2) and [`apps/sample-queue-consumer`](../apps/sample-queue-consumer) — alongside every other app. Both follow the repo's clean architecture (controller → service → repository, strict TypeScript) — see [CLAUDE.md](../.claude/CLAUDE.md#clean-architecture-controller--service--repository).
 
 ### Create a New App
 

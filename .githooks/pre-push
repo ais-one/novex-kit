@@ -43,7 +43,7 @@ fi
 
 # ── 2. Type checking tsc --noEmit ────────────────────────────────────────────
 # One run per TS project: each app's own tsconfig, plus the shared group
-# tsconfigs for common/, db/ and scripts/ (see CLAUDE.md - TypeScript configuration).
+# tsconfigs for common/, db/ and scripts/ (see .claude/CLAUDE.md - TypeScript configuration).
 TYPE_EXIT=0
 TYPECHECKED=0
 for PROJ in apps/* common db scripts; do
