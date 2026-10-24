@@ -233,5 +233,7 @@ The `.env` files in each schema subdirectory contain the local `DATABASE_URL`. d
 
 `audit/0002_public_triggers.sql` creates a trigger on `public.users`, so **`db:migrate --workspace=db/sample` must run before `db:migrate --workspace=db/audit`**. If you reset the database, always follow the order: public → iam → audit.
 
+Each schema records its migrations in its own table: `drizzle.__drizzle_migrations` (sample), `drizzle.__drizzle_migrations_iam` and `drizzle.__drizzle_migrations_audit` (set via `migrations.table` in each `drizzle.config.ts`). Drizzle skips any migration older than the newest one recorded in its table, so sharing one table would make a fresh database silently skip `iam`/`audit` migrations. Give any new schema workspace its own table too.
+
 Set `DATABASE_URL` in the respective `.env` file for local use. For CI/production, set `DATABASE_URL` as an environment variable.
 
