@@ -104,6 +104,12 @@
       }
     },
     {
+      "includes": ["db/README.md", "docs/git.md"],
+      "formatter": {
+        "enabled": false
+      }
+    },
+    {
       "includes": ["apps/sample-api/**"],
       "linter": {
         "rules": {

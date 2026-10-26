@@ -663,7 +663,7 @@ ORDER BY deleted_at DESC;
 
 You can cross-reference it against actual triggers to find tables that have a trigger but aren't registered, or are registered but missing a trigger:
 
-````sql
+```sql
 -- Tables with a trigger but not in the registry (forgot to register)
 SELECT event_object_table
 FROM information_schema.triggers
@@ -691,4 +691,4 @@ WHERE grantee = 'api_role'
     FROM information_schema.triggers
     WHERE trigger_name LIKE 'hard_delete_%'
   );
-```````
+```

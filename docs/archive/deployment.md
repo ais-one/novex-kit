@@ -533,14 +533,14 @@ VAULT=
     - manual
       - file
         - cicd
-      - env
+          - env
 - Knexfile - Database Migration
   - local - file
   - cloud
     - manual
       - file
         - cicd
-      - na
+          - na
 
 ### Serving Configs
 
