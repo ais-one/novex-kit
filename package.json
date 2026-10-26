@@ -37,6 +37,7 @@
     "ci:biome": "biome ci .",
     "ci:dup": "jscpd .",
     "ci:lint-yml": "prettier --check \".github/workflows/*.yml\" \".github/actions/**/*.yml\"",
+    "lint-yml:fix": "prettier --check --write \".github/workflows/*.yml\" \".github/actions/**/*.yml\"",
     "prepare": "sh .githooks/setup.sh || echo 'Can not set git hooks'",
     "test:schemas": "node scripts/test-schemas.ts",
     "test:workspaces": "npm run test --workspaces --if-present",

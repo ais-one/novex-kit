@@ -258,7 +258,14 @@ jobs:
   quality-summary:
     name: Quality Summary
     runs-on: ubuntu-latest
-    needs: [secret-scan, npm-audit, dependency-audit, sast-private-repo-semgrep, sast-public-repo-codeql, duplication] # remove `duplication` here if you drop that job
+    needs: [
+        secret-scan,
+        npm-audit,
+        dependency-audit,
+        sast-private-repo-semgrep,
+        sast-public-repo-codeql,
+        duplication,
+      ] # remove `duplication` here if you drop that job
     # dependency-audit and the two sast-* jobs may be `skipped` (repo visibility) - `skipped` passes;
     # `failure` and `cancelled` fail the gate
     if: always()

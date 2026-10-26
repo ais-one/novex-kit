@@ -104,6 +104,12 @@
       }
     },
     {
+      "includes": [".github/**/*.yml"],
+      "formatter": {
+        "enabled": false
+      }
+    },
+    {
       "includes": ["db/README.md", "docs/git.md"],
       "formatter": {
         "enabled": false
