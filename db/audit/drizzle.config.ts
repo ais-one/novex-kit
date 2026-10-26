@@ -5,6 +5,8 @@ export default defineConfig({
   schema: './schema.ts',
   out: './drizzle',
   schemaFilter: ['audit'],
+  // Own history table: drizzle skips migrations older than the newest recorded one, so sharing the default table with db/sample skips audit's on a fresh DB
+  migrations: { table: '__drizzle_migrations_audit', schema: 'drizzle' },
   dbCredentials: {
     url: process.env.DATABASE_URL ?? 'postgresql://localhost:5432/db_express',
   },

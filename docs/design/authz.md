@@ -2,10 +2,10 @@
 
 This project supports two composable authorization layers on top of JWT authentication:
 
-| Layer | Module | Purpose |
-|---|---|---|
-| **RBAC** | `common/compiled/node/auth/rbac.ts` | Tenant-scoped roles and permissions stored in the DB |
-| **FGA** | `common/compiled/node/auth/openfga.ts` | Fine-grained per-object checks via OpenFGA |
+| Layer    | Module                                 | Purpose                                              |
+| -------- | -------------------------------------- | ---------------------------------------------------- |
+| **RBAC** | `common/compiled/node/auth/rbac.ts`    | Tenant-scoped roles and permissions stored in the DB |
+| **FGA**  | `common/compiled/node/auth/openfga.ts` | Fine-grained per-object checks via OpenFGA           |
 
 Both are optional. They can be used independently or together.
 
@@ -53,9 +53,9 @@ The legacy `users.roles` column is populated by your app's user management (regi
 After JWT verification, `authUser` attaches helpers to every authenticated request:
 
 ```js
-req.user  // decoded JWT payload { sub, roles, tenant_id, tenant_plan, iat, exp }
-req.rbac  // { hasRole(...roles) }  — checks flat JWT roles array
-req.fga   // { check(relation, object) } — ad-hoc OpenFGA check
+req.user; // decoded JWT payload { sub, roles, tenant_id, tenant_plan, iat, exp }
+req.rbac; // { hasRole(...roles) }  — checks flat JWT roles array
+req.fga; // { check(relation, object) } — ad-hoc OpenFGA check
 ```
 
 For fine-grained permission checks use `getUserTenantsData` with `req.user.tenant_id`:
@@ -71,20 +71,20 @@ const data = await getUserTenantsData(req.user.sub, req.user.tenant_id);
 
 ## Mode selection
 
-| Mode | Config |
-|---|---|
-| RBAC only | `RBAC_CONFIG.enabled: true`, FGA `storeId` empty |
-| FGA only | `RBAC_CONFIG.enabled: false`, FGA `storeId` set |
-| Both | Both enabled — RBAC roles take precedence; FGA used for per-object checks |
-| Neither (legacy) | Both disabled — uses flat `users.roles` column |
+| Mode             | Config                                                                    |
+| ---------------- | ------------------------------------------------------------------------- |
+| RBAC only        | `RBAC_CONFIG.enabled: true`, FGA `storeId` empty                          |
+| FGA only         | `RBAC_CONFIG.enabled: false`, FGA `storeId` set                           |
+| Both             | Both enabled — RBAC roles take precedence; FGA used for per-object checks |
+| Neither (legacy) | Both disabled — uses flat `users.roles` column                            |
 
-| Use case | Recommendation |
-|---|---|
-| Tenant isolation, coarse role checks | RBAC |
-| Per-object ownership or sharing (e.g. "can edit document:42") | FGA |
-| Both coarse and fine-grained control | RBAC + FGA together |
-| No external service, simple deployments | RBAC only |
-| Maximum flexibility, dynamic policies | FGA only or RBAC + FGA |
+| Use case                                                      | Recommendation         |
+| ------------------------------------------------------------- | ---------------------- |
+| Tenant isolation, coarse role checks                          | RBAC                   |
+| Per-object ownership or sharing (e.g. "can edit document:42") | FGA                    |
+| Both coarse and fine-grained control                          | RBAC + FGA together    |
+| No external service, simple deployments                       | RBAC only              |
+| Maximum flexibility, dynamic policies                         | FGA only or RBAC + FGA |
 
 ---
 
@@ -169,16 +169,16 @@ await revokePermission(roleId, permissionId);
 
 ### Seed data (`initial_rbac.js`)
 
-| Tenant | Role | Permissions |
-|---|---|---|
-| Default (id=1) | TestGroup | `users:read`, `reports:read` |
-| Default (id=1) | TestGithub | `users:read` |
-| Default (id=1) | TestGmail | `users:read`, `reports:read`, `reports:export` |
+| Tenant         | Role       | Permissions                                    |
+| -------------- | ---------- | ---------------------------------------------- |
+| Default (id=1) | TestGroup  | `users:read`, `reports:read`                   |
+| Default (id=1) | TestGithub | `users:read`                                   |
+| Default (id=1) | TestGmail  | `users:read`, `reports:read`, `reports:export` |
 
-| User | Roles in tenant 1 |
-|---|---|
-| user:1 (test) | TestGroup |
-| user:2 (ais-one) | TestGithub |
+| User              | Roles in tenant 1    |
+| ----------------- | -------------------- |
+| user:1 (test)     | TestGroup            |
+| user:2 (ais-one)  | TestGithub           |
 | user:3 (aaronjxz) | TestGmail, TestGroup |
 
 ---
@@ -201,12 +201,12 @@ A user is an "assignee" of a named role object. This mirrors the `users.roles` f
 
 Tuples assign users to roles:
 
-| user | relation | object |
-|---|---|---|
-| user:1 | assignee | role:TestGroup |
+| user   | relation | object          |
+| ------ | -------- | --------------- |
+| user:1 | assignee | role:TestGroup  |
 | user:2 | assignee | role:TestGithub |
-| user:3 | assignee | role:TestGmail |
-| user:3 | assignee | role:TestGroup |
+| user:3 | assignee | role:TestGmail  |
+| user:3 | assignee | role:TestGroup  |
 
 ### Setup
 
@@ -245,7 +245,12 @@ import { requireFga, writeTuple, deleteTuple } from '@common/node/auth/openfga';
 router.delete('/users/:id', authUser, requireFga('assignee', 'role:admin'), handler);
 
 // Declarative middleware — dynamic object derived from request
-router.put('/docs/:id', authUser, requireFga('owner', req => `document:${req.params.id}`), handler);
+router.put(
+  '/docs/:id',
+  authUser,
+  requireFga('owner', req => `document:${req.params.id}`),
+  handler,
+);
 
 // Ad-hoc check inside a handler
 router.get('/resource', authUser, async (req, res) => {
@@ -269,7 +274,7 @@ import { requireFga } from '@common/node/auth/openfga';
 router.put(
   '/docs/:id',
   authUser,
-  (req, res, next) => req.rbac.hasRole('admin') ? next() : res.sendStatus(403),
+  (req, res, next) => (req.rbac.hasRole('admin') ? next() : res.sendStatus(403)),
   requireFga('owner', req => `document:${req.params.id}`),
   handler,
 );
@@ -279,15 +284,15 @@ router.put(
 
 Stores the active FGA store and model IDs so they can be read by tooling or admin UIs.
 
-| Column | Type | Description |
-|---|---|---|
-| `id` | integer PK | |
-| `store_id` | string(64) | OpenFGA store ID |
-| `auth_model_id` | string(64) | Authorization model ID |
-| `label` | string(80) | Human-readable name, default `"default"` |
-| `api_url` | string(255) | FGA server URL |
-| `is_active` | boolean | Whether this config is in use |
-| `created_at` / `updated_at` | timestamp | |
+| Column                      | Type        | Description                              |
+| --------------------------- | ----------- | ---------------------------------------- |
+| `id`                        | integer PK  |                                          |
+| `store_id`                  | string(64)  | OpenFGA store ID                         |
+| `auth_model_id`             | string(64)  | Authorization model ID                   |
+| `label`                     | string(80)  | Human-readable name, default `"default"` |
+| `api_url`                   | string(255) | FGA server URL                           |
+| `is_active`                 | boolean     | Whether this config is in use            |
+| `created_at` / `updated_at` | timestamp   |                                          |
 
 ### Seed data (`initial_openfga.js`)
 
@@ -312,19 +317,19 @@ Store and model IDs should be managed via a secrets vault and injected as enviro
 
 ### New files
 
-| File | Purpose |
-|---|---|
-| `common/compiled/node/auth/rbac.ts` | RBAC service — `configure`, `isConfigured`, `getUserTenantsData`, `requireRole`, `assignRole`, `revokeRole`, `grantPermission`, `revokePermission` |
-| `common/compiled/node/auth/openfga.ts` | FGA client wrapper — `setup`, `listUserRoles`, `check`, `writeTuple`, `deleteTuple`, `requireFga` |
-| `db/iam/drizzle/*.sql` | Drizzle-generated migrations creating `tenants`, `tenant_roles`, `permissions`, `role_permissions`, `user_tenant_roles`, `fga_config` in the `iam` schema (these tables originally migrated under `db/sample`/knex — see `db/sample/drizzle/0002_remove_rbac_fga.sql`, which drops them from `public` again) |
-| `db/iam/seeds/initial_rbac.ts` | Seeds tenant, roles, permissions, user assignments |
-| `db/iam/seeds/initial_openfga.ts` | Creates FGA store, model, seed tuples |
+| File                                   | Purpose                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `common/compiled/node/auth/rbac.ts`    | RBAC service — `configure`, `isConfigured`, `getUserTenantsData`, `requireRole`, `assignRole`, `revokeRole`, `grantPermission`, `revokePermission`                                                                                                                                                           |
+| `common/compiled/node/auth/openfga.ts` | FGA client wrapper — `setup`, `listUserRoles`, `check`, `writeTuple`, `deleteTuple`, `requireFga`                                                                                                                                                                                                            |
+| `db/iam/drizzle/*.sql`                 | Drizzle-generated migrations creating `tenants`, `tenant_roles`, `permissions`, `role_permissions`, `user_tenant_roles`, `fga_config` in the `iam` schema (these tables originally migrated under `db/sample`/knex — see `db/sample/drizzle/0002_remove_rbac_fga.sql`, which drops them from `public` again) |
+| `db/iam/seeds/initial_rbac.ts`         | Seeds tenant, roles, permissions, user assignments                                                                                                                                                                                                                                                           |
+| `db/iam/seeds/initial_openfga.ts`      | Creates FGA store, model, seed tuples                                                                                                                                                                                                                                                                        |
 
 ### Modified files
 
-| File | Change |
-|---|---|
-| `common/compiled/node/auth/index.ts` | Extend `setup()`; three-tier roles chain in `createToken`; attach `req.rbac` and `req.fga` in `authUser` |
-| `common/compiled/node/express/preRoute.ts` | Read `RBAC_CONFIG` and `FGA_CONFIG`; pass to `authService.setup()` |
-| `apps/sample-api/.env.json` | Added `RBAC_CONFIG` and `FGA_CONFIG` blocks |
-| `common/compiled/node/package.json` | Added `@openfga/sdk` (currently `^0.9.7`) |
+| File                                       | Change                                                                                                   |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `common/compiled/node/auth/index.ts`       | Extend `setup()`; three-tier roles chain in `createToken`; attach `req.rbac` and `req.fga` in `authUser` |
+| `common/compiled/node/express/preRoute.ts` | Read `RBAC_CONFIG` and `FGA_CONFIG`; pass to `authService.setup()`                                       |
+| `apps/sample-api/.env.json`                | Added `RBAC_CONFIG` and `FGA_CONFIG` blocks                                                              |
+| `common/compiled/node/package.json`        | Added `@openfga/sdk` (currently `^0.9.7`)                                                                |

@@ -3,7 +3,7 @@ healthcheck:
     tags:
       - "Base"
     responses:
-      '200':
+      "200":
         description: GET healthcheck response ok
         content:
           application/json:
@@ -13,16 +13,16 @@ healthcheck:
     tags:
       - "Base"
     responses:
-      '200':
+      "200":
         description: POST healthcheck response ok
 health-auth:
   get:
     tags:
       - "Base"
     security:
-      - ApiKeyAuth: [] 
+      - ApiKeyAuth: []
     responses:
-      '200':
+      "200":
         description: GET healthcheck (authorized) response ok
 upload-disk:
   post:
@@ -49,5 +49,5 @@ upload-disk:
             #       type: string
             #       format: binary
     responses:
-      '200':
+      "200":
         description: GET healthcheck (authorized) response ok

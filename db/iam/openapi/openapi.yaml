@@ -21,15 +21,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/IamUsersBody'
+              $ref: "#/components/schemas/IamUsersBody"
       responses:
-        '201':
+        "201":
           description: Iam Users created — returns the primary key of the new record
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/IamUsersCreateResponse'
-        '401': &ref_1
+                $ref: "#/components/schemas/IamUsersCreateResponse"
+        "401": &ref_1
           description: Unauthorized — valid JWT required
           content:
             application/json:
@@ -42,7 +42,7 @@ paths:
                   error:
                     type: string
                     example: Error detail
-        '422': &ref_3
+        "422": &ref_3
           description: Validation error
           content:
             application/json:
@@ -77,13 +77,13 @@ paths:
             minimum: 0
             example: 0
       responses:
-        '200':
+        "200":
           description: Paginated list of Iam Users records
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/IamUsersListResponse'
-        '401': *ref_1
+                $ref: "#/components/schemas/IamUsersListResponse"
+        "401": *ref_1
   /api/iam/iam-users/{id}:
     get:
       tags:
@@ -101,14 +101,14 @@ paths:
             example: example-id
           required: true
       responses:
-        '200':
+        "200":
           description: Iam Users found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/IamUsersResponse'
-        '401': *ref_1
-        '404': &ref_2
+                $ref: "#/components/schemas/IamUsersResponse"
+        "401": *ref_1
+        "404": &ref_2
           description: Not found
           content:
             application/json:
@@ -135,22 +135,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/IamUsersUpdate'
+              $ref: "#/components/schemas/IamUsersUpdate"
       responses:
-        '200':
+        "200":
           description: Row updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CountResponse'
-        '401': *ref_1
-        '404': *ref_2
-        '422': *ref_3
+                $ref: "#/components/schemas/CountResponse"
+        "401": *ref_1
+        "404": *ref_2
+        "422": *ref_3
     delete:
       tags:
         - IamUsers
       summary: Delete a Iam Users
-      description: 'Permanently deletes a Iam Users row. Returns `{ count: 1 }` on success or 404 if the record does not exist.'
+      description: "Permanently deletes a Iam Users row. Returns `{ count: 1 }` on success or 404 if the record does not exist."
       security:
         - bearerAuth: []
       parameters:
@@ -162,14 +162,14 @@ paths:
             example: example-id
           required: true
       responses:
-        '200':
+        "200":
           description: Row deleted
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CountResponse'
-        '401': *ref_1
-        '404': *ref_2
+                $ref: "#/components/schemas/CountResponse"
+        "401": *ref_1
+        "404": *ref_2
   /api/iam/permissions:
     post:
       tags:
@@ -185,16 +185,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PermissionsBody'
+              $ref: "#/components/schemas/PermissionsBody"
       responses:
-        '201':
+        "201":
           description: Permissions created — returns the primary key of the new record
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PermissionsCreateResponse'
-        '401': *ref_1
-        '422': *ref_3
+                $ref: "#/components/schemas/PermissionsCreateResponse"
+        "401": *ref_1
+        "422": *ref_3
     get:
       tags:
         - Permissions
@@ -206,13 +206,13 @@ paths:
         - *ref_4
         - *ref_5
       responses:
-        '200':
+        "200":
           description: Paginated list of Permissions records
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PermissionsListResponse'
-        '401': *ref_1
+                $ref: "#/components/schemas/PermissionsListResponse"
+        "401": *ref_1
   /api/iam/permissions/{id}:
     get:
       tags:
@@ -231,14 +231,14 @@ paths:
             example: 1
           required: true
       responses:
-        '200':
+        "200":
           description: Permissions found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PermissionsResponse'
-        '401': *ref_1
-        '404': *ref_2
+                $ref: "#/components/schemas/PermissionsResponse"
+        "401": *ref_1
+        "404": *ref_2
     patch:
       tags:
         - Permissions
@@ -262,22 +262,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PermissionsUpdate'
+              $ref: "#/components/schemas/PermissionsUpdate"
       responses:
-        '200':
+        "200":
           description: Row updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CountResponse'
-        '401': *ref_1
-        '404': *ref_2
-        '422': *ref_3
+                $ref: "#/components/schemas/CountResponse"
+        "401": *ref_1
+        "404": *ref_2
+        "422": *ref_3
     delete:
       tags:
         - Permissions
       summary: Delete a Permissions
-      description: 'Permanently deletes a Permissions row. Returns `{ count: 1 }` on success or 404 if the record does not exist.'
+      description: "Permanently deletes a Permissions row. Returns `{ count: 1 }` on success or 404 if the record does not exist."
       security:
         - bearerAuth: []
       parameters:
@@ -290,14 +290,14 @@ paths:
             example: 1
           required: true
       responses:
-        '200':
+        "200":
           description: Row deleted
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CountResponse'
-        '401': *ref_1
-        '404': *ref_2
+                $ref: "#/components/schemas/CountResponse"
+        "401": *ref_1
+        "404": *ref_2
   /api/iam/roles:
     post:
       tags:
@@ -313,16 +313,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RolesBody'
+              $ref: "#/components/schemas/RolesBody"
       responses:
-        '201':
+        "201":
           description: Roles created — returns the primary key of the new record
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RolesCreateResponse'
-        '401': *ref_1
-        '422': *ref_3
+                $ref: "#/components/schemas/RolesCreateResponse"
+        "401": *ref_1
+        "422": *ref_3
     get:
       tags:
         - Roles
@@ -334,13 +334,13 @@ paths:
         - *ref_4
         - *ref_5
       responses:
-        '200':
+        "200":
           description: Paginated list of Roles records
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RolesListResponse'
-        '401': *ref_1
+                $ref: "#/components/schemas/RolesListResponse"
+        "401": *ref_1
   /api/iam/roles/{id}:
     get:
       tags:
@@ -358,14 +358,14 @@ paths:
             example: example-id
           required: true
       responses:
-        '200':
+        "200":
           description: Roles found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RolesResponse'
-        '401': *ref_1
-        '404': *ref_2
+                $ref: "#/components/schemas/RolesResponse"
+        "401": *ref_1
+        "404": *ref_2
     patch:
       tags:
         - Roles
@@ -388,22 +388,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RolesUpdate'
+              $ref: "#/components/schemas/RolesUpdate"
       responses:
-        '200':
+        "200":
           description: Row updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CountResponse'
-        '401': *ref_1
-        '404': *ref_2
-        '422': *ref_3
+                $ref: "#/components/schemas/CountResponse"
+        "401": *ref_1
+        "404": *ref_2
+        "422": *ref_3
     delete:
       tags:
         - Roles
       summary: Delete a Roles
-      description: 'Permanently deletes a Roles row. Returns `{ count: 1 }` on success or 404 if the record does not exist.'
+      description: "Permanently deletes a Roles row. Returns `{ count: 1 }` on success or 404 if the record does not exist."
       security:
         - bearerAuth: []
       parameters:
@@ -415,14 +415,14 @@ paths:
             example: example-id
           required: true
       responses:
-        '200':
+        "200":
           description: Row deleted
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CountResponse'
-        '401': *ref_1
-        '404': *ref_2
+                $ref: "#/components/schemas/CountResponse"
+        "401": *ref_1
+        "404": *ref_2
   /api/iam/tenant-roles:
     post:
       tags:
@@ -438,16 +438,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TenantRolesBody'
+              $ref: "#/components/schemas/TenantRolesBody"
       responses:
-        '201':
+        "201":
           description: Tenant Roles created — returns the primary key of the new record
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantRolesCreateResponse'
-        '401': *ref_1
-        '422': *ref_3
+                $ref: "#/components/schemas/TenantRolesCreateResponse"
+        "401": *ref_1
+        "422": *ref_3
     get:
       tags:
         - TenantRoles
@@ -459,13 +459,13 @@ paths:
         - *ref_4
         - *ref_5
       responses:
-        '200':
+        "200":
           description: Paginated list of Tenant Roles records
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantRolesListResponse'
-        '401': *ref_1
+                $ref: "#/components/schemas/TenantRolesListResponse"
+        "401": *ref_1
   /api/iam/tenant-roles/{id}:
     get:
       tags:
@@ -484,14 +484,14 @@ paths:
             example: 1
           required: true
       responses:
-        '200':
+        "200":
           description: Tenant Roles found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantRolesResponse'
-        '401': *ref_1
-        '404': *ref_2
+                $ref: "#/components/schemas/TenantRolesResponse"
+        "401": *ref_1
+        "404": *ref_2
     patch:
       tags:
         - TenantRoles
@@ -515,22 +515,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TenantRolesUpdate'
+              $ref: "#/components/schemas/TenantRolesUpdate"
       responses:
-        '200':
+        "200":
           description: Row updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CountResponse'
-        '401': *ref_1
-        '404': *ref_2
-        '422': *ref_3
+                $ref: "#/components/schemas/CountResponse"
+        "401": *ref_1
+        "404": *ref_2
+        "422": *ref_3
     delete:
       tags:
         - TenantRoles
       summary: Delete a Tenant Roles
-      description: 'Permanently deletes a Tenant Roles row. Returns `{ count: 1 }` on success or 404 if the record does not exist.'
+      description: "Permanently deletes a Tenant Roles row. Returns `{ count: 1 }` on success or 404 if the record does not exist."
       security:
         - bearerAuth: []
       parameters:
@@ -543,14 +543,14 @@ paths:
             example: 1
           required: true
       responses:
-        '200':
+        "200":
           description: Row deleted
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CountResponse'
-        '401': *ref_1
-        '404': *ref_2
+                $ref: "#/components/schemas/CountResponse"
+        "401": *ref_1
+        "404": *ref_2
   /api/iam/tenants:
     post:
       tags:
@@ -566,16 +566,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TenantsBody'
+              $ref: "#/components/schemas/TenantsBody"
       responses:
-        '201':
+        "201":
           description: Tenants created — returns the primary key of the new record
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantsCreateResponse'
-        '401': *ref_1
-        '422': *ref_3
+                $ref: "#/components/schemas/TenantsCreateResponse"
+        "401": *ref_1
+        "422": *ref_3
     get:
       tags:
         - Tenants
@@ -587,13 +587,13 @@ paths:
         - *ref_4
         - *ref_5
       responses:
-        '200':
+        "200":
           description: Paginated list of Tenants records
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantsListResponse'
-        '401': *ref_1
+                $ref: "#/components/schemas/TenantsListResponse"
+        "401": *ref_1
   /api/iam/tenants/{id}:
     get:
       tags:
@@ -612,14 +612,14 @@ paths:
             example: 1
           required: true
       responses:
-        '200':
+        "200":
           description: Tenants found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantsResponse'
-        '401': *ref_1
-        '404': *ref_2
+                $ref: "#/components/schemas/TenantsResponse"
+        "401": *ref_1
+        "404": *ref_2
     patch:
       tags:
         - Tenants
@@ -643,22 +643,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TenantsUpdate'
+              $ref: "#/components/schemas/TenantsUpdate"
       responses:
-        '200':
+        "200":
           description: Row updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CountResponse'
-        '401': *ref_1
-        '404': *ref_2
-        '422': *ref_3
+                $ref: "#/components/schemas/CountResponse"
+        "401": *ref_1
+        "404": *ref_2
+        "422": *ref_3
     delete:
       tags:
         - Tenants
       summary: Delete a Tenants
-      description: 'Permanently deletes a Tenants row. Returns `{ count: 1 }` on success or 404 if the record does not exist.'
+      description: "Permanently deletes a Tenants row. Returns `{ count: 1 }` on success or 404 if the record does not exist."
       security:
         - bearerAuth: []
       parameters:
@@ -671,14 +671,14 @@ paths:
             example: 1
           required: true
       responses:
-        '200':
+        "200":
           description: Row deleted
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CountResponse'
-        '401': *ref_1
-        '404': *ref_2
+                $ref: "#/components/schemas/CountResponse"
+        "401": *ref_1
+        "404": *ref_2
 components:
   schemas:
     IamUsersBody:
@@ -834,7 +834,7 @@ components:
     IamUsersListResponse:
       type: array
       items:
-        $ref: '#/components/schemas/IamUsersResponse'
+        $ref: "#/components/schemas/IamUsersResponse"
     CountResponse:
       type: object
       properties:
@@ -860,7 +860,7 @@ components:
     PermissionsListResponse:
       type: array
       items:
-        $ref: '#/components/schemas/PermissionsResponse'
+        $ref: "#/components/schemas/PermissionsResponse"
     RolesCreateResponse:
       type: object
       properties:
@@ -874,7 +874,7 @@ components:
     RolesListResponse:
       type: array
       items:
-        $ref: '#/components/schemas/RolesResponse'
+        $ref: "#/components/schemas/RolesResponse"
     TenantRolesCreateResponse:
       type: object
       properties:
@@ -889,7 +889,7 @@ components:
     TenantRolesListResponse:
       type: array
       items:
-        $ref: '#/components/schemas/TenantRolesResponse'
+        $ref: "#/components/schemas/TenantRolesResponse"
     TenantsCreateResponse:
       type: object
       properties:
@@ -904,7 +904,7 @@ components:
     TenantsListResponse:
       type: array
       items:
-        $ref: '#/components/schemas/TenantsResponse'
+        $ref: "#/components/schemas/TenantsResponse"
     IamUsersResponse:
       type: object
       properties:
@@ -916,31 +916,31 @@ components:
         username:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         email:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         email_verified_at:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         phone:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         phone_verified_at:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         display_name:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         avatar_url:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         status:
           type: string
         locale:
@@ -948,22 +948,22 @@ components:
         timezone:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         metadata: {}
         roles:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         revoked:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         githubId:
           anyOf:
             - type: integer
               minimum: -9007199254740991
               maximum: 9007199254740991
-            - type: 'null'
+            - type: "null"
         created_at:
           type: string
         updated_at:
@@ -971,7 +971,7 @@ components:
         deleted_at:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
       required:
         - id
         - username
@@ -1004,7 +1004,7 @@ components:
         description:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         created_at:
           type: string
         updated_at:
@@ -1029,7 +1029,7 @@ components:
         description:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         permissions: {}
         is_system:
           type: boolean
@@ -1062,7 +1062,7 @@ components:
         description:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         created_at:
           type: string
         updated_at:
@@ -1089,7 +1089,7 @@ components:
         plan:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         is_active:
           type: boolean
         created_at:
@@ -1179,39 +1179,39 @@ components:
               format: uuid
               pattern: >-
                 ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-            - type: 'null'
+            - type: "null"
         actor_id:
           anyOf:
             - type: string
               format: uuid
               pattern: >-
                 ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-            - type: 'null'
+            - type: "null"
         event_type:
           type: string
         channel:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         provider:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         session_id:
           anyOf:
             - type: string
               format: uuid
               pattern: >-
                 ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-            - type: 'null'
+            - type: "null"
         ip_address:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         user_agent:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         metadata: {}
         created_at:
           type: string
@@ -1481,23 +1481,23 @@ components:
         provider_email:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         provider_display_name:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         access_token_encrypted:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         refresh_token_encrypted:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         token_expires_at:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         scopes: {}
         metadata: {}
         created_at:
@@ -1617,7 +1617,7 @@ components:
         label:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         secret_encrypted:
           type: string
         algorithm:
@@ -1635,7 +1635,7 @@ components:
         verified_at:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         created_at:
           type: string
       required:
@@ -1754,13 +1754,13 @@ components:
               format: uuid
               pattern: >-
                 ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-            - type: 'null'
+            - type: "null"
         granted_at:
           type: string
         expires_at:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
       required:
         - id
         - user_id
@@ -1874,23 +1874,23 @@ components:
         refresh_token_hash:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         refresh_expires_at:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         ip_address:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         user_agent:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         device_id:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         issued_at:
           type: string
         expires_at:
@@ -1900,11 +1900,11 @@ components:
         revoked_at:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
         revoke_reason:
           anyOf:
             - type: string
-            - type: 'null'
+            - type: "null"
       required:
         - id
         - user_id

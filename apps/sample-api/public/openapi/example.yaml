@@ -19,7 +19,7 @@ tags:
 servers:
   - url: http://127.0.0.1:3000/api
     description: local development server
-  - url: '{protocol}://{environment}.example.com/v2'
+  - url: "{protocol}://{environment}.example.com/v2"
     variables:
       protocol:
         enum:
@@ -27,36 +27,36 @@ servers:
           - https
         default: https
       environment:
-        default: api    # Production server
+        default: api # Production server
         enum:
-          - api         # Production server
-          - api.dev     # Development server
+          - api # Production server
+          - api.dev # Development server
           - api.staging # Staging server
 components:
   securitySchemes:
     BasicAuth:
-      $ref: './securitySchema.yaml#/MySecurity/BasicAuth'
+      $ref: "./securitySchema.yaml#/MySecurity/BasicAuth"
     ApiKeyAuth:
-      $ref: './securitySchema.yaml#/MySecurity/ApiKeyAuth'
+      $ref: "./securitySchema.yaml#/MySecurity/ApiKeyAuth"
   schemas:
     Error:
-      $ref: './objects.yaml#/components/schemas/Error'
+      $ref: "./objects.yaml#/components/schemas/Error"
 # this one below implements auth for all paths
 # security:
 #   - BasicAuth: []
 #   - ApiKeyAuth: []
 paths:
   /healthcheck:
-    $ref: './base.yaml#/healthcheck'
+    $ref: "./base.yaml#/healthcheck"
   /health-auth:
-    $ref: './base.yaml#/health-auth'
+    $ref: "./base.yaml#/health-auth"
   /upload-disk:
-    $ref: './base.yaml#/upload-disk'
+    $ref: "./base.yaml#/upload-disk"
   /auth/login:
-    $ref: './auth.yaml#/login'
+    $ref: "./auth.yaml#/login"
   /auth/otp:
-    $ref: './auth.yaml#/otp'
+    $ref: "./auth.yaml#/otp"
   /sample-api/categories:
-    $ref: './categories.yaml#/no-id'
+    $ref: "./categories.yaml#/no-id"
   /sample-api/categories/{id}:
-    $ref: './categories.yaml#/with-id'
+    $ref: "./categories.yaml#/with-id"

@@ -8,12 +8,12 @@ This document is for `design preferences`, `open questions`, `caveats`, `migrati
   - avoid enums, instead... use const object pattern / string literal unions
   - avoid legacy decorators
   - avoid using <any>, use <unknown>
-- npm workspaces naming (microservices & shared libraries) — see the repository structure in [CLAUDE.md](../CLAUDE.md#repository-structure)
+- npm workspaces naming (microservices & shared libraries) — see the repository structure in [CLAUDE.md](../.claude/CLAUDE.md#repository-structure)
   - apps : microservices or applications (frontend or backend)
     - <tenant1>-common
     - <tenant1>-<app1>
     - <tenant1>-<app2>
-    ...
+      ...
     - <tenantN>-common
     - <tenantN>-<app1>
     - <tenantN>-<app2>
@@ -36,7 +36,7 @@ This document is for `design preferences`, `open questions`, `caveats`, `migrati
 - **IN PROGRESS**
   - fix typescript noExplicit any
   - Clean up auth and documentations
-- **TO TEST** 
+- **TO TEST**
   - add RBAC and FGA
   - Typescript to zod, convert code to TS for node runtime...
   - audit_logs

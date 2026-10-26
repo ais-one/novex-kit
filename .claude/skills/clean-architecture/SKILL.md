@@ -1,4 +1,5 @@
 ---
+
 name: clean-architecture
 description: Templates for this repo's controller → service → repository layering, the repository data/ vs external/ split, DTO boundaries (no DB row or third-party response shape reaches a service; no domain model sent as an HTTP response), zod validation at every input and external-response boundary, the `{ message, data }` response envelope, and mockable services/repositories for Node's test runner (mock.module() or constructor injection). Use when adding an endpoint, MCP tool, or feature to an app under apps/*, when a handler mixes HTTP/MCP parsing with business logic and DB/fetch calls, when adding a repository for a database or third-party API, when shaping a response or validating input/output, or when unit-testing a service or repository with mocked dependencies. Not for generic code review or unrelated refactors — use the clean-architecture-reviewer subagent to audit existing code.
 ---
@@ -9,7 +10,7 @@ description: Templates for this repo's controller → service → repository lay
 
 Invoke bare (`/clean-architecture`) for the full pattern. Invoke with an app name (`/clean-architecture <app>`) for `clean-architecture-reviewer` to audit that app against it.
 
-This skill is the detailed reference behind the short policy in root `CLAUDE.md` under "Clean architecture (controller → service → repository)". Read that section first if you haven't — this document expands on it.
+This skill is the detailed reference behind the short policy in `.claude/CLAUDE.md` under "Clean architecture (controller → service → repository)". Read that section first if you haven't — this document expands on it.
 
 For what each layer logs, how errors propagate with their stack intact, and how a `requestId` threads through all three layers (and across a call to another of this repo's own apps), see the companion `structured-logging` skill — the two are meant to be read together when building a new controller/service/repository.
 
@@ -132,13 +133,13 @@ Split every app's `repositories/` folder into two kinds, even if one side starts
 - **`repositories/data/*.repository.ts`** — persistence. Talks to a database or cache. Owns query/schema knowledge. Built on a DB client, typically one of `@common/node/services/db/*` (`drizzle.ts`, `knex.ts`, `redis.ts`, `keyv.ts`) or an app-local client. On a SQL database, select columns explicitly rather than `SELECT *`.
 - **`repositories/external/*.repository.ts`** — integration. Talks to a third-party API or another one of this repo's own services over HTTP (OpenAI, Telegram, S3/OSS, another `apps/*` service). Owns URL/auth/payload-shape knowledge for that one dependency.
 
-Keep them as separate files even for a single feature — a `reports.repository.ts` that both queries Postgres *and* calls an external PDF-rendering API has two reasons to change and belongs in `data/reports.repository.ts` + `external/pdf-provider.repository.ts` instead.
+Keep them as separate files even for a single feature — a `reports.repository.ts` that both queries Postgres _and_ calls an external PDF-rendering API has two reasons to change and belongs in `data/reports.repository.ts` + `external/pdf-provider.repository.ts` instead.
 
 **Not everything needs a repository.** A repository exists only for an actual external boundary (a database, a cache, an HTTP call). An in-process library with no I/O (e.g. `pdfmake` rendering a buffer, a pure calculation) is still service-layer logic — wrapping it in a repository just to have one adds a pointless indirection.
 
 ### Don't confuse this with `common/compiled/node/services/*`
 
-`common/compiled/node/services/` (`db/`, `oss-files/`, `ali.ts`, `aws.ts`) is shared **infrastructure** used across every app in the repo — DB client factories, cloud SDK wrappers. It is consumed *by* an app's repository layer; it is not itself the per-app business-logic "service" this document describes, despite the shared name. When in doubt: if it's cross-app, template-wide, and about a connection/client, it's `@common/node/services/*`; if it's this feature's business rule, it's this app's `services/*.service.ts`.
+`common/compiled/node/services/` (`db/`, `oss-files/`, `ali.ts`, `aws.ts`) is shared **infrastructure** used across every app in the repo — DB client factories, cloud SDK wrappers. It is consumed _by_ an app's repository layer; it is not itself the per-app business-logic "service" this document describes, despite the shared name. When in doubt: if it's cross-app, template-wide, and about a connection/client, it's `@common/node/services/*`; if it's this feature's business rule, it's this app's `services/*.service.ts`.
 
 The message queue driver is a related but separate case: it lives in `apps/sample-common/services/mq/`, not `common/compiled/node/`, because it's shared `apps/*` infrastructure rather than template-wide — see that folder's `README.md` for why, and for the "one dedicated app per consumer" deployment rule.
 
@@ -254,10 +255,10 @@ describe.only('reports.service', () => {
 });
 ```
 
-Two rules that silently break this pattern if missed (both already called out in root `CLAUDE.md` → Testing, repeated here because they bite specifically at the service/repository boundary):
+Two rules that silently break this pattern if missed (both already called out in `.claude/CLAUDE.md` → Testing, repeated here because they bite specifically at the service/repository boundary):
 
 1. **`mock.module()` must run before the module under test is imported.** Put the `mock.module()` calls at the top of the file, before any static `import` of the service, and use a dynamic `await import()` for the service itself — as above. A static `import` at the top of the test file loads (and caches) the real repository before the mock is registered.
-2. **The `.ts`-extension rule depends on *how* the specifier resolves — get this wrong and you get `Cannot find module`, not a clear error:**
+2. **The `.ts`-extension rule depends on _how_ the specifier resolves — get this wrong and you get `Cannot find module`, not a clear error:**
    - A **relative path** (`'../repositories/data/reports.repository.ts'`) needs the extension, exactly like a normal `import` — there's no package `exports` map involved, so Node's plain relative resolution requires an exact filename match.
    - A specifier that resolves **through a package's `exports` map wildcard** — e.g. `@common/node/auth/store`, matched by `common/compiled/node/package.json`'s `"./*": "./*.ts"` — must **omit** the extension. The wildcard pattern itself appends `.ts`; typing it yourself produces `store.ts.ts`.
    - `apps/sample-common` has the same kind of wildcard export (`"./*": "./*.ts"`), so deep imports from it (`@apps/sample-common/services/mq/kafka`) also omit the extension. An app with no `exports` map at all resolves deep imports the same way a relative path does — extension required.
@@ -274,7 +275,9 @@ export class ParserController {
   constructor(parserService: DocumentParserService = defaultParserService) {
     this.parserService = parserService;
   }
-  async parseDocument(req: Request, res: Response): Promise<void> { /* ... */ }
+  async parseDocument(req: Request, res: Response): Promise<void> {
+    /* ... */
+  }
 }
 ```
 
@@ -298,7 +301,7 @@ Either idiom must satisfy the same rule: **a service never imports a concrete DB
 
 - **Unit tests** (`__tests__/unit/*.test.ts` — copy `apps/sample-rest-app-v2`'s layout and `test:unit`/`test:integration` scripts specifically; `sample-queue-consumer` keeps tests flat in `src/__tests__/` and its `test:unit` glob would not pick up a `unit/` subfolder): mock every repository a service depends on; mock the underlying driver (`fetch`, the DB client) for any repository test that has non-trivial mapping/error-handling logic worth covering. Never touch a real DB or network.
 - **Integration tests** (`__tests__/integration/*.test.ts` — matches the `test:integration` script pattern already used in `apps/sample-rest-app-v2`): allowed to hit a real or sandboxed dependency. Use `@common/node/tests/http-request` for real HTTP calls and `@common/node/tests/http-mocks` for Express req/res stubs when you want a unit-style test of a controller without spinning up a server.
-- All tests use `describe.only()` / `it.only()` — see root `CLAUDE.md` → Testing. A test written without `.only()` silently never runs.
+- All tests use `describe.only()` / `it.only()` — see `.claude/CLAUDE.md` → Testing. A test written without `.only()` silently never runs.
 
 ## Directory layout template
 
@@ -327,7 +330,7 @@ Naming: `kebab-case` files, one export family per file, `*.routes.ts` / `*.contr
 
 ### A TypeScript-execution nuance across apps
 
-`common/compiled/node` and the templates above use **native Node TS execution** (`node file.ts`, per root `CLAUDE.md` and `docs/conventions.md`) — relative imports keep the `.ts` extension (`from '../services/db/schema.ts'`). An app with its own `tsc`/`tsx` build step instead follows the NodeNext convention of a `.js` extension inside `.ts` source (`from '../services/foo.service.js'`) — check the app's own `package.json` scripts to see which one it uses. Follow whichever convention the app you're editing already uses; for a new app or feature, default to native execution with `.ts` extensions, matching `docs/conventions.md`'s stated direction ("avoid compilation, use NodeJS native typescript").
+`common/compiled/node` and the templates above use **native Node TS execution** (`node file.ts`, per `.claude/CLAUDE.md` and `docs/conventions.md`) — relative imports keep the `.ts` extension (`from '../services/db/schema.ts'`). An app with its own `tsc`/`tsx` build step instead follows the NodeNext convention of a `.js` extension inside `.ts` source (`from '../services/foo.service.js'`) — check the app's own `package.json` scripts to see which one it uses. Follow whichever convention the app you're editing already uses; for a new app or feature, default to native execution with `.ts` extensions, matching `docs/conventions.md`'s stated direction ("avoid compilation, use NodeJS native typescript").
 
 ## Do / Don't
 
@@ -364,8 +367,8 @@ Hosts `services/mq/` (the Kafka-backed `QueueDriver` — see its `README.md`) an
 
 ## References
 
-- Root `CLAUDE.md` → "Clean architecture (controller → service → repository)" (short policy), "Testing" (`.only()`, `mock.module()`, shared test utilities).
-- `common/compiled/node/auth/store.ts` — real named-export repository, mocked via `mock.module()` in the root `CLAUDE.md` example.
+- `.claude/CLAUDE.md` → "Clean architecture (controller → service → repository)" (short policy), "Testing" (`.only()`, `mock.module()`, shared test utilities).
+- `common/compiled/node/auth/store.ts` — real named-export repository, mocked via `mock.module()` in the `.claude/CLAUDE.md` example.
 - `common/compiled/node/health/{controller,router}.ts` — real thin controller + router split.
 - `common/compiled/node/tests/{http-mocks,http-request}.ts` — shared test utilities for controller-level and integration tests.
 - `apps/sample-common/services/mq/{types,kafka}.ts` + `__tests__/unit/kafka.test.ts` — real strict-mode TypeScript repository-layer driver, with a real crash bug (a caught failure in `open()` left state that made an uncaught failure in `subscribe()` possible) found by actually booting it, not just by the unit tests.

@@ -9,7 +9,6 @@
     "**/*.md",
     ".claude/**",
     "**/package-lock.json",
-    "apps/sample-a2a-rag-mcp-aaron/**",
     "apps/*/public/**",
     "db/*/drizzle/**",
     "db/*/crud/*/generated/**",

@@ -38,8 +38,8 @@ e.g `apps/sample-api/tsconfig.json` extend `from apps/tsconfig.base.json`
 
 - Use only ES Modules - JS Standards compliant, no CommonJS
 - NodeJS applications or applications requiring compilation like Vue / React may use Native NodeJS **Typescript** (recommended) or **Javascript**
-  - Exception: new backend apps using the controller → service → repository layering must be **Typescript with `strict: true`** (see [CLAUDE.md](../CLAUDE.md#clean-architecture-controller--service--repository) and the `clean-architecture` skill)
-  - NodeJS TS (runtime) + `tsc --noEmit` (static type check) + `zod` (dynamic validation)  
+  - Exception: new backend apps using the controller → service → repository layering must be **Typescript with `strict: true`** (see [CLAUDE.md](../.claude/CLAUDE.md#clean-architecture-controller--service--repository) and the `clean-architecture` skill)
+  - NodeJS TS (runtime) + `tsc --noEmit` (static type check) + `zod` (dynamic validation)
   - `common/compiled/node` uses Typescript (`common/compiled/vue` is still Javascript)
 - Browser and Isomorphic code must use Javascript only
 - Named exports preferred (use export default only for a single class, config, or plugin)
@@ -48,6 +48,7 @@ e.g `apps/sample-api/tsconfig.json` extend `from apps/tsconfig.base.json`
 - Prefer native platform features — test runner, datetime, fetch, npm, git hooks — over heavy libraries where possible
 - Use `zod` for all input validation and OpenAPI schema generation
 - When globals are needed, namespace them under one object and key them with a `Symbol`:
+
   ```js
   globalThis.__myApp = globalThis.__myApp || {}
   const _key = Symbol('key')
@@ -84,4 +85,3 @@ e.g `apps/sample-api/tsconfig.json` extend `from apps/tsconfig.base.json`
   - common/vanilla/web - frontend plainJS
   - common/vanilla/iso - simple files used in both browser and node runtimes
   - apps/* - if browser runtime
-

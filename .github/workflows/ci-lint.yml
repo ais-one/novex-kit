@@ -91,7 +91,6 @@ jobs:
           set -euo pipefail
           npm run ci:lint-yml
         # prettier pinned in root devDependencies
-
       # Image bundles shellcheck, so run: scripts are checked too.
       # Config (ignored false positives): .github/actionlint.yaml
       - name: Lint workflows (actionlint)

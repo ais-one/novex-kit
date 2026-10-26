@@ -15,7 +15,7 @@ paths:
     get:
       summary: Get VAPID public key
       responses:
-        '200':
+        "200":
           description: Public key returned
           content:
             application/json:
@@ -41,7 +41,7 @@ paths:
               required:
                 - subscription
       responses:
-        '200':
+        "200":
           description: Subscription recorded
           content:
             application/json:
@@ -56,7 +56,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Unsubscribed
           content:
             application/json:
@@ -65,7 +65,7 @@ paths:
                 properties:
                   status:
                     type: string
-  '/send/{id}':
+  "/send/{id}":
     post:
       summary: Send a notification to the given user id
       security:
@@ -91,7 +91,7 @@ paths:
                   type: object
                   additionalProperties: true
       responses:
-        '200':
+        "200":
           description: Notification sent
           content:
             application/json:
@@ -104,7 +104,7 @@ paths:
                     type: string
                   rv:
                     type: object
-        '404':
+        "404":
           description: No user or token
-        '500':
+        "500":
           description: Server error

@@ -211,6 +211,7 @@ Browser
 - Separate TTL rules per file type: 30 days for hashed assets (`js`, `css`, fonts, images), 5 minutes for HTML — so fresh deploys are visible quickly without busting all cache.
 - CORS, HTTP/2, Brotli/gzip compression, and HTTPS redirect are all configured at the edge — no round-trips to origin for these headers.
 - After each frontend deploy, purge the CDN cache with:
+
   ```bash
   aliyun dcdn RefreshDcdnObjectCaches \
     --ObjectPath "https://static.api.myapp.com/*" \
@@ -219,11 +220,10 @@ Browser
 
 **Three DNS records to create after `terraform apply`**
 
-| Record | Type | Value |
-|---|---|---|
-| `api.myapp.com` | CNAME | `terraform output alb_public_dns` |
-| `static.api.myapp.com` | CNAME | `terraform output cdn_static_domain` |
-| _(optional)_ `www.myapp.com` | CNAME | same as CDN CNAME |
+| Record                       | Type  | Value                                |
+| ---------------------------- | ----- | ------------------------------------ |
+| `api.myapp.com`              | CNAME | `terraform output alb_public_dns`    |
+| `static.api.myapp.com`       | CNAME | `terraform output cdn_static_domain` |
+| _(optional)_ `www.myapp.com` | CNAME | same as CDN CNAME                    |
 
 The SSL cert (`alb_ssl_cert_id`) needs to cover both `api.myapp.com` and `static.api.myapp.com` — use a wildcard cert (`*.myapp.com`) to keep it simple.
-

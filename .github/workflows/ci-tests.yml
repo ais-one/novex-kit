@@ -83,7 +83,6 @@ jobs:
         # whose test:unit has no --test-reporter=spec (stubs) are skipped.
         # Runs the script via `sh -c`, not `npm run`: no pre/post hooks, and
         # node_modules/.bin is not on PATH - keep test:unit starting with `node`.
-
       # CODECOV_TOKEN is exposed to these two steps only, not to test code.
       # `secrets` can't be used in a step `if:` - check it here and expose a flag.
       - name: Check for CODECOV_TOKEN

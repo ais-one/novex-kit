@@ -4,11 +4,11 @@
 
 This repository is maintained as a monorepo template. Security fixes are applied to the latest supported code on the default branch.
 
-| Version | Supported |
-| ------- | --------- |
-| `main` | :white_check_mark: |
+| Version               | Supported          |
+| --------------------- | ------------------ |
+| `main`                | :white_check_mark: |
 | Latest tagged release | :white_check_mark: |
-| Older tags and forks | :x: |
+| Older tags and forks  | :x:                |
 
 If a vulnerability affects an older tag, upgrade to the current `main` branch or the latest tagged release before requesting a fix.
 

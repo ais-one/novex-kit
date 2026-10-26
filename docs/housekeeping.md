@@ -6,10 +6,10 @@ This document covers how dependencies and GitHub Actions are kept up to date in 
 
 `.github/dependabot.yml` runs two weekly update checks:
 
-| Ecosystem | Scope | Interval |
-|---|---|---|
-| `npm` | root (`/`) — the root lockfile covers every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) | weekly |
-| `github-actions` | `.github/workflows/*.yml` and `.github/actions/*` composite actions | weekly |
+| Ecosystem        | Scope                                                                                                                          | Interval |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| `npm`            | root (`/`) — the root lockfile covers every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) | weekly   |
+| `github-actions` | `.github/workflows/*.yml` and `.github/actions/*` composite actions                                                            | weekly   |
 
 Dependabot opens one PR per bump. It doesn't research breaking changes, doesn't batch non-major bumps together, and doesn't enforce commit-SHA pinning on Actions — it just proposes the bump and lets CI and review catch problems.
 
@@ -46,7 +46,7 @@ Audits every `tsconfig.json` in the repo against the TypeScript version that act
 
 Resolves the current Active LTS Node.js release and its matching npm version live (via `nodejs.org`/`nodejs/Release` schedule data and the npm registry), screens both for called-out regressions or security issues in their release notes, and confirms the repo's CI (`actions/setup-node` version manifest) and workspaces (`engines` fields, installed dependencies' own `engines.node` ranges) can actually run on the candidate before proposing anything:
 
-- Discovers every place a Node/npm version is currently pinned: root `package.json` `engines`, `.github/actions/setup-node-npm-install/action.yml` defaults, any hardcoded `node-version`/matrix overrides in workflows, `CLAUDE.md`/docs prose, any `.nvmrc`, every `apps/*/Dockerfile` (`ARG NODE_VERSION` / `FROM node:…`), and any workspace-level `engines` override.
+- Discovers every place a Node/npm version is currently pinned: root `package.json` `engines`, `.github/actions/setup-node-npm-install/action.yml` defaults, any hardcoded `node-version`/matrix overrides in workflows, example workflows under `docs/`, `.claude/CLAUDE.md`/docs prose, any `.nvmrc`, every `apps/*/Dockerfile` (`ARG NODE_VERSION` / `FROM node:…`), and any workspace-level `engines` override. Build/run locations are pinned to an exact version (e.g. `24.22.1`). `engines` and prose keep a major floor (`>=24`).
 - Reports the full inventory plus the candidate versions and why they were chosen (e.g. stepping back from the single newest npm release if its own follow-up release notes flag a regression) before asking anything.
 - Asks once whether to update Node + npm across every pinned location; on approval, edits all of them and — if a local version manager (`nvm`/`volta`/`fnm`) is available — installs and switches to the candidate, then runs a real `npm ci` and `npm run test:workspaces` to verify, deferring to CI if no local switch is possible.
 
@@ -68,10 +68,10 @@ Dependencies in every `package.json` use a caret range (`^1.64.0`), with the flo
 
 The exception is root devDependencies whose **output** is what CI checks — they are pinned exact (no `^`):
 
-| Package | Why exact |
-|---|---|
+| Package          | Why exact                                                                                                                                                                                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@biomejs/biome` | Formatter/linter — a patch or minor release can change formatting or add/adjust lint rules, so `biome ci .` (CI and pre-commit) can start failing on unchanged code. Its version is also repeated in the `$schema` URL in `biome.json`, which must match. |
-| `prettier` | Formats `.github/**/*.yml`; checked by `npm run ci:lint-yml` in CI. Prettier documents that even patch releases may change formatting and recommends pinning exact. |
-| `jscpd` | Duplication gate in `ci-quality.yml` — a detection change in a new release can move the duplication percentage and flip the gate on unchanged code. |
+| `prettier`       | Formats `.github/**/*.yml`; checked by `npm run ci:lint-yml` in CI. Prettier documents that even patch releases may change formatting and recommends pinning exact.                                                                                       |
+| `jscpd`          | Duplication gate in `ci-quality.yml` — a detection change in a new release can move the duplication percentage and flip the gate on unchanged code.                                                                                                       |
 
 Bump these deliberately, one at a time: update the version (and, for Biome, the `biome.json` `$schema` URL; for Vite, the `vite@<version>` in `deploy-bucket.yml`), then run `npm run check:write` / `npx prettier --write ".github/workflows/*.yml" ".github/actions/**/*.yml"` and commit the reformat together with the bump.

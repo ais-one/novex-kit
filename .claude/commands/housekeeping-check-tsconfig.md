@@ -1,4 +1,5 @@
 ---
+
 description: Audit every tsconfig.json against the TypeScript version that actually resolves for its workspace — report only, never edits
 argument-hint: [workspace-or-path filter, optional]
 ---
@@ -7,7 +8,7 @@ Audit every `tsconfig.json` in the repo against the TypeScript version that actu
 
 ## Hard rule: no guessing
 
-Every "resolved TypeScript version" and every "newest supported target/lib" claim must come from live inspection of the installed `typescript` package *during this run* — never from training knowledge of what a given TypeScript version "usually" supports. TypeScript adds new `target`/`lib` values (e.g. `ES2023`, `ES2024`, `ES2025`) across releases, and this repo can be updated to newer TypeScript at any time, so recalling a remembered feature set is not an acceptable substitute for checking the actual installed compiler. If a lookup fails (package not installed, unreadable file, unexpected shape), stop and report the failure for that item instead of falling back to an assumed value.
+Every "resolved TypeScript version" and every "newest supported target/lib" claim must come from live inspection of the installed `typescript` package _during this run_ — never from training knowledge of what a given TypeScript version "usually" supports. TypeScript adds new `target`/`lib` values (e.g. `ES2023`, `ES2024`, `ES2025`) across releases, and this repo can be updated to newer TypeScript at any time, so recalling a remembered feature set is not an acceptable substitute for checking the actual installed compiler. If a lookup fails (package not installed, unreadable file, unexpected shape), stop and report the failure for that item instead of falling back to an assumed value.
 
 ## 1. Determine the effective TypeScript version per workspace
 

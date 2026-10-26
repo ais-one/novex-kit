@@ -6,17 +6,17 @@ https://stackoverflow.com/questions/35711724/upload-progress-indicators-for-fetc
 
 ```js
 const response = await fetch(url);
-const total = Number(response.headers.get("content-length"));
+const total = Number(response.headers.get('content-length'));
 const reader = response.body.getReader();
 let bytesReceived = 0;
 while (true) {
   const result = await reader.read();
   if (result.done) {
-    console.log("Fetch complete");
+    console.log('Fetch complete');
     break;
   }
   bytesReceived += result.value.length;
-  console.log("Received", bytesReceived, "bytes of data so far");
+  console.log('Received', bytesReceived, 'bytes of data so far');
 }
 ```
 
@@ -47,7 +47,7 @@ https://jakearchibald.com/2016/streams-ftw/
 ```js
 // fetch() returns a promise that
 // resolves once headers have been received
-fetch(url).then((response) => {
+fetch(url).then(response => {
   // response.body is a readable stream.
   // Calling getReader() gives us exclusive access to
   // the stream's content
@@ -62,12 +62,12 @@ fetch(url).then((response) => {
     // value - some data. Always undefined when
     //         done is true.
     if (result.done) {
-      console.log("Fetch complete");
+      console.log('Fetch complete');
       return;
     }
     // result.value for fetch streams is a Uint8Array
     bytesReceived += result.value.length;
-    console.log("Received", bytesReceived, "bytes of data so far");
+    console.log('Received', bytesReceived, 'bytes of data so far');
     // Read some more, and call this function again
     return reader.read().then(processResult);
   });
@@ -130,11 +130,11 @@ https://github.com/benawad/node-graphql-benchmarks
        src="elva-fairy-800w.jpg"
        alt="Elva dressed as a fairy">
   - art direction
-  <picture>
+    <picture>
     <source media="(max-width: 799px)" srcset="elva-480w-close-portrait.jpg">
     <source media="(min-width: 800px)" srcset="elva-800w.jpg">
     <img src="elva-800w.jpg" alt="Chris standing up holding his daughter Elva">
-  </picture>
+    </picture>
 
 4. image optimization
 
@@ -211,7 +211,6 @@ The following are supported
   - SAML2
   - OAuth2
 - access_token and refresh_token handling by certified auth servers (using keycloak in our case)
-
   - OpenID Connect (OIDC)
     - grant types are
       - authorization_code
@@ -238,7 +237,6 @@ To find SRI for unpkg, `https://unpkg.com/htmx.org@1.0.2`, use `https://unpkg.co
 ></script>
 ```
 
-
 ---
 
 To Check below...
@@ -247,11 +245,11 @@ To Check below...
 - https://web.dev/vitals
 
 ```css
-input[type=email]:invalid {
+input[type="email"]:invalid {
   color: red;
 }
 
-input[type=email]:not(:placeholder-shown):invalid {
+input[type="email"]:not(:placeholder-shown):invalid {
   color: red;
 }
 ```

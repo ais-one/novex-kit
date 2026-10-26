@@ -30,19 +30,19 @@ cols:
     edit: true # true, or readonly
     creator: admin # additional field permissions
     editor: admin # additional field permissions
-    default: '' # a default value (today? now?)
+    default: "" # a default value (today? now?)
     type: string # string, integer, decimal, datetime, date, time, boolean, link (follows the DB datatype)
     ui:
       tag: input # input (number, date, time, datetime, file, pattern), select, textarea, combobox
       attrs:
         type: text
-        pattern: '^[A-Za-z]+$'
+        pattern: "^[A-Za-z]+$"
         min: 2
         maxlength: 20
     # rules:
     #   min: 2
     #   regex: '^[A-Za-z]+$' # {10} // must be 10
-    comment: ''
+    comment: ""
   lastName:
     label: Last Name
     required: true
@@ -90,7 +90,7 @@ cols:
         accept: .pdf,.doc,.docx,.txt
         multiple: true
         maxCount: 2 # ant design vue a-upload
-      oss: #if want to add oss as cloud storage for thumbnail 
+      oss: #if want to add oss as cloud storage for thumbnail
         folder: sub/folder
         options:
           limits:
@@ -109,9 +109,9 @@ cols:
     # filter: true
     edit: true
     options:
-      parentCol: '' # use column to get parent value affecting a child
-      parentTableColName: '' # the column name in the parent table
-      childCol: 'state' # affect child column in this table
+      parentCol: "" # use column to get parent value affecting a child
+      parentTableColName: "" # the column name in the parent table
+      childCol: "state" # affect child column in this table
       conn: knex1
       tableName: country
       limit: 8
@@ -131,7 +131,7 @@ cols:
     options:
       parentCol: country
       parentTableColName: country_name
-      childCol: ''
+      childCol: ""
       conn: knex1
       tableName: state
       limit: 8
@@ -175,8 +175,8 @@ cols:
       attrs:
         multiple: false
         options:
-          - label: ''
-            value: ''
+          - label: ""
+            value: ""
           - label: Male
             value: M
           - label: Female

@@ -18,42 +18,40 @@ The codes in this **worker-threads** folder are lifted from the above references
 
 ```js
 // index.js
-const {Worker} = require("worker_threads");
+const { Worker } = require('worker_threads');
 
 let number = 10;
 
-const worker = new Worker("./myWorker.js", {workerData: {num: number}});
+const worker = new Worker('./myWorker.js', { workerData: { num: number } });
 
-worker.once("message", result => {
-    console.log(`${number}th Fibonacci No: ${result}`);
+worker.once('message', result => {
+  console.log(`${number}th Fibonacci No: ${result}`);
 });
 
-worker.on("error", error => {
-    console.log(error);
+worker.on('error', error => {
+  console.log(error);
 });
 
-worker.on("exit", exitCode => {
-    console.log(`It exited with code ${exitCode}`);
-})
+worker.on('exit', exitCode => {
+  console.log(`It exited with code ${exitCode}`);
+});
 
-console.log("Execution in main thread");
+console.log('Execution in main thread');
 ```
 
 ```js
 // worker.js
-const {parentPort, workerData} = require("worker_threads");
+const { parentPort, workerData } = require('worker_threads');
 
-parentPort.postMessage(getFibonacciNumber(workerData.num))
+parentPort.postMessage(getFibonacciNumber(workerData.num));
 
 function getFibonacciNumber(num) {
-    if (num === 0) {
-        return 0;
-    }
-    else if (num === 1) {
-        return 1;
-    }
-    else {
-        return getFibonacciNumber(num - 1) + getFibonacciNumber(num - 2);
-    }
+  if (num === 0) {
+    return 0;
+  } else if (num === 1) {
+    return 1;
+  } else {
+    return getFibonacciNumber(num - 1) + getFibonacciNumber(num - 2);
+  }
 }
 ```

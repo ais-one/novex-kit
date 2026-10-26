@@ -17,7 +17,7 @@
     "@common/vue": "file:../../common/compiled/vue",
     "@fontsource/dm-sans": "^5.3.0",
     "@fontsource/fraunces": "^5.3.0",
-    "chart.js": "^4.5.1",
+    "chart.js": "^4.6.1",
     "leaflet": "^1.9.4",
     "pinia": "^4.1.0"
   },

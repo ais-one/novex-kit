@@ -285,6 +285,7 @@ The following development dependencies are using to assist in SQA in NodeJS
 - Code Quality Analysis: Sonarcloud [https://sonarcloud.io]
 
 ## CI/CD - Github
+
 - https://github.com/ajinabraham/NodeJsScan - SAST
 - https://github.com/zaproxy/zaproxy - DAST
 - https://prometheus.io/ - monitoring

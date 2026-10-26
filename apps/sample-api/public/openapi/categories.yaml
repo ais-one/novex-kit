@@ -1,13 +1,12 @@
 no-id:
   get:
     summary: Get categories
-    description:
-      Returns all categories from the system that the user has access to
+    description: Returns all categories from the system that the user has access to
     tags:
       - "Categories"
     operationId: findCategories
     security:
-      - ApiKeyAuth: [] 
+      - ApiKeyAuth: []
     parameters:
       - name: page
         in: query
@@ -25,7 +24,7 @@ no-id:
           type: integer
           format: int32
     responses:
-      '200':
+      "200":
         description: category response
         content:
           application/json:
@@ -37,46 +36,46 @@ no-id:
                 results:
                   type: array
                   items:
-                    $ref: './objects.yaml#/components/schemas/Category'
+                    $ref: "./objects.yaml#/components/schemas/Category"
       default:
         description: unexpected error
         content:
           application/json:
             schema:
-              $ref: './objects.yaml#/components/schemas/Error'
+              $ref: "./objects.yaml#/components/schemas/Error"
   post:
     description: Creates a new category
     tags:
       - "Categories"
     security:
-      - ApiKeyAuth: [] 
+      - ApiKeyAuth: []
     requestBody:
       description: Pet to add to the store
       required: true
       content:
         application/json:
           schema:
-            $ref: './objects.yaml#/components/schemas/NewCategory'
+            $ref: "./objects.yaml#/components/schemas/NewCategory"
     responses:
-      '200':
+      "200":
         description: pet response
         content:
           application/json:
             schema:
-              $ref: './objects.yaml#/components/schemas/Category'
+              $ref: "./objects.yaml#/components/schemas/Category"
       default:
         description: unexpected error
         content:
           application/json:
             schema:
-              $ref: './objects.yaml#/components/schemas/Error'
+              $ref: "./objects.yaml#/components/schemas/Error"
 with-id:
   get:
     description: Returns a user based on a single ID
     tags:
       - "Categories"
     security:
-      - ApiKeyAuth: [] 
+      - ApiKeyAuth: []
     parameters:
       - name: id
         in: path
@@ -86,24 +85,24 @@ with-id:
           type: integer
           # format: int64
     responses:
-      '200':
+      "200":
         description: category response
         content:
           application/json:
             schema:
-              $ref: './objects.yaml#/components/schemas/Category'
+              $ref: "./objects.yaml#/components/schemas/Category"
       default:
         description: unexpected error
         content:
           application/json:
             schema:
-              $ref: './objects.yaml#/components/schemas/Error'
+              $ref: "./objects.yaml#/components/schemas/Error"
   patch:
     description: Update a user based on a single ID
     tags:
       - "Categories"
     security:
-      - ApiKeyAuth: [] 
+      - ApiKeyAuth: []
     parameters:
       - name: id
         in: path
@@ -117,20 +116,20 @@ with-id:
       content:
         application/json:
           schema:
-            $ref: './objects.yaml#/components/schemas/NewCategory'
+            $ref: "./objects.yaml#/components/schemas/NewCategory"
     responses:
-      '200':
+      "200":
         description: category response
         content:
           application/json:
             schema:
-              $ref: './objects.yaml#/components/schemas/Category'
+              $ref: "./objects.yaml#/components/schemas/Category"
       default:
         description: unexpected error
         content:
           application/json:
             schema:
-              $ref: './objects.yaml#/components/schemas/Error'
+              $ref: "./objects.yaml#/components/schemas/Error"
   # delete:
   #   description: deletes a single category based on the ID supplied
   #   tags:

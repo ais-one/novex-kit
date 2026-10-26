@@ -49,9 +49,11 @@ NEXT:
 - unhandled: button, image, hidden, reset, submit
 - undecided: month, week, search
 # checkbox, color, file, radio, range, tel, url, time
+
 - handled: date, datetime-local, email, number, password, text
 
 ### input attributs
+
 - ignored
   - size: text, search, tel, url, email, and password
   - readonly
@@ -64,4 +66,3 @@ NEXT:
   - min, max: number, range, date, datetime-local, month, time and week
   - multiple: email, file
   - pattern: text, date, search, url, tel, email, and password.
-

@@ -18,7 +18,7 @@ npm run dev # run 1st sample web application in <project root>/apps/sample-vue-f
 
 **Note For Login**
 
-Login using one of the following:  
+Login using one of the following:
 - Faked Login: [NOTE: API calls to protected Endpoints WILL FAIL!]:
   - Login: fake a user and login, no backend needed, just click button
   - Login Callback: fake a callback and set fake user and login, no backend needed, just click button
@@ -57,12 +57,8 @@ Setting up your custom frontend
     - use kebab-case, will be converted to Capital Case in menu display
     - only up to 1 submenu level
       - /first-level
-      - /submenu/second-level
-    - paths
+      - /submenu/second-level - paths
       - '~/xxx.js' from **<project>/src** folder
       - '/xxx.js' from **<project>** folder
 - **IMPORTANT NOTE** When you create a new application
   - create it in the `apps` folder
-
-
-

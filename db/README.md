@@ -71,16 +71,16 @@ npm run db:seed --workspace=db/audit
 
 ## All Scripts
 
-| Script | What it does |
-|---|---|
-| `npm run serve` (from `scripts/db-mocks/`) | Start PGlite on 5432 (public + iam + audit schemas) |
-| `npm run db:migrate --workspace=db/<schema>` | Apply pending migrations for that schema |
-| `npm run db:generate --workspace=db/<schema>` | Generate a new migration from schema changes |
-| `npm run db:seed --workspace=db/<schema>` | Run all seed files for that schema, in order |
-| `npm run db:studio --workspace=db/<schema>` | Open Drizzle Studio for that schema |
+| Script                                          | What it does                                                                                                           |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `npm run serve` (from `scripts/db-mocks/`)      | Start PGlite on 5432 (public + iam + audit schemas)                                                                    |
+| `npm run db:migrate --workspace=db/<schema>`    | Apply pending migrations for that schema                                                                               |
+| `npm run db:generate --workspace=db/<schema>`   | Generate a new migration from schema changes                                                                           |
+| `npm run db:seed --workspace=db/<schema>`       | Run all seed files for that schema, in order                                                                           |
+| `npm run db:studio --workspace=db/<schema>`     | Open Drizzle Studio for that schema                                                                                    |
 | `npm run crud:generate --workspace=db/<schema>` | Generate CRUD schema/routes/controllers from the Drizzle schema (`sample`, `iam`; `db/audit` names it `generate:crud`) |
-| `npm run docs:generate --workspace=db/<schema>` | Build `db/<schema>/openapi/openapi.yaml` from the CRUD sidecar schemas (`sample`, `iam` only) |
-| `npm run docs:validate --workspace=db/<schema>` | Validate that OpenAPI file (`sample`, `iam` only) |
+| `npm run docs:generate --workspace=db/<schema>` | Build `db/<schema>/openapi/openapi.yaml` from the CRUD sidecar schemas (`sample`, `iam` only)                          |
+| `npm run docs:validate --workspace=db/<schema>` | Validate that OpenAPI file (`sample`, `iam` only)                                                                      |
 
 Where `<schema>` is `sample`, `iam`, `audit` or `rag`. `rag` has only `db:generate`, `db:migrate` and `db:studio` (no seed). See [scripts/generators/README.md](../scripts/generators/README.md) for the CRUD/OpenAPI generators.
 
@@ -181,12 +181,12 @@ db/
 
 ## Schema Sources
 
-| Workspace | PostgreSQL schema | Server | Drizzle schema file | Import (from apps) | Used by |
-|---|---|---|---|---|---|
-| `db/sample` | `public` | PGlite, port 5432 | `db/sample/schema.ts` | `@db/sample/schema` | `apps/sample-api`, `apps/cron` |
-| `db/iam` | `iam` | PGlite, port 5432 | `db/iam/schema.ts` | `@db/iam/schema` | `apps/base-iam` |
-| `db/audit` | `audit` | PGlite, port 5432 | `db/audit/schema.ts` | `@db/audit/schema` | audit trail (SOC2/HIPAA) — `apps/sample-api` |
-| `db/rag` | `public` (rag tables) | separate PostgreSQL + pgvector, port 55432 | `db/rag/schema.ts` | `@db/rag/schema` | `apps/sample-a2a-mcp-rag` |
+| Workspace   | PostgreSQL schema     | Server                                     | Drizzle schema file   | Import (from apps)  | Used by                                      |
+| ----------- | --------------------- | ------------------------------------------ | --------------------- | ------------------- | -------------------------------------------- |
+| `db/sample` | `public`              | PGlite, port 5432                          | `db/sample/schema.ts` | `@db/sample/schema` | `apps/sample-api`, `apps/cron`               |
+| `db/iam`    | `iam`                 | PGlite, port 5432                          | `db/iam/schema.ts`    | `@db/iam/schema`    | `apps/base-iam`                              |
+| `db/audit`  | `audit`               | PGlite, port 5432                          | `db/audit/schema.ts`  | `@db/audit/schema`  | audit trail (SOC2/HIPAA) — `apps/sample-api` |
+| `db/rag`    | `public` (rag tables) | separate PostgreSQL + pgvector, port 55432 | `db/rag/schema.ts`    | `@db/rag/schema`    | `apps/sample-a2a-mcp-rag`                    |
 
 ---
 
@@ -195,6 +195,7 @@ db/
 1. Modify the relevant schema file (see table above).
 
 2. Generate the migration SQL:
+
    ```bash
    npm run db:generate --workspace=db/sample  # public schema
    npm run db:generate --workspace=db/iam     # iam schema
@@ -204,6 +205,7 @@ db/
 3. Review the generated SQL file in the schema's `drizzle/` folder.
 
 4. Apply it:
+
    ```bash
    npm run db:migrate --workspace=db/sample   # public
    npm run db:migrate --workspace=db/iam      # iam
@@ -216,10 +218,10 @@ For raw SQL (triggers, functions, REVOKE/GRANT) that drizzle-kit cannot generate
 
 ## Connection String
 
-| Environment | URL |
-|---|---|
-| Local dev (PGlite) | `postgresql://postgres:postgres@127.0.0.1:5432/db_express?sslmode=disable` |
-| Staging / production (real PostgreSQL) | `postgresql://<user>:<pass>@<host>:5432/<db>` <!-- secretlint-disable-line --> |
+| Environment                            | URL                                                                             |
+| -------------------------------------- | ------------------------------------------------------------------------------- |
+| Local dev (PGlite)                     | `postgresql://postgres:postgres@127.0.0.1:5432/db_express?sslmode=disable`      |
+| Staging / production (real PostgreSQL) | `postgresql://<user>:<pass>@<host>:5432/<db>` <!-- secretlint-disable-line -->  |
 
 The `.env` files in each schema subdirectory contain the local `DATABASE_URL`. drizzle-kit reads it automatically.
 
@@ -233,5 +235,6 @@ The `.env` files in each schema subdirectory contain the local `DATABASE_URL`. d
 
 `audit/0002_public_triggers.sql` creates a trigger on `public.users`, so **`db:migrate --workspace=db/sample` must run before `db:migrate --workspace=db/audit`**. If you reset the database, always follow the order: public → iam → audit.
 
-Set `DATABASE_URL` in the respective `.env` file for local use. For CI/production, set `DATABASE_URL` as an environment variable.
+Each schema records its migrations in its own table: `drizzle.__drizzle_migrations` (sample), `drizzle.__drizzle_migrations_iam` and `drizzle.__drizzle_migrations_audit` (set via `migrations.table` in each `drizzle.config.ts`). Drizzle skips any migration older than the newest one recorded in its table, so sharing one table would make a fresh database silently skip `iam`/`audit` migrations. Give any new schema workspace its own table too.
 
+Set `DATABASE_URL` in the respective `.env` file for local use. For CI/production, set `DATABASE_URL` as an environment variable.

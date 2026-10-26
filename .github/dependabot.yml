@@ -1,17 +1,17 @@
 version: 2
 updates:
   # Enable version updates for npm
-  - package-ecosystem: 'npm'
+  - package-ecosystem: "npm"
     # Look for `package.json` and `lock` files in the `root` directory
-    directory: '/'
+    directory: "/"
     # Check the npm registry for updates every week
     schedule:
-      interval: 'weekly'
+      interval: "weekly"
 
   # Enable version updates for GitHub Actions used in workflows and composite actions
-  - package-ecosystem: 'github-actions'
+  - package-ecosystem: "github-actions"
     directories:
-      - '/' # scans .github/workflows/*.yml
-      - '.github/actions/*' # composite actions, e.g. .github/actions/checkout/action.yml
+      - "/" # scans .github/workflows/*.yml
+      - ".github/actions/*" # composite actions, e.g. .github/actions/checkout/action.yml
     schedule:
-      interval: 'weekly'
+      interval: "weekly"

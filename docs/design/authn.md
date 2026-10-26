@@ -55,10 +55,10 @@ saml-idp \
 ```
 
 The IdP will be available at:
-| Endpoint | URL |
-|---|---|
-| SSO Login | `http://127.0.0.1:7000` |
-| Metadata | `http://127.0.0.1:7000/metadata` |
+| Endpoint                 | URL                              |
+| ------------------------ | -------------------------------- |
+| SSO Login                | `http://127.0.0.1:7000`          |
+| Metadata                 | `http://127.0.0.1:7000/metadata` |
 | IdP Login (SP-initiated) | `http://127.0.0.1:7000/saml/sso` |
 
 
@@ -88,10 +88,10 @@ If your backend uses `passport-saml` or `samlify`, here's an example config:
 
 ### Endpoints
 
-| | URL |
-|---|---|
-| IdP UI | `http://127.0.0.1:7000` |
-| SSO | `http://127.0.0.1:7000/saml/sso` |
+|          | URL                              |
+| -------- | -------------------------------- |
+| IdP UI   | `http://127.0.0.1:7000`          |
+| SSO      | `http://127.0.0.1:7000/saml/sso` |
 | Metadata | `http://127.0.0.1:7000/metadata` |
 
 ### SP-Initiated Login Flow
@@ -161,20 +161,20 @@ npm install oidc-provider
 ```javascript
 const { Provider } = require('oidc-provider');
 
-const CLIENT_ID     = 'my-app';
+const CLIENT_ID = 'my-app';
 const CLIENT_SECRET = 'my-app-secret';
-const PORT          = 4000;
-const ISSUER        = `http://127.0.0.1:${PORT}`;
+const PORT = 4000;
+const ISSUER = `http://127.0.0.1:${PORT}`;
 
 const provider = new Provider(ISSUER, {
   clients: [
     {
-      client_id:                CLIENT_ID,
-      client_secret:            CLIENT_SECRET,
-      grant_types:              ['authorization_code'],
-      response_types:           ['code'],
-      redirect_uris:            ['http://127.0.0.1:3000/api/auth/oidc/callback'],
-      post_logout_redirect_uris:['http://127.0.0.1:3000/sso.html'],
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      grant_types: ['authorization_code'],
+      response_types: ['code'],
+      redirect_uris: ['http://127.0.0.1:3000/api/auth/oidc/callback'],
+      post_logout_redirect_uris: ['http://127.0.0.1:3000/sso.html'],
       token_endpoint_auth_method: 'client_secret_basic',
     },
   ],
@@ -185,13 +185,13 @@ const provider = new Provider(ISSUER, {
   // Test user store
   async findAccount(ctx, id) {
     const users = {
-      'testuser': {
-        sub:        'testuser',
-        email:      'testuser@example.com',
+      testuser: {
+        sub: 'testuser',
+        email: 'testuser@example.com',
         given_name: 'Test',
-        family_name:'User',
-        name:       'Test User',
-        groups:     ['admin', 'user'],
+        family_name: 'User',
+        name: 'Test User',
+        groups: ['admin', 'user'],
       },
     };
     const account = users[id];
@@ -216,9 +216,9 @@ const provider = new Provider(ISSUER, {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
 
   claims: {
-    openid:  ['sub'],
+    openid: ['sub'],
     profile: ['name', 'given_name', 'family_name', 'groups'],
-    email:   ['email'],
+    email: ['email'],
   },
 
   pkce: {
@@ -228,7 +228,9 @@ const provider = new Provider(ISSUER, {
 
 // Override the login interaction to auto-login as testuser
 // so you don't need to type credentials every time
-const { interactionPolicy: { Prompt, base: policy } } = require('oidc-provider');
+const {
+  interactionPolicy: { Prompt, base: policy },
+} = require('oidc-provider');
 
 provider.on('server_error', (ctx, err) => {
   console.error('OIDC Provider error:', err);
@@ -248,14 +250,14 @@ node oidc-server.js
 
 ### Endpoints
 
-| | URL |
-|---|---|
-| Discovery | `http://127.0.0.1:4000/.well-known/openid-configuration` |
-| Authorization | `http://127.0.0.1:4000/auth` |
-| Token | `http://127.0.0.1:4000/token` |
-| Userinfo | `http://127.0.0.1:4000/me` |
-| JWKS | `http://127.0.0.1:4000/jwks` |
-| End Session | `http://127.0.0.1:4000/session/end` |
+|               | URL                                                      |
+| ------------- | -------------------------------------------------------- |
+| Discovery     | `http://127.0.0.1:4000/.well-known/openid-configuration` |
+| Authorization | `http://127.0.0.1:4000/auth`                             |
+| Token         | `http://127.0.0.1:4000/token`                            |
+| Userinfo      | `http://127.0.0.1:4000/me`                               |
+| JWKS          | `http://127.0.0.1:4000/jwks`                             |
+| End Session   | `http://127.0.0.1:4000/session/end`                      |
 
 ### Client config (e.g. `openid-client` / `passport-openidconnect`)
 
@@ -266,32 +268,31 @@ const { Issuer } = require('openid-client');
 const issuer = await Issuer.discover('http://127.0.0.1:4000');
 
 const client = new issuer.Client({
-  client_id:                'my-app',
-  client_secret:            'my-app-secret',
-  redirect_uris:            ['http://127.0.0.1:3000/api/auth/oidc/callback'],
-  response_types:           ['code'],
+  client_id: 'my-app',
+  client_secret: 'my-app-secret',
+  redirect_uris: ['http://127.0.0.1:3000/api/auth/oidc/callback'],
+  response_types: ['code'],
   token_endpoint_auth_method: 'client_secret_basic',
 });
 
 // Generate authorization URL
 const authUrl = client.authorizationUrl({
-  scope:         'openid profile email',
+  scope: 'openid profile email',
   response_type: 'code',
-  state:         'random-state-value',
-  nonce:         'random-nonce-value',
+  state: 'random-state-value',
+  nonce: 'random-nonce-value',
 });
 // Redirect user to authUrl
 
 // Handle callback — exchange code for tokens
-const params   = client.callbackParams(req);
-const tokenSet = await client.callback(
-  'http://127.0.0.1:3000/api/auth/oidc/callback',
-  params,
-  { state: 'random-state-value', nonce: 'random-nonce-value' }
-);
+const params = client.callbackParams(req);
+const tokenSet = await client.callback('http://127.0.0.1:3000/api/auth/oidc/callback', params, {
+  state: 'random-state-value',
+  nonce: 'random-nonce-value',
+});
 
 console.log('ID Token claims:', tokenSet.claims());
-console.log('Access Token:',    tokenSet.access_token);
+console.log('Access Token:', tokenSet.access_token);
 ```
 
 ---
@@ -344,11 +345,11 @@ console.log('Access Token:',    tokenSet.access_token);
   "scripts": {
     "idp:saml": "saml-idp --host 127.0.0.1 --port 7000 --key idp-key.pem --cert idp-cert.pem --acsUrl http://127.0.0.1:3000/api/auth/saml --audience http://127.0.0.1:3000 --issuer http://127.0.0.1:7000/metadata --config idp-config.json",
     "idp:oidc": "node oidc-server.js",
-    "idp:all":  "concurrently \"npm run idp:saml\" \"npm run idp:oidc\""
+    "idp:all": "concurrently \"npm run idp:saml\" \"npm run idp:oidc\""
   },
   "devDependencies": {
     "oidc-provider": "^8.0.0",
-    "concurrently":  "^8.0.0"
+    "concurrently": "^8.0.0"
   }
 }
 ```
