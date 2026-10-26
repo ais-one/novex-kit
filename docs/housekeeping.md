@@ -6,10 +6,10 @@ This document covers how dependencies and GitHub Actions are kept up to date in 
 
 `.github/dependabot.yml` runs two weekly update checks:
 
-| Ecosystem | Scope | Interval |
-|---|---|---|
-| `npm` | root (`/`) — the root lockfile covers every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) | weekly |
-| `github-actions` | `.github/workflows/*.yml` and `.github/actions/*` composite actions | weekly |
+| Ecosystem        | Scope                                                                                                                          | Interval |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| `npm`            | root (`/`) — the root lockfile covers every workspace (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) | weekly   |
+| `github-actions` | `.github/workflows/*.yml` and `.github/actions/*` composite actions                                                            | weekly   |
 
 Dependabot opens one PR per bump. It doesn't research breaking changes, doesn't batch non-major bumps together, and doesn't enforce commit-SHA pinning on Actions — it just proposes the bump and lets CI and review catch problems.
 
@@ -68,10 +68,10 @@ Dependencies in every `package.json` use a caret range (`^1.64.0`), with the flo
 
 The exception is root devDependencies whose **output** is what CI checks — they are pinned exact (no `^`):
 
-| Package | Why exact |
-|---|---|
+| Package          | Why exact                                                                                                                                                                                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@biomejs/biome` | Formatter/linter — a patch or minor release can change formatting or add/adjust lint rules, so `biome ci .` (CI and pre-commit) can start failing on unchanged code. Its version is also repeated in the `$schema` URL in `biome.json`, which must match. |
-| `prettier` | Formats `.github/**/*.yml`; checked by `npm run ci:lint-yml` in CI. Prettier documents that even patch releases may change formatting and recommends pinning exact. |
-| `jscpd` | Duplication gate in `ci-quality.yml` — a detection change in a new release can move the duplication percentage and flip the gate on unchanged code. |
+| `prettier`       | Formats `.github/**/*.yml`; checked by `npm run ci:lint-yml` in CI. Prettier documents that even patch releases may change formatting and recommends pinning exact.                                                                                       |
+| `jscpd`          | Duplication gate in `ci-quality.yml` — a detection change in a new release can move the duplication percentage and flip the gate on unchanged code.                                                                                                       |
 
 Bump these deliberately, one at a time: update the version (and, for Biome, the `biome.json` `$schema` URL; for Vite, the `vite@<version>` in `deploy-bucket.yml`), then run `npm run check:write` / `npx prettier --write ".github/workflows/*.yml" ".github/actions/**/*.yml"` and commit the reformat together with the bump.

@@ -1,4 +1,5 @@
 ---
+
 name: clean-architecture-reviewer
 description: Reviews a diff, a feature, or a whole app under apps/* against this repo's backend architecture rules — controller/service/repository layering, single-responsibility per file, the repository layer's data/ vs external/ split, service/repository mockability (named exports + mock.module(), or constructor-injected classes), per-layer logging/error-handling/request-ID tracing conventions, and DTO/validation boundaries (zod at every input/external-response boundary, the `{ message, data }` response envelope, no DB row or provider-response shape leaking past the repository). Use proactively after adding or changing a controller, service, or repository, or when asked to audit an app/feature for architecture, logging, or DTO compliance. Do not use for general code review (style, security, correctness, performance) — use the code-review skill/plugin for that; this agent only checks architectural layering, testability, observability, and data-shape conventions.
 tools: Read, Grep, Glob, Bash

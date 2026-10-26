@@ -16,11 +16,11 @@ A monorepo template for building full-stack JavaScript applications with Node.js
 
 `tsconfig.base.json` at the repo root holds the compiler options shared by most of the monorepo (`target: ES2025`, `module`/`moduleResolution: NodeNext`, `allowImportingTsExtensions`, `noEmit`, `strict: false`, `skipLibCheck: true`, `types: ["node"]`). Directory groups that used to duplicate an identical `tsconfig.json` per workspace now share a single project file that extends it and covers the whole group via `include`:
 
-| Group | Project file | Covers |
-|---|---|---|
-| `db/*` | `db/tsconfig.json` | `db/sample`, `db/iam`, `db/audit`, `db/rag` |
-| `common/*` | `common/tsconfig.json` | `common/compiled/node`, `common/schemas` (`common/compiled/vue` has no tsconfig yet) |
-| `scripts/*` | `scripts/tsconfig.json` | `db-mocks`, `generators`, `service-mocks`, and the top-level script files |
+| Group       | Project file            | Covers                                                                               |
+| ----------- | ----------------------- | ------------------------------------------------------------------------------------ |
+| `db/*`      | `db/tsconfig.json`      | `db/sample`, `db/iam`, `db/audit`, `db/rag`                                          |
+| `common/*`  | `common/tsconfig.json`  | `common/compiled/node`, `common/schemas` (`common/compiled/vue` has no tsconfig yet) |
+| `scripts/*` | `scripts/tsconfig.json` | `db-mocks`, `generators`, `service-mocks`, and the top-level script files            |
 
 A file-specific `exclude` still lives on the group's `tsconfig.json` where needed — e.g. `common/tsconfig.json` excludes the standalone `oss-uploader`/`s3-uploader` usage/server scripts under `compiled/node/services/oss-files/` from the main project.
 
@@ -71,9 +71,9 @@ mock.module('@common/node/auth/store.ts', { namedExports: { findUser: mockFn } }
 
 ### Shared test utilities
 
-| Package | Path | Purpose |
-|---|---|---|
-| `@common/node/tests/http-mocks` | `common/compiled/node/tests/http-mocks.ts` | Express req/res stubs for unit tests |
+| Package                           | Path                                         | Purpose                                |
+| --------------------------------- | -------------------------------------------- | -------------------------------------- |
+| `@common/node/tests/http-mocks`   | `common/compiled/node/tests/http-mocks.ts`   | Express req/res stubs for unit tests   |
 | `@common/node/tests/http-request` | `common/compiled/node/tests/http-request.ts` | Real HTTP client for integration tests |
 
 ### Running a single test file
@@ -105,7 +105,7 @@ CRUD generation lives in `db/<schema>/` (`sample`, `iam`, `audit` — note `db/a
 
 Most backend apps (`sample-api`, `base-iam`, `cron`, `sample-a2a-mcp-rag`) build their Express instance from `preRoute()` / `postRoute()` in `common/compiled/node/express/` — read both before adding global middleware or changing startup order. The clean-architecture apps (`sample-rest-app-v2`, `sample-queue-consumer`) call `express()` directly and register `requestIdMiddleware` / `errorHandler` themselves in `src/index.ts`.
 
-- `preRoute()` (called from the app's entry module, e.g. `app.ts`) wires, in order: `services.start(app, server)` → auth service setup (`authService.setup`, only if `JWT.TOKEN_SERVICE_NAME` and `JWT.USER_SERVICE_NAME` are configured) → `requestIdMiddleware` → `loggerMiddleware` → a WS-upgrade bypass → `/health` (mounted *before* auth — healthchecks are always unprotected) → helmet → cors → body-parser (routes matching `BODYPARSER_RAW_ROUTES` skip JSON parsing so raw bytes are preserved for webhook signature checks) → cookie-parser.
+- `preRoute()` (called from the app's entry module, e.g. `app.ts`) wires, in order: `services.start(app, server)` → auth service setup (`authService.setup`, only if `JWT.TOKEN_SERVICE_NAME` and `JWT.USER_SERVICE_NAME` are configured) → `requestIdMiddleware` → `loggerMiddleware` → a WS-upgrade bypass → `/health` (mounted _before_ auth — healthchecks are always unprotected) → helmet → cors → body-parser (routes matching `BODYPARSER_RAW_ROUTES` skip JSON parsing so raw bytes are preserved for webhook signature checks) → cookie-parser.
 - App-specific routes are mounted next (e.g. `apps/sample-api/src/router.ts`), then `postRoute(app, express)` adds static/history-fallback handling, `notFoundHandler`, and `errorHandler` last. **New routes must be registered before `postRoute()` runs** or they'll 404.
 - `authUser` is **not** global middleware — it's opt-in per route (imported from `@common/node/auth/jwt` and added to a specific route file). A new route is unauthenticated by default unless you add it explicitly.
 
@@ -133,17 +133,17 @@ Backend apps under `apps/*` follow a layered architecture — **routes → contr
 
 This layering is always **TypeScript with `strict: true`** — never plain JS+JSDoc, and never the `strict: false` seen in this repo's older tsconfigs (`common/compiled/node`). Give the app its own `tsconfig.json` + `global.d.ts` (copy from `apps/sample-common` or `apps/sample-queue-consumer` — see the skill for the exact template and the strict-mode pitfalls already hit building those).
 
-| Layer | File pattern | Responsibility | May import/call |
-|---|---|---|---|
-| Routes | `routes/*.routes.ts` | Express route wiring only | controllers |
-| Controllers | `controllers/*.controller.ts` | Parse/validate the request (`zod`), call **one** service method, shape the HTTP response | services |
-| Services | `services/*.service.ts` | Business logic and orchestration — no `req`/`res`, no direct DB/HTTP calls | repositories |
-| Repositories — data | `repositories/data/*.repository.ts` | Persistence: DB/cache queries | DB/cache clients (e.g. `@common/node/services/db/*`) |
-| Repositories — external | `repositories/external/*.repository.ts` | Calls to third-party APIs or other internal services over HTTP | `fetch` / SDK clients |
+| Layer                   | File pattern                            | Responsibility                                                                           | May import/call                                      |
+| ----------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Routes                  | `routes/*.routes.ts`                    | Express route wiring only                                                                | controllers                                          |
+| Controllers             | `controllers/*.controller.ts`           | Parse/validate the request (`zod`), call **one** service method, shape the HTTP response | services                                             |
+| Services                | `services/*.service.ts`                 | Business logic and orchestration — no `req`/`res`, no direct DB/HTTP calls               | repositories                                         |
+| Repositories — data     | `repositories/data/*.repository.ts`     | Persistence: DB/cache queries                                                            | DB/cache clients (e.g. `@common/node/services/db/*`) |
+| Repositories — external | `repositories/external/*.repository.ts` | Calls to third-party APIs or other internal services over HTTP                           | `fetch` / SDK clients                                |
 
 The repository layer is the **only** layer allowed to know about a physical data source, and is split internally into `data/` (databases, caches) and `external/` (third-party APIs, other internal services) so swapping a data source or an API provider never touches a service or controller. Not every app needs both subfolders populated — an empty counterpart is fine; a repository file that mixes the two concerns is not.
 
-Don't confuse this with `common/compiled/node/services/*` — that's shared cross-app **infrastructure** (DB client factories, cloud SDK wrappers) consumed *by* the repository layer, not the per-app business-logic service layer described above.
+Don't confuse this with `common/compiled/node/services/*` — that's shared cross-app **infrastructure** (DB client factories, cloud SDK wrappers) consumed _by_ the repository layer, not the per-app business-logic service layer described above.
 
 **Mockability is mandatory** for services and repositories — a controller must be testable without a real service, and a service must be testable without a real DB or network call:
 - Preferred: a plain module with named function exports (see `common/compiled/node/auth/store.ts`), mocked in tests with `mock.module()` (see [Module mock paths](#module-mock-paths)).
@@ -197,44 +197,44 @@ Every workflow — trigger, purpose, required check — is listed in `docs/githu
 
 The auth module (`common/compiled/node/auth`) supports three authorization layers, all optional and composable:
 
-| Layer | Module | JWT field populated |
-|---|---|---|
-| RBAC | `rbac.ts` — tenant-scoped roles + permissions | `tenant_id`, `tenant_plan`, `roles` |
-| FGA | `openfga.ts` — fine-grained per-object checks | `roles` (flat list) |
-| Legacy | DB `users.roles` column | `roles` (flat list, fallback) |
+| Layer  | Module                                        | JWT field populated                 |
+| ------ | --------------------------------------------- | ----------------------------------- |
+| RBAC   | `rbac.ts` — tenant-scoped roles + permissions | `tenant_id`, `tenant_plan`, `roles` |
+| FGA    | `openfga.ts` — fine-grained per-object checks | `roles` (flat list)                 |
+| Legacy | DB `users.roles` column                       | `roles` (flat list, fallback)       |
 
 Route middleware available after `authUser`:
 
-| Middleware | Source | Checks |
-|---|---|---|
-| `requireRole(...roles)` | `@common/node/auth/require-role` | flat `req.user.roles` — works with all three layers |
-| `requireFga(relation, object)` | `@common/node/auth/openfga` | OpenFGA tuple lookup |
-| `req.rbac.hasRole(...roles)` | attached by `authUser` | flat JWT `roles` array |
-| `req.fga.check(relation, object)` | attached by `authUser` | ad-hoc FGA check inside a handler |
+| Middleware                        | Source                           | Checks                                              |
+| --------------------------------- | -------------------------------- | --------------------------------------------------- |
+| `requireRole(...roles)`           | `@common/node/auth/require-role` | flat `req.user.roles` — works with all three layers |
+| `requireFga(relation, object)`    | `@common/node/auth/openfga`      | OpenFGA tuple lookup                                |
+| `req.rbac.hasRole(...roles)`      | attached by `authUser`           | flat JWT `roles` array                              |
+| `req.fga.check(relation, object)` | attached by `authUser`           | ad-hoc FGA check inside a handler                   |
 
 **Wiring detail:** the RBAC → FGA → legacy fallback chain runs once, at **token creation** (`createToken`), not on every request — a request only ever checks the flattened `roles` array already baked into the JWT. This means RBAC/FGA config changes don't take effect for a user until their token is refreshed. `authUser` itself does the JWT verify step and populates `req.user`, `req.rbac`, and `req.fga`; RBAC/FGA setup is invoked conditionally from inside `authService.setup`, which only runs if `JWT.TOKEN_SERVICE_NAME`/`USER_SERVICE_NAME` are configured (see Backend request lifecycle above).
 
 ## Key documentation
 
-| File | Purpose |
-|---|---|
-| `.github/CONTRIBUTING.md` | Contributor guide — issue reporting and security disclosure (PR rules: `docs/git.md#pull-requests`) |
-| `docs/conventions.md` | Coding, tooling, commit, and runtime standards |
-| `docs/structure.md` | Repo layout — every app, `common/*` package (import name, workspace or not) and `db/*` schema; imported under Repository structure |
-| `docs/create-app.md` | Creating apps — `create:app` CLI (backend templates, naming rules, post-create steps, adding a template), copying `sample-api`, and creating a Vue frontend |
-| `docs/git.md` | Git hooks (setup via `npm install` → `.githooks/setup.sh`, what each hook checks), branch/tag naming, merge flow, hotfix flow, commit messages, pull requests |
-| `docs/github.md` | GitHub repo settings (rulesets, environments, code scanning, Dependabot), CI workflows and required checks, release management |
-| `docs/install.md` | Backend, frontend setup, development guide, and workspace reference |
-| `docs/design/authn.md` | Authentication setup — SAML 2.0 and OIDC provider configuration |
-| `docs/design/authz.md` | Authorization — RBAC and FGA: setup, JWT payload, roles fallback chain, usage |
-| `docs/design/pg-audit-implementation.md` | PostgreSQL audit trail implementation (SOC2/HIPAA) |
-| `.claude/skills/clean-architecture/SKILL.md` | Controller/service/repository layering and mocking conventions |
-| `.claude/skills/structured-logging/SKILL.md` | Per-layer logging, error handling, and request-ID tracing conventions |
-| `.claude/skills/openapi-docs/SKILL.md` | Per-app OpenAPI 3.1 spec from zod DTOs (`src/openapi.ts` → `docs/openapi/<app>.yaml`) |
-| `docs/cloud/` | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare |
-| `docs/github.md#repo-secrets-and-variables` | GitHub Secrets and Variables required by the workflows |
-| `docs/github.md#troubleshooting` | Troubleshooting the manual Release workflow (`release.yml`, git-cliff) |
-| `docs/NOTES.md` | Design decisions, caveats, open questions, TODOs |
-| `docs/housekeeping.md` | Dependency/Actions updates — Dependabot config plus the `/housekeeping-scan-actions`, `/housekeeping-update-packages`, `/housekeeping-update-node-npm` and `/housekeeping-check-tsconfig` Claude Code commands |
-| `scripts/generators/README.md` | `generate-crud.ts` / `generate-openapi.ts` flags, config file, override recipes |
-| `db/README.md` | Local PGlite multi-schema DB server, migrations, seeding, reset |
+| File                                         | Purpose                                                                                                                                                                                                        |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.github/CONTRIBUTING.md`                    | Contributor guide — issue reporting and security disclosure (PR rules: `docs/git.md#pull-requests`)                                                                                                            |
+| `docs/conventions.md`                        | Coding, tooling, commit, and runtime standards                                                                                                                                                                 |
+| `docs/structure.md`                          | Repo layout — every app, `common/*` package (import name, workspace or not) and `db/*` schema; imported under Repository structure                                                                             |
+| `docs/create-app.md`                         | Creating apps — `create:app` CLI (backend templates, naming rules, post-create steps, adding a template), copying `sample-api`, and creating a Vue frontend                                                    |
+| `docs/git.md`                                | Git hooks (setup via `npm install` → `.githooks/setup.sh`, what each hook checks), branch/tag naming, merge flow, hotfix flow, commit messages, pull requests                                                  |
+| `docs/github.md`                             | GitHub repo settings (rulesets, environments, code scanning, Dependabot), CI workflows and required checks, release management                                                                                 |
+| `docs/install.md`                            | Backend, frontend setup, development guide, and workspace reference                                                                                                                                            |
+| `docs/design/authn.md`                       | Authentication setup — SAML 2.0 and OIDC provider configuration                                                                                                                                                |
+| `docs/design/authz.md`                       | Authorization — RBAC and FGA: setup, JWT payload, roles fallback chain, usage                                                                                                                                  |
+| `docs/design/pg-audit-implementation.md`     | PostgreSQL audit trail implementation (SOC2/HIPAA)                                                                                                                                                             |
+| `.claude/skills/clean-architecture/SKILL.md` | Controller/service/repository layering and mocking conventions                                                                                                                                                 |
+| `.claude/skills/structured-logging/SKILL.md` | Per-layer logging, error handling, and request-ID tracing conventions                                                                                                                                          |
+| `.claude/skills/openapi-docs/SKILL.md`       | Per-app OpenAPI 3.1 spec from zod DTOs (`src/openapi.ts` → `docs/openapi/<app>.yaml`)                                                                                                                          |
+| `docs/cloud/`                                | Cloud deployment examples — AWS, Alibaba Cloud, Cloudflare                                                                                                                                                     |
+| `docs/github.md#repo-secrets-and-variables`  | GitHub Secrets and Variables required by the workflows                                                                                                                                                         |
+| `docs/github.md#troubleshooting`             | Troubleshooting the manual Release workflow (`release.yml`, git-cliff)                                                                                                                                         |
+| `docs/NOTES.md`                              | Design decisions, caveats, open questions, TODOs                                                                                                                                                               |
+| `docs/housekeeping.md`                       | Dependency/Actions updates — Dependabot config plus the `/housekeeping-scan-actions`, `/housekeeping-update-packages`, `/housekeeping-update-node-npm` and `/housekeeping-check-tsconfig` Claude Code commands |
+| `scripts/generators/README.md`               | `generate-crud.ts` / `generate-openapi.ts` flags, config file, override recipes                                                                                                                                |
+| `db/README.md`                               | Local PGlite multi-schema DB server, migrations, seeding, reset                                                                                                                                                |

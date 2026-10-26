@@ -1,6 +1,5 @@
 ## Long Running Applications
 
-
 ### TCP Server
 
 `tcp_server.js` is a TCP server application that supports both event and streaming connections
@@ -31,6 +30,7 @@ Run using the following command
 ```bash
 $ node tcp_server.js
 ```
+
 ---
 
 ### Scaled Websockets
@@ -73,7 +73,6 @@ If going through a proxy such as load balancer, need sticky sessions
 
 TODO: handle duplicate message to message originator client on subscription message
 
-
 ---
 
 ### References
@@ -100,30 +99,30 @@ const [serial, Timestamp, Time, GPS_Time, Sat, Latitude, Longitude, Speed, Roll,
 length = 22
 
 CREATE TABLE `sensordata` (
-	`Serial` INT(10,0) NOT NULL,
-	`Timestamp` DATETIME(3) NOT NULL,
-	`Time` FLOAT(12) NOT NULL,
-	`GPS_Time` VARCHAR(50) NOT NULL COLLATE 'utf8mb4_0900_ai_ci',
-	`Sat` FLOAT(12) NOT NULL,
-	`Latitude` FLOAT(12) NOT NULL,
-	`Longitude` FLOAT(12) NOT NULL,
-	`Speed` VARCHAR(50) NOT NULL COLLATE 'utf8mb4_0900_ai_ci',
-	`Roll` FLOAT(12) NOT NULL,
-	`Pitch` FLOAT(12) NOT NULL,
-	`Z-Rate` FLOAT(12) NOT NULL,
-	`Accx` FLOAT(12) NOT NULL,
-	`Accy` FLOAT(12) NOT NULL,
-	`RPM` FLOAT(12) NOT NULL,
-	`Gear_Ratio` INT(10,0) NOT NULL,
-	`Calc_gear` INT(10,0) NOT NULL,
-	`Clutch` TINYINT(1) NOT NULL,
-	`Front_Brake` TINYINT(1) NOT NULL,
-	`Rear_Brake` TINYINT(1) NOT NULL,
-	`Engine_Brake` TINYINT(1) NOT NULL,
-	`Foot_Right` FLOAT(12) NOT NULL,
-	`Foot_Left` FLOAT(12) NOT NULL,
-	`checksum` INT(10,0) NOT NULL,
-	UNIQUE INDEX `Serial` (`Serial`, `Timestamp`) USING BTREE
+`Serial` INT(10,0) NOT NULL,
+`Timestamp` DATETIME(3) NOT NULL,
+`Time` FLOAT(12) NOT NULL,
+`GPS_Time` VARCHAR(50) NOT NULL COLLATE 'utf8mb4_0900_ai_ci',
+`Sat` FLOAT(12) NOT NULL,
+`Latitude` FLOAT(12) NOT NULL,
+`Longitude` FLOAT(12) NOT NULL,
+`Speed` VARCHAR(50) NOT NULL COLLATE 'utf8mb4_0900_ai_ci',
+`Roll` FLOAT(12) NOT NULL,
+`Pitch` FLOAT(12) NOT NULL,
+`Z-Rate` FLOAT(12) NOT NULL,
+`Accx` FLOAT(12) NOT NULL,
+`Accy` FLOAT(12) NOT NULL,
+`RPM` FLOAT(12) NOT NULL,
+`Gear_Ratio` INT(10,0) NOT NULL,
+`Calc_gear` INT(10,0) NOT NULL,
+`Clutch` TINYINT(1) NOT NULL,
+`Front_Brake` TINYINT(1) NOT NULL,
+`Rear_Brake` TINYINT(1) NOT NULL,
+`Engine_Brake` TINYINT(1) NOT NULL,
+`Foot_Right` FLOAT(12) NOT NULL,
+`Foot_Left` FLOAT(12) NOT NULL,
+`checksum` INT(10,0) NOT NULL,
+UNIQUE INDEX `Serial` (`Serial`, `Timestamp`) USING BTREE
 )
 COLLATE='utf8mb4_0900_ai_ci'
 ENGINE=InnoDB

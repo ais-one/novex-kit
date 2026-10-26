@@ -14,12 +14,15 @@ const progressStream = new ReadableStream({
     const reader = blob.stream().getReader();
     while (true) {
       const { done, value } = await reader.read();
-      if (done) { controller.close(); break; }
-      uploadedBytes += value.byteLength;  // ← count bytes here
+      if (done) {
+        controller.close();
+        break;
+      }
+      uploadedBytes += value.byteLength; // ← count bytes here
       onProgress(uploadedBytes);
-      controller.enqueue(value);          // ← pass them along unchanged
+      controller.enqueue(value); // ← pass them along unchanged
     }
-  }
+  },
 });
 ```
 

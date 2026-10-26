@@ -9,7 +9,7 @@ on:
 
 # Required for OIDC token issuance
 permissions:
-  id-token: write   # allows the job to request a JWT from GitHub's OIDC provider
+  id-token: write # allows the job to request a JWT from GitHub's OIDC provider
   contents: read
 
 env:

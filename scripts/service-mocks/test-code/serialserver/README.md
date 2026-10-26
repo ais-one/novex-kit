@@ -6,7 +6,7 @@ https://medium.com/jspoint/how-to-create-an-executable-exe-file-from-javascript-
 
 
 ```js
-require('dotenv').config()
+require('dotenv').config();
 ```
 
 Your require files which have variables…
@@ -18,7 +18,7 @@ const path = require('path')
 let aaa = require(`./xxx/yyy.json`);
 
 // Change TO
-const loc = path.join(process.cwd(), `/config/xxx/yyy.json`)
+const loc = path.join(process.cwd(), `/config/xxx/yyy.json`);
 let aaa = require(loc);
 ```
 

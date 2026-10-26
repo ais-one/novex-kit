@@ -45,16 +45,16 @@ A single demo showing RAG, MCP, and A2A working together: documents are ingested
 
 ## Key packages
 
-| Package | Used in | Purpose |
-|---|---|---|
-| `@modelcontextprotocol/sdk` | mcp, a2a | `McpServer` for the tool server; `Client` + `StreamableHTTPClientTransport` to connect as a client |
-| `openai` | rag, mcp, a2a | `text-embedding-3-small` embeddings; `gpt-4o-mini` for classification, answers and synthesis |
-| `drizzle-orm`, `pg`, `pgvector` | lib, rag | DB access through the `@db/rag` schema; `pgvector` registers the `vector` type |
-| `@aws-sdk/client-s3` | rag, mcp | Fetch source documents from S3 (also LocalStack / MinIO) |
-| `pdf-parse`, `mammoth` | rag | Extract text from PDF and DOCX |
-| `@langchain/textsplitters` | rag, mcp | `RecursiveCharacterTextSplitter` (chunkSize 500, overlap 50) |
-| `express` | mcp, a2a | HTTP server for the MCP server and both A2A agents |
-| `zod` | mcp | MCP tool `inputSchema` definitions |
+| Package                         | Used in       | Purpose                                                                                            |
+| ------------------------------- | ------------- | -------------------------------------------------------------------------------------------------- |
+| `@modelcontextprotocol/sdk`     | mcp, a2a      | `McpServer` for the tool server; `Client` + `StreamableHTTPClientTransport` to connect as a client |
+| `openai`                        | rag, mcp, a2a | `text-embedding-3-small` embeddings; `gpt-4o-mini` for classification, answers and synthesis       |
+| `drizzle-orm`, `pg`, `pgvector` | lib, rag      | DB access through the `@db/rag` schema; `pgvector` registers the `vector` type                     |
+| `@aws-sdk/client-s3`            | rag, mcp      | Fetch source documents from S3 (also LocalStack / MinIO)                                           |
+| `pdf-parse`, `mammoth`          | rag           | Extract text from PDF and DOCX                                                                     |
+| `@langchain/textsplitters`      | rag, mcp      | `RecursiveCharacterTextSplitter` (chunkSize 500, overlap 50)                                       |
+| `express`                       | mcp, a2a      | HTTP server for the MCP server and both A2A agents                                                 |
+| `zod`                           | mcp           | MCP tool `inputSchema` definitions                                                                 |
 
 ## Setup
 
@@ -68,17 +68,17 @@ A single demo showing RAG, MCP, and A2A working together: documents are ingested
 
 2. **Environment:** copy `.env.example` to `.env` and fill in `OPENAI_API_KEY` (and `DATABASE_URL` if not using the default).
 
-| Variable | Used by | Default | Description |
-|---|---|---|---|
-| `DATABASE_URL` | mcp, rag | — | PostgreSQL + pgvector connection string |
-| `OPENAI_API_KEY` | mcp, rag, a2a | — | OpenAI API key |
-| `API_PORT` | mcp | `443` (`.env.example`: `3200`) | MCP server port |
-| `MCP_SERVER_URL` | a2a, demo | `http://localhost:3200/mcp` | URL of the running MCP server |
-| `SUPERVISOR_PORT` | a2a | `3201` | Supervisor agent port |
-| `SPECIALIST_PORT` | a2a | `3202` | Specialist agent port |
-| `SPECIALIST_URL` | a2a | `http://localhost:3202` | Supervisor → specialist base URL |
-| `AWS_REGION` | rag, mcp | `us-east-1` | S3 region |
-| `AWS_ENDPOINT_URL` | rag, mcp | — | Custom S3 endpoint (LocalStack / MinIO) |
+| Variable           | Used by       | Default                        | Description                             |
+| ------------------ | ------------- | ------------------------------ | --------------------------------------- |
+| `DATABASE_URL`     | mcp, rag      | —                              | PostgreSQL + pgvector connection string |
+| `OPENAI_API_KEY`   | mcp, rag, a2a | —                              | OpenAI API key                          |
+| `API_PORT`         | mcp           | `443` (`.env.example`: `3200`) | MCP server port                         |
+| `MCP_SERVER_URL`   | a2a, demo     | `http://localhost:3200/mcp`    | URL of the running MCP server           |
+| `SUPERVISOR_PORT`  | a2a           | `3201`                         | Supervisor agent port                   |
+| `SPECIALIST_PORT`  | a2a           | `3202`                         | Specialist agent port                   |
+| `SPECIALIST_URL`   | a2a           | `http://localhost:3202`        | Supervisor → specialist base URL        |
+| `AWS_REGION`       | rag, mcp      | `us-east-1`                    | S3 region                               |
+| `AWS_ENDPOINT_URL` | rag, mcp      | —                              | Custom S3 endpoint (LocalStack / MinIO) |
 
 ## Run
 
@@ -102,19 +102,19 @@ npm run start:supervisor
 
 Streamable HTTP MCP server. Any MCP client (MCP Inspector, Claude Desktop via `mcp-remote`, the specialist agent) can discover and invoke its tools.
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/mcp` | MCP client messages (initialize, tool calls) |
-| `GET` | `/mcp` | SSE stream for server-to-client notifications |
-| `DELETE` | `/mcp` | Terminate a session |
-| `GET` | `/status` | Health check |
+| Method   | Path      | Description                                   |
+| -------- | --------- | --------------------------------------------- |
+| `POST`   | `/mcp`    | MCP client messages (initialize, tool calls)  |
+| `GET`    | `/mcp`    | SSE stream for server-to-client notifications |
+| `DELETE` | `/mcp`    | Terminate a session                           |
+| `GET`    | `/status` | Health check                                  |
 
-| Tool | Description |
-|---|---|
-| `rag_add_document` | Ingest plain text into pgvector |
-| `rag_ingest_s3` | Fetch a PDF, DOCX or text file from S3, then parse, chunk, embed and store it |
-| `rag_search` | Hybrid vector + full-text search over the knowledge base |
-| `rag_list_documents` | List ingested documents |
+| Tool                 | Description                                                                   |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `rag_add_document`   | Ingest plain text into pgvector                                               |
+| `rag_ingest_s3`      | Fetch a PDF, DOCX or text file from S3, then parse, chunk, embed and store it |
+| `rag_search`         | Hybrid vector + full-text search over the knowledge base                      |
+| `rag_list_documents` | List ingested documents                                                       |
 
 `src/mcp/tools.ts` also registers non-RAG sample tools (`add`, `echo`, `calculate-bmi`, `days-to-due-date`, `get_available_reports`, `generate_reports`); `resources.ts` exposes `info://server` and `prompts.ts` a `review-code` prompt.
 
@@ -126,10 +126,10 @@ npx @modelcontextprotocol/inspector   # → Streamable HTTP, http://localhost:32
 
 Each agent is a standalone Express server implementing the [Agent-to-Agent (A2A) protocol](https://google.github.io/A2A/):
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/.well-known/agent.json` | AgentCard: name, description, skills |
-| `POST` | `/` | `tasks/send` (JSON-RPC 2.0): submit a task, receive result artifacts |
+| Method | Path                      | Description                                                          |
+| ------ | ------------------------- | -------------------------------------------------------------------- |
+| `GET`  | `/.well-known/agent.json` | AgentCard: name, description, skills                                 |
+| `POST` | `/`                       | `tasks/send` (JSON-RPC 2.0): submit a task, receive result artifacts |
 
 **Supervisor** (`:3201`): classifies the query as `document-qa` or `general` with `gpt-4o-mini`, delegates `document-qa` to the specialist, then synthesizes the final answer.
 

@@ -319,15 +319,15 @@ exit 1
 
 ### Summary of the Flow
 
-aliyun configure          ← one-time setup
-       ↓
-docker build + push       ← build your image, push to ACR
-       ↓
-CreateApplication         ← one-time, saves AppId
-       ↓
-DeployApplication         ← every release, pass new ImageUrl tag
-       ↓
-DescribeChangeOrder       ← poll until Status=2 (success) or 3 (fail)
+aliyun configure ← one-time setup
+↓
+docker build + push ← build your image, push to ACR
+↓
+CreateApplication ← one-time, saves AppId
+↓
+DeployApplication ← every release, pass new ImageUrl tag
+↓
+DescribeChangeOrder ← poll until Status=2 (success) or 3 (fail)
 
 
 ### SAE Management

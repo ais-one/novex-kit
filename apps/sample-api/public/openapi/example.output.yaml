@@ -19,7 +19,7 @@ tags:
 servers:
   - url: http://127.0.0.1:3000/api
     description: local development server
-  - url: '{protocol}://{environment}.example.com/v2'
+  - url: "{protocol}://{environment}.example.com/v2"
     variables:
       protocol:
         enum:
@@ -59,7 +59,7 @@ paths:
       tags:
         - Base
       responses:
-        '200':
+        "200":
           description: GET healthcheck response ok
           content:
             application/json:
@@ -69,7 +69,7 @@ paths:
       tags:
         - Base
       responses:
-        '200':
+        "200":
           description: POST healthcheck response ok
   /health-auth:
     get:
@@ -78,7 +78,7 @@ paths:
       security:
         - ApiKeyAuth: []
       responses:
-        '200':
+        "200":
           description: GET healthcheck (authorized) response ok
   /upload-disk:
     post:
@@ -98,7 +98,7 @@ paths:
                 somestring:
                   type: string
       responses:
-        '200':
+        "200":
           description: GET healthcheck (authorized) response ok
   /auth/login:
     post:
@@ -150,7 +150,7 @@ paths:
                   type: string
                   example: test
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
@@ -166,9 +166,9 @@ paths:
                   refresh_token:
                     type: string
                     example: ey....
-        '401':
+        "401":
           description: Unauthorized
-        '403':
+        "403":
           description: Forbidden
         default:
           description: Unexpected error
@@ -190,12 +190,12 @@ paths:
               properties:
                 id:
                   type: string
-                  example: '1'
+                  example: "1"
                 pin:
                   type: string
-                  example: '111111'
+                  example: "111111"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
@@ -211,9 +211,9 @@ paths:
                   refresh_token:
                     type: string
                     example: ey....
-        '401':
+        "401":
           description: Unauthorized
-        '403':
+        "403":
           description: Forbidden
         default:
           description: Unexpected error
@@ -243,7 +243,7 @@ paths:
             type: integer
             format: int32
       responses:
-        '200':
+        "200":
           description: category response
           content:
             application/json:
@@ -288,7 +288,7 @@ paths:
           application/json:
             schema: *ref_1
       responses:
-        '200':
+        "200":
           description: pet response
           content:
             application/json:
@@ -313,7 +313,7 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: category response
           content:
             application/json:
@@ -343,7 +343,7 @@ paths:
           application/json:
             schema: *ref_1
       responses:
-        '200':
+        "200":
           description: category response
           content:
             application/json:

@@ -13,7 +13,7 @@ This document is for `design preferences`, `open questions`, `caveats`, `migrati
     - <tenant1>-common
     - <tenant1>-<app1>
     - <tenant1>-<app2>
-    ...
+      ...
     - <tenantN>-common
     - <tenantN>-<app1>
     - <tenantN>-<app2>
@@ -36,7 +36,7 @@ This document is for `design preferences`, `open questions`, `caveats`, `migrati
 - **IN PROGRESS**
   - fix typescript noExplicit any
   - Clean up auth and documentations
-- **TO TEST** 
+- **TO TEST**
   - add RBAC and FGA
   - Typescript to zod, convert code to TS for node runtime...
   - audit_logs

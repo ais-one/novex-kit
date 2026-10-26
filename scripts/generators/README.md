@@ -30,14 +30,14 @@ node ../../scripts/generators/generate-crud.ts \
   --route-prefix   /api/sample
 ```
 
-| Flag | Required | Description |
-|---|---|---|
-| `--schema` | yes | Path to the Drizzle schema `.ts` file |
-| `--schema-module` | no | Module import specifier used in generated controller imports (default: a relative import computed from `--schema`) |
-| `--app` | yes | App root directory (relative to cwd) |
-| `--db` | yes | Drizzle service name passed to `services.get()` |
-| `--tables` | no | Comma-separated table variable names to process (default: all) |
-| `--route-prefix` | no | URL prefix shown in the mount hint at the end |
+| Flag              | Required | Description                                                                                                        |
+| ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `--schema`        | yes      | Path to the Drizzle schema `.ts` file                                                                              |
+| `--schema-module` | no       | Module import specifier used in generated controller imports (default: a relative import computed from `--schema`) |
+| `--app`           | yes      | App root directory (relative to cwd)                                                                               |
+| `--db`            | yes      | Drizzle service name passed to `services.get()`                                                                    |
+| `--tables`        | no       | Comma-separated table variable names to process (default: all)                                                     |
+| `--route-prefix`  | no       | URL prefix shown in the mount hint at the end                                                                      |
 
 Skips tables with composite primary keys or no primary key.
 
@@ -83,11 +83,11 @@ present in the schema are silently ignored.
 }
 ```
 
-| Key | Description |
-|---|---|
-| `exclude` | Tables to skip entirely — no schema, no routes, no controllers |
-| `schemaOnly` | Tables to generate a Zod schema for, but no routes or controllers |
-| `tables.<name>.excludeFromBody` | Columns removed from `BodySchema` and `UpdateSchema` (POST/PATCH) |
+| Key                                 | Description                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------ |
+| `exclude`                           | Tables to skip entirely — no schema, no routes, no controllers                       |
+| `schemaOnly`                        | Tables to generate a Zod schema for, but no routes or controllers                    |
+| `tables.<name>.excludeFromBody`     | Columns removed from `BodySchema` and `UpdateSchema` (POST/PATCH)                    |
 | `tables.<name>.excludeFromResponse` | Columns omitted from `ResponseSchema` and from the `SELECT` in generated controllers |
 
 The companion `generate-crud.config.schema.json` provides VS Code IntelliSense for the config file.
@@ -96,14 +96,14 @@ The companion `generate-crud.config.schema.json` provides VS Code IntelliSense f
 
 For each table, the generator produces six files:
 
-| File | Owned by | Behaviour |
-|---|---|---|
-| `crud/<table>/generated/schema.ts` | Generator | Always overwritten |
-| `crud/<table>/generated/routes.ts` | Generator | Always overwritten |
-| `crud/<table>/generated/controller.ts` | Generator | Always overwritten |
-| `crud/<table>/schema.ts` | Developer | Created once, never overwritten |
-| `crud/<table>/controller.ts` | Developer | Created once, never overwritten |
-| `crud/<table>/routes.ts` | Developer | Created once, never overwritten |
+| File                                   | Owned by  | Behaviour                       |
+| -------------------------------------- | --------- | ------------------------------- |
+| `crud/<table>/generated/schema.ts`     | Generator | Always overwritten              |
+| `crud/<table>/generated/routes.ts`     | Generator | Always overwritten              |
+| `crud/<table>/generated/controller.ts` | Generator | Always overwritten              |
+| `crud/<table>/schema.ts`               | Developer | Created once, never overwritten |
+| `crud/<table>/controller.ts`           | Developer | Created once, never overwritten |
+| `crud/<table>/routes.ts`               | Developer | Created once, never overwritten |
 
 The three sidecar files (`schema.ts`, `controller.ts`, `routes.ts`) are the developer's
 entry points for customisation. The generator creates them with starter content on the
@@ -135,7 +135,7 @@ import generatedController from './generated/controller.ts';
 export { _injectServices } from './generated/controller.ts';
 
 export default {
-  ...generatedController,   // keeps create, find, update, remove as-is
+  ...generatedController, // keeps create, find, update, remove as-is
 
   findOne: async (req, res) => {
     // replaces the generated findOne — custom logic here
@@ -169,13 +169,13 @@ import express from 'express';
 import { authUser } from '@common/node/auth/jwt';
 import { validate } from '@common/node/errors/validate';
 import generatedRoutes from './generated/routes.ts';
-import { search } from './controller.ts';    // named export, not the default
+import { search } from './controller.ts'; // named export, not the default
 import { AwardSearchSchema } from './schema.ts';
 
 export default express
   .Router()
   .get('/search', authUser, validate('query', AwardSearchSchema), search)
-  .use('/', generatedRoutes);                // all other CRUD falls through
+  .use('/', generatedRoutes); // all other CRUD falls through
 ```
 
 The same pattern applies when overriding a route's input schema — register the
@@ -192,7 +192,7 @@ import { AwardBodySchema } from './schema.ts';
 export default express
   .Router()
   .post('/', authUser, validate('body', AwardBodySchema), awardController.create)
-  .use('/', generatedRoutes);                // GET / PATCH DELETE fall through
+  .use('/', generatedRoutes); // GET / PATCH DELETE fall through
 ```
 
 The consuming app's `router.ts` does not need to change — it already mounts
@@ -211,11 +211,9 @@ There is no name conflict because the new export name does not exist in generate
 // crud/award/schema.ts
 import { z } from 'zod';
 
-export * from './generated/schema.ts';    // keep all generated schemas
+export * from './generated/schema.ts'; // keep all generated schemas
 
-export const AwardSearchSchema = z
-  .object({ q: z.string().min(1) })
-  .meta({ id: 'AwardSearch' });
+export const AwardSearchSchema = z.object({ q: z.string().min(1) }).meta({ id: 'AwardSearch' });
 ```
 
 **Case B — overriding an existing generated schema** (e.g. adding a field to `AwardBodySchema`).
@@ -245,10 +243,10 @@ export const AwardBodySchema = GeneratedBodySchema.extend({
 The OpenAPI generator reads the sidecar `schema.ts`, so it will pick up your overridden
 `AwardBodySchema` and generate accurate documentation automatically.
 
-> **Note:** this only changes the *docs*. The generated routes still validate request bodies
+> **Note:** this only changes the _docs_. The generated routes still validate request bodies
 > with `generated/schema.ts`, so the new `companyId` field would be documented but not
 > validated. Re-register the affected route in the sidecar `routes.ts` with
-> `validate('body', AwardBodySchema)` (see *Customising behaviour* above) so runtime validation
+> `validate('body', AwardBodySchema)` (see _Customising behaviour_ above) so runtime validation
 > matches the documented schema.
 
 ---
@@ -275,15 +273,15 @@ node ../../scripts/generators/generate-openapi.ts \
   --server     http://localhost:8080
 ```
 
-| Flag | Required | Description |
-|---|---|---|
-| `--out` | yes | Output YAML file path |
-| `--src` | at least one of `--src` / `--schemas` | `src/` (or `crud/`) directory containing per-table subfolders |
-| `--schemas` | at least one of `--src` / `--schemas` | Directory of standalone `*.schema.ts` files (e.g. `common/schemas`) |
-| `--prefix` | no | URL prefix prepended to all CRUD paths (e.g. `/api/sample`) |
-| `--title` | no | `info.title` in the OpenAPI document (default: `API`) |
-| `--version` | no | `info.version` in the OpenAPI document (default: `1.0.0`) |
-| `--server` | no | Server URL in the OpenAPI document (default: `http://localhost:8080`) |
+| Flag        | Required                              | Description                                                           |
+| ----------- | ------------------------------------- | --------------------------------------------------------------------- |
+| `--out`     | yes                                   | Output YAML file path                                                 |
+| `--src`     | at least one of `--src` / `--schemas` | `src/` (or `crud/`) directory containing per-table subfolders         |
+| `--schemas` | at least one of `--src` / `--schemas` | Directory of standalone `*.schema.ts` files (e.g. `common/schemas`)   |
+| `--prefix`  | no                                    | URL prefix prepended to all CRUD paths (e.g. `/api/sample`)           |
+| `--title`   | no                                    | `info.title` in the OpenAPI document (default: `API`)                 |
+| `--version` | no                                    | `info.version` in the OpenAPI document (default: `1.0.0`)             |
+| `--server`  | no                                    | Server URL in the OpenAPI document (default: `http://localhost:8080`) |
 
 The `*ResponseSchema` export from each schema file is used as the GET response body shape.
 Tables without a `ResponseSchema` export fall back to an array of generic objects for the

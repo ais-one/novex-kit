@@ -10,7 +10,7 @@ deleteLimit: -1 # 0 = no limit, requires multiSelect
 import:
 export: admin,editor # can export from csv
 multiSelect: false
-defaultSort: [{ column: 'timestamp', order: 'desc' }]
+defaultSort: [{ column: "timestamp", order: "desc" }]
 cols:
   id:
     label: ID

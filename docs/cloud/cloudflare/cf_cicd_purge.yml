@@ -12,8 +12,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'frontend/**'
-      - '.github/workflows/deploy-static-cf.yml'
+      - "frontend/**"
+      - ".github/workflows/deploy-static-cf.yml"
   workflow_dispatch:
 
 permissions:
@@ -21,21 +21,21 @@ permissions:
   contents: read
 
 env:
-  CLOUD_PROVIDER:     "aws"           # "aws" or "alicloud"
-  CF_ZONE_ID:         ""              # set in GitHub secrets: CF_ZONE_ID
-  BUILD_DIR:          "frontend/dist" # your build output directory
+  CLOUD_PROVIDER: "aws" # "aws" or "alicloud"
+  CF_ZONE_ID: "" # set in GitHub secrets: CF_ZONE_ID
+  BUILD_DIR: "frontend/dist" # your build output directory
 
   # ── AWS ──────────────────────────────────────────────────
-  AWS_REGION:         "ap-southeast-1"
-  AWS_ROLE_ARN:       "arn:aws:iam::123456789012:role/cicd-terraform-role"
-  S3_BUCKET:          "my-org-static-site"
-  CF_DISTRIBUTION_ID: ""              # leave blank — Cloudflare handles CDN
+  AWS_REGION: "ap-southeast-1"
+  AWS_ROLE_ARN: "arn:aws:iam::123456789012:role/cicd-terraform-role"
+  S3_BUCKET: "my-org-static-site"
+  CF_DISTRIBUTION_ID: "" # leave blank — Cloudflare handles CDN
 
   # ── AliCloud ─────────────────────────────────────────────
-  ALICLOUD_REGION:    "ap-southeast-1"
-  ALICLOUD_ROLE_ARN:  "acs:ram::123456789012345678:role/cicd-terraform-role"
-  ALICLOUD_OIDC_ARN:  "acs:ram::123456789012345678:oidc-provider/github-actions"
-  OSS_BUCKET:         "my-org-static-site"
+  ALICLOUD_REGION: "ap-southeast-1"
+  ALICLOUD_ROLE_ARN: "acs:ram::123456789012345678:role/cicd-terraform-role"
+  ALICLOUD_OIDC_ARN: "acs:ram::123456789012345678:oidc-provider/github-actions"
+  OSS_BUCKET: "my-org-static-site"
 
 jobs:
   deploy:
@@ -50,8 +50,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24.22.1'
-          cache: 'npm'
+          node-version: "24.22.1"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
@@ -68,7 +68,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region:     ${{ env.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
           role-session-name: github-static-deploy
 
       - name: Upload to S3
@@ -117,9 +117,9 @@ jobs:
       - name: Upload to OSS
         if: env.CLOUD_PROVIDER == 'alicloud'
         env:
-          ALICLOUD_ACCESS_KEY_ID:     ${{ steps.sts.outputs.access_key }}
+          ALICLOUD_ACCESS_KEY_ID: ${{ steps.sts.outputs.access_key }}
           ALICLOUD_ACCESS_KEY_SECRET: ${{ steps.sts.outputs.secret_key }}
-          ALICLOUD_SECURITY_TOKEN:    ${{ steps.sts.outputs.sec_token }}
+          ALICLOUD_SECURITY_TOKEN: ${{ steps.sts.outputs.sec_token }}
         run: |
           pip install -q ossutil
           ossutil config -e oss-${{ env.ALICLOUD_REGION }}.aliyuncs.com \

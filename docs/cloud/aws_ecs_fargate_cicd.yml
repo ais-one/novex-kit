@@ -14,28 +14,28 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'Dockerfile'
-      - '.github/workflows/deploy-ecs.yml'
+      - "src/**"
+      - "Dockerfile"
+      - ".github/workflows/deploy-ecs.yml"
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Image tag to deploy (leave blank to build from HEAD)'
+        description: "Image tag to deploy (leave blank to build from HEAD)"
         required: false
 
 permissions:
-  id-token: write   # required for OIDC JWT issuance
+  id-token: write # required for OIDC JWT issuance
   contents: read
 
 env:
-  AWS_REGION:       "ap-southeast-1"
-  ROLE_ARN:         "arn:aws:iam::123456789012:role/cicd-terraform-role"
-  ECR_REPO:         "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/myapp/app-ecs"
-  ECS_CLUSTER:      "myapp-prod"
-  ECS_SERVICE:      "myapp-api"
-  TASK_FAMILY:      "myapp-prod-app"
-  CONTAINER_NAME:   "myapp-api"
-  CF_DISTRIBUTION:  "EXXXXXXXXXXXXXXXXX"   # from terraform output cloudfront_distribution_id
+  AWS_REGION: "ap-southeast-1"
+  ROLE_ARN: "arn:aws:iam::123456789012:role/cicd-terraform-role"
+  ECR_REPO: "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/myapp/app-ecs"
+  ECS_CLUSTER: "myapp-prod"
+  ECS_SERVICE: "myapp-api"
+  TASK_FAMILY: "myapp-prod-app"
+  CONTAINER_NAME: "myapp-api"
+  CF_DISTRIBUTION: "EXXXXXXXXXXXXXXXXX" # from terraform output cloudfront_distribution_id
 
 jobs:
   # ============================================================
@@ -100,7 +100,7 @@ jobs:
     name: Rolling deploy to ECS
     runs-on: ubuntu-latest
     needs: build-and-push
-    environment: production   # optional: require manual approval in repo settings
+    environment: production # optional: require manual approval in repo settings
 
     steps:
       - name: Configure AWS credentials (OIDC)
@@ -123,21 +123,20 @@ jobs:
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-def.json
-          container-name:  ${{ env.CONTAINER_NAME }}
-          image:           ${{ needs.build-and-push.outputs.image_uri }}
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ needs.build-and-push.outputs.image_uri }}
 
       # Register the new revision and deploy — waits for service stability
       - name: Deploy to ECS (rolling)
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
-          task-definition:       ${{ steps.task_def.outputs.task-definition }}
-          service:               ${{ env.ECS_SERVICE }}
-          cluster:               ${{ env.ECS_CLUSTER }}
+          task-definition: ${{ steps.task_def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
           # Rolling: ECS respects deployment_minimum_healthy_percent (50%)
           # and deployment_maximum_percent (200%) set in ecs.tf.
           # Circuit breaker in ecs.tf auto-rolls back if health checks fail.
-
       # ── Optional: invalidate CloudFront after static deploy ──
       # Uncomment and call from a separate frontend workflow if needed.
       # - name: Invalidate CloudFront cache

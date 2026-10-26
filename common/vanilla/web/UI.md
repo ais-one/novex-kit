@@ -23,9 +23,9 @@ Extended input
   - single
   - multiple
   - allow new (always false if select)
-bwc-autocomplete (if multiple, use tags? remove tags when not needed) - tag
-bs-autocomplete - badge
-mui-autocomplete - chips
+    bwc-autocomplete (if multiple, use tags? remove tags when not needed) - tag
+    bs-autocomplete - badge
+    mui-autocomplete - chips
 
 ---
 
@@ -42,30 +42,28 @@ helper: <p>
 
 
 {
-  tag:
-  attrs: []
-  // event:
-  children: [
-  ]
+tag:
+attrs: []
+// event:
+children: []
 }
 
 function formEl (node) {
-  const { tag, className, attrs, children } = node
-  const el = document.createElement(tag)
-  if (className) {
-    el.className = className
-  }
-  if (attrs) {
-    for (let key in attrs) {
-      el.setAttirbutes(key, attrs[key])
-    }
-  }
-  if (children) {
-    children.forEach(child => {
-      childEl = formEl(child)
-      el.appendChild(childEl)
-    })
-  }
-  return el
+const { tag, className, attrs, children } = node
+const el = document.createElement(tag)
+if (className) {
+el.className = className
 }
-
+if (attrs) {
+for (let key in attrs) {
+el.setAttirbutes(key, attrs[key])
+}
+}
+if (children) {
+children.forEach(child => {
+childEl = formEl(child)
+el.appendChild(childEl)
+})
+}
+return el
+}

@@ -282,7 +282,7 @@ echo $TCP_CONN
 
 if [ "$TCP_CONN" -gt 2048 ]; then
 echo 'LHS: GT5 '+$TCP_CONN
-	curl -X GET "https://sms.era.sg/tg_out.php?user=aaronjxz&msg=TCP%20overlimit%20${TCP_CONN}"
+curl -X GET "https://sms.era.sg/tg_out.php?user=aaronjxz&msg=TCP%20overlimit%20${TCP_CONN}"
 else
 echo 'LHS: LTE5 '+$TCP_CONN
 fi
@@ -532,14 +532,14 @@ VAULT=
   - cloud
     - manual
       - file
-    - cicd
+        - cicd
       - env
 - Knexfile - Database Migration
   - local - file
   - cloud
     - manual
       - file
-    - cicd
+        - cicd
       - na
 
 ### Serving Configs

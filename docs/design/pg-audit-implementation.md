@@ -1,7 +1,7 @@
 # PostgreSQL Audit Implementation Guide
 
-*SOC2 & HIPAA Compliant Audit Trail*  
-*Using PostgreSQL Triggers, pgaudit, and Express/Knex.js*
+_SOC2 & HIPAA Compliant Audit Trail_  
+_Using PostgreSQL Triggers, pgaudit, and Express/Knex.js_
 *Soft delete and controlled hard deletes
 
 Version 1.0 · April 2026
@@ -63,42 +63,42 @@ A tenant represents a top-level customer or organisation in a multi-tenant SaaS 
 
 #### Component Summary
 
-| Component | Purpose |
-|---|---|
-| `audit_log` table | Stores one row per INSERT or UPDATE on audited tables |
-| `hard_delete_log` table | Stores explicit records of hard deletes with an optional reason |
-| `audit_registry` table | Documents which tables are audited and why — for auditors |
-| `audit_trigger_func()` | Reads SET LOCAL context, writes to `audit_log` |
-| `enforce_append_only()` | Blocks UPDATE/DELETE on immutable tables at DB level |
-| `enforce_hard_delete_log()` | BEFORE DELETE trigger — snapshots the row to `hard_delete_log`, recording a reason when one is set |
-| `auditContext` middleware | Injects user identity into every transaction via `set_config` |
-| `hardDelete()` helper | Sets an optional delete reason via `set_config` before deleting |
-| pgaudit | Captures SELECT, DDL, and direct DB access — config only |
+| Component                         | Purpose                                                                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `audit_log` table                 | Stores one row per INSERT or UPDATE on audited tables                                                                    |
+| `hard_delete_log` table           | Stores explicit records of hard deletes with an optional reason                                                          |
+| `audit_registry` table            | Documents which tables are audited and why — for auditors                                                                |
+| `audit_trigger_func()`            | Reads SET LOCAL context, writes to `audit_log`                                                                           |
+| `enforce_append_only()`           | Blocks UPDATE/DELETE on immutable tables at DB level                                                                     |
+| `enforce_hard_delete_log()`       | BEFORE DELETE trigger — snapshots the row to `hard_delete_log`, recording a reason when one is set                       |
+| `auditContext` middleware         | Injects user identity into every transaction via `set_config`                                                            |
+| `hardDelete()` helper             | Sets an optional delete reason via `set_config` before deleting                                                          |
+| pgaudit                           | Captures SELECT, DDL, and direct DB access — config only                                                                 |
 | `api_role` / `audit_reader` roles | Least-privilege separation — the app can never rewrite its own audit trail; reads are a separate, revocable grant (§1.4) |
 
 ### 1.3 Compliance Coverage
 
-| Requirement | Covered by | Standard |
-|---|---|---|
-| Who changed data | `app_user_id` via `set_config` | SOC2, HIPAA |
-| What changed | `old_data` / `new_data` JSONB + `changed_fields` | SOC2, HIPAA |
-| When it changed | `changed_at` timestamp | SOC2, HIPAA |
-| Read access logging | pgaudit | HIPAA |
-| Schema change logging | pgaudit | SOC2 |
-| Multi-statement linking | `transaction_id` UUID | SOC2 |
-| Tamper protection | Revoked permissions + offsite shipping | SOC2, HIPAA |
-| Retention 1 year | S3 Object Lock or CloudWatch | SOC2 |
-| Retention 6 years | S3 Object Lock or CloudWatch | HIPAA |
+| Requirement             | Covered by                                       | Standard    |
+| ----------------------- | ------------------------------------------------ | ----------- |
+| Who changed data        | `app_user_id` via `set_config`                   | SOC2, HIPAA |
+| What changed            | `old_data` / `new_data` JSONB + `changed_fields` | SOC2, HIPAA |
+| When it changed         | `changed_at` timestamp                           | SOC2, HIPAA |
+| Read access logging     | pgaudit                                          | HIPAA       |
+| Schema change logging   | pgaudit                                          | SOC2        |
+| Multi-statement linking | `transaction_id` UUID                            | SOC2        |
+| Tamper protection       | Revoked permissions + offsite shipping           | SOC2, HIPAA |
+| Retention 1 year        | S3 Object Lock or CloudWatch                     | SOC2        |
+| Retention 6 years       | S3 Object Lock or CloudWatch                     | HIPAA       |
 
 ### 1.4 Database Roles
 
 Three Postgres roles appear throughout this guide, referenced by name well before they're all defined. None needs `SUPERUSER` — they're ordinary roles distinguished purely by what's granted to them.
 
-| Role | Used by | Purpose |
-|---|---|---|
-| `api_role` | The application's own DB connection (`DATABASE_URL` / the Knex pool in §6.1) | Normal CRUD on business tables. Has `UPDATE`/`DELETE` revoked on `audit_log` and all access revoked on `hard_delete_log` (§2.1, §2.2), so the application itself can never rewrite or erase its own audit trail — even a compromised app connection can't cover its tracks. |
-| `audit_reader` | Auditors / compliance reviewers only — never the application | Read-only: `SELECT` on `audit_log` and `hard_delete_log`. Created in §2.1. Kept separate from `api_role` so read access to the audit trail can be granted/revoked per person without touching the application's own credentials. |
-| The role that runs your migrations (e.g. `postgres`, or a dedicated non-superuser owner role — whichever executes the `CREATE FUNCTION` statements in §3) | Nobody at runtime — relevant only at DDL time | Becomes the **owner** of the `SECURITY DEFINER` trigger functions (`audit_trigger_func()`, `enforce_hard_delete_log()`) simply by virtue of creating them. `SECURITY DEFINER` makes those functions execute with this owner's privileges, which is how they can write to `audit_log`/`hard_delete_log` even though `api_role` has no `INSERT` grant there. No separate `CREATE ROLE` step is needed for this one — just be deliberate about which role runs your migrations, and prefer a role scoped to schema ownership over a true Postgres superuser if your provider allows it (e.g. RDS's `rds_superuser` rather than a real `SUPERUSER`). |
+| Role                                                                                                                                                      | Used by                                                                      | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `api_role`                                                                                                                                                | The application's own DB connection (`DATABASE_URL` / the Knex pool in §6.1) | Normal CRUD on business tables. Has `UPDATE`/`DELETE` revoked on `audit_log` and all access revoked on `hard_delete_log` (§2.1, §2.2), so the application itself can never rewrite or erase its own audit trail — even a compromised app connection can't cover its tracks.                                                                                                                                                                                                                                                                                                                                                                      |
+| `audit_reader`                                                                                                                                            | Auditors / compliance reviewers only — never the application                 | Read-only: `SELECT` on `audit_log` and `hard_delete_log`. Created in §2.1. Kept separate from `api_role` so read access to the audit trail can be granted/revoked per person without touching the application's own credentials.                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| The role that runs your migrations (e.g. `postgres`, or a dedicated non-superuser owner role — whichever executes the `CREATE FUNCTION` statements in §3) | Nobody at runtime — relevant only at DDL time                                | Becomes the **owner** of the `SECURITY DEFINER` trigger functions (`audit_trigger_func()`, `enforce_hard_delete_log()`) simply by virtue of creating them. `SECURITY DEFINER` makes those functions execute with this owner's privileges, which is how they can write to `audit_log`/`hard_delete_log` even though `api_role` has no `INSERT` grant there. No separate `CREATE ROLE` step is needed for this one — just be deliberate about which role runs your migrations, and prefer a role scoped to schema ownership over a true Postgres superuser if your provider allows it (e.g. RDS's `rds_superuser` rather than a real `SUPERUSER`). |
 
 `api_role` is referenced by every `REVOKE ... FROM api_role` in this guide (§2.1) and by the gap-detection query in §9, but is never created elsewhere — provision it first:
 
@@ -453,12 +453,12 @@ log_min_duration_statement = 0
 
 ### 5.2 Offsite Log Shipping and Retention
 
-| Destination | Notes |
-|---|---|
+| Destination          | Notes                                                                                                                |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | AWS S3 + Object Lock | Set retention lock to 365 days (SOC2) or 2190 days (HIPAA 6yr). Use COMPLIANCE mode for strongest tamper protection. |
-| AWS CloudWatch Logs | Built-in integration with RDS/Aurora. Set log group retention policy directly in CloudWatch. |
-| Grafana Loki | Lightweight self-hosted option. Pair with Promtail to tail PostgreSQL CSV logs. |
-| Datadog | Managed, supports structured log parsing and alerting out of the box. |
+| AWS CloudWatch Logs  | Built-in integration with RDS/Aurora. Set log group retention policy directly in CloudWatch.                         |
+| Grafana Loki         | Lightweight self-hosted option. Pair with Promtail to tail PostgreSQL CSV logs.                                      |
+| Datadog              | Managed, supports structured log parsing and alerting out of the box.                                                |
 
 ---
 
@@ -475,7 +475,7 @@ import knex from 'knex';
 export const db = knex({
   client: 'pg',
   connection: process.env.DATABASE_URL,
-  pool: { min: 2, max: 10 }
+  pool: { min: 2, max: 10 },
 });
 ```
 
@@ -489,29 +489,28 @@ import { v4 as uuidv4 } from 'uuid';
 
 export function auditContext(db) {
   return async (req, res, next) => {
-
     // Adapt these to match your auth middleware output
-    const userId    = req.user?.id         ?? null;
-    const tenantId  = req.user?.tenantId   ?? null; // remove if single-tenant
-    const sessionId = req.headers['x-request-id']
-                   ?? req.sessionID
-                   ?? null;
+    const userId = req.user?.id ?? null;
+    const tenantId = req.user?.tenantId ?? null; // remove if single-tenant
+    const sessionId = req.headers['x-request-id'] ?? req.sessionID ?? null;
 
-    req.dbTransaction = (callback) =>
-      db.transaction(async (trx) => {
-
+    req.dbTransaction = callback =>
+      db.transaction(async trx => {
         // One UUID links all audit_log rows from this transaction together
         const txId = uuidv4();
 
         // set_config with true = SET LOCAL
         // Scoped to this transaction — clears on commit or rollback
-        await trx.raw(`
+        await trx.raw(
+          `
           SELECT
             set_config('app.current_user_id',   ?, true),
             set_config('app.current_tenant_id', ?, true),
             set_config('app.session_id',        ?, true),
             set_config('app.transaction_id',    ?, true)
-        `, [userId ?? '', tenantId ?? '', sessionId ?? '', txId]);
+        `,
+          [userId ?? '', tenantId ?? '', sessionId ?? '', txId],
+        );
 
         return callback(trx);
       });
@@ -528,12 +527,12 @@ export function auditContext(db) {
 import express from 'express';
 import { db } from './db/knex.js';
 import { authMiddleware } from './middleware/auth.js';
-import { auditContext }   from './middleware/auditContext.js';
+import { auditContext } from './middleware/auditContext.js';
 
 const app = express();
 
 app.use(express.json());
-app.use(authMiddleware);   // must run first — populates req.user
+app.use(authMiddleware); // must run first — populates req.user
 app.use(auditContext(db)); // attaches req.dbTransaction
 
 export default app;
@@ -545,11 +544,8 @@ export default app;
 
 ```js
 app.patch('/orders/:id', async (req, res) => {
-  const result = await req.dbTransaction(async (trx) => {
-    return trx('orders')
-      .where({ id: req.params.id })
-      .update({ status: req.body.status })
-      .returning('*');
+  const result = await req.dbTransaction(async trx => {
+    return trx('orders').where({ id: req.params.id }).update({ status: req.body.status }).returning('*');
   });
   res.json(result[0]);
 });
@@ -561,12 +557,8 @@ All `audit_log` rows produced within one `req.dbTransaction` call share the same
 
 ```js
 app.post('/orders/:id/confirm', async (req, res) => {
-  const result = await req.dbTransaction(async (trx) => {
-
-    const [order] = await trx('orders')
-      .where({ id: req.params.id })
-      .update({ status: 'confirmed' })
-      .returning('*');
+  const result = await req.dbTransaction(async trx => {
+    const [order] = await trx('orders').where({ id: req.params.id }).update({ status: 'confirmed' }).returning('*');
 
     await trx('inventory')
       .where({ id: order.item_id })
@@ -575,7 +567,7 @@ app.post('/orders/:id/confirm', async (req, res) => {
     // event_log is append-only — INSERT only, no audit trigger needed
     await trx('event_log').insert({
       order_id: order.id,
-      event:    'confirmed'
+      event: 'confirmed',
     });
 
     return order;
@@ -603,7 +595,7 @@ export async function hardDelete(trx, tableName, recordId, reason) {
 ```js
 // Route using the hard delete helper
 app.delete('/users/:id', async (req, res) => {
-  await req.dbTransaction(async (trx) => {
+  await req.dbTransaction(async trx => {
     await hardDelete(trx, 'users', req.params.id, req.body.reason);
   });
   res.sendStatus(204);
@@ -616,14 +608,14 @@ app.delete('/users/:id', async (req, res) => {
 
 The audit system is set-and-forget. The only recurring tasks when adding new tables or features are:
 
-| Task | Action required |
-|---|---|
-| New mutable table | Attach audit trigger + insert row in `audit_registry` |
-| New append-only table | Attach `enforce_append_only` trigger + insert row in `audit_registry` |
-| New hard-deletable table | Attach `enforce_hard_delete_log` trigger (§4.4) + note it in `audit_registry` |
-| New write route | Use `req.dbTransaction()` — no other change needed |
-| Hard delete needed | Use `hardDelete()` helper, optionally with a documented reason — the trigger logs it when given |
-| New tenant field on user | Update `auditContext.js` to read the new field |
+| Task                     | Action required                                                                                 |
+| ------------------------ | ----------------------------------------------------------------------------------------------- |
+| New mutable table        | Attach audit trigger + insert row in `audit_registry`                                           |
+| New append-only table    | Attach `enforce_append_only` trigger + insert row in `audit_registry`                           |
+| New hard-deletable table | Attach `enforce_hard_delete_log` trigger (§4.4) + note it in `audit_registry`                   |
+| New write route          | Use `req.dbTransaction()` — no other change needed                                              |
+| Hard delete needed       | Use `hardDelete()` helper, optionally with a documented reason — the trigger logs it when given |
+| New tenant field on user | Update `auditContext.js` to read the new field                                                  |
 
 > **Note:** Do not export the `db` instance directly into route files. Keeping all writes behind `req.dbTransaction` ensures the audit context is always set.
 
@@ -699,4 +691,4 @@ WHERE grantee = 'api_role'
     FROM information_schema.triggers
     WHERE trigger_name LIKE 'hard_delete_%'
   );
-```
+```````

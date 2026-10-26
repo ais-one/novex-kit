@@ -1,4 +1,5 @@
 ---
+
 name: Bug Report
 about: Report a reproducible problem in a backend app, frontend app, shared package, or project tooling
 labels: bug
@@ -35,9 +36,9 @@ Describe what should happen instead.
 
 List the exact steps, commands, URLs, inputs, or configuration needed to reproduce the issue.
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Reproduction Repo Or Sample
 

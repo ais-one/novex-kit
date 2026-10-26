@@ -86,7 +86,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/dependency-review-action@v5
         # Compares base vs head — blocks PRs that introduce new vulns
-
   # ── SOC2 - 3. SAST Semgrep CE - private/internal repos only
   # Public repos use CodeQL (3B) instead, which is free there. Semgrep fails
   # the job on findings (--error), so it blocks quality-summary.
@@ -142,7 +141,6 @@ jobs:
         # --error makes the job exit non-zero when findings exist, which is
         # what turns Semgrep into a blocking gate. --metrics=off disables
         # telemetry, which is useful for SOC2/HIPAA data-flow documentation.
-
       # Renders the findings as a table on the run's Summary page, so they can
       # be read without downloading the artifact. python3 ships in the Semgrep
       # image (jq does not).
@@ -254,21 +252,13 @@ jobs:
         # Threshold and ignore list live in .jscpd.json at the repo root (shared with local runs).
         # threshold 5 fails the build if duplication exceeds 5%.
         # Tune per-repo; migrations/generated code often need higher tolerance.
-
   # ---------------------------------------------------------------------
   # Summary gate - use this single job as your one required branch-protection check
   # ---------------------------------------------------------------------
   quality-summary:
     name: Quality Summary
     runs-on: ubuntu-latest
-    needs: [
-        secret-scan,
-        npm-audit,
-        dependency-audit,
-        sast-private-repo-semgrep,
-        sast-public-repo-codeql,
-        duplication,
-      ] # remove `duplication` here if you drop that job
+    needs: [secret-scan, npm-audit, dependency-audit, sast-private-repo-semgrep, sast-public-repo-codeql, duplication] # remove `duplication` here if you drop that job
     # dependency-audit and the two sast-* jobs may be `skipped` (repo visibility) - `skipped` passes;
     # `failure` and `cancelled` fail the gate
     if: always()

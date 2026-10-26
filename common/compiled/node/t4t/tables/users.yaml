@@ -17,42 +17,42 @@ cols:
     label: First Name
     type: string
     filter: true
-    default: ''
+    default: ""
     ui:
       tag: input
   lastName:
     label: Last Name
     type: string
     filter: true
-    default: ''
+    default: ""
     ui:
       tag: input
   email:
     label: Email
     type: string
     filter: true
-    default: ''
+    default: ""
     ui:
       tag: input
   role:
     label: Role
     type: string
     filter: true
-    default: ''
+    default: ""
     ui:
       tag: input
   status:
     label: Status
     type: string
     filter: true
-    default: ''
+    default: ""
     ui:
       tag: input
   image:
     label: Image
     type: string
     filter: true
-    default: ''
+    default: ""
     ui:
       tag: input
   createdAt:

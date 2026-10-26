@@ -81,10 +81,10 @@ Run:
 
 Application names must:
 
-* use lowercase letters
-* use numbers when needed
-* use hyphens (`-`) to separate words
-* start with a letter or number
+- use lowercase letters
+- use numbers when needed
+- use hyphens (`-`) to separate words
+- start with a letter or number
 
 Valid examples:
 
@@ -126,9 +126,9 @@ For example:
 
 ```js
 const templates = {
-  "sample-rest-app": "sample-rest-app-v2",
-  "sample-queue-consumer": "sample-queue-consumer",
-  "my-new-template": "my-new-template-sample",
+  'sample-rest-app': 'sample-rest-app-v2',
+  'sample-queue-consumer': 'sample-queue-consumer',
+  'my-new-template': 'my-new-template-sample',
 };
 ```
 
@@ -156,10 +156,10 @@ Never develop directly in `sample-api` or any other `sample-*` template — copy
 
 There's no CLI for frontends — copy one of the two Vue templates. Pick the one that matches your needs:
 
-| Template | Use when |
-|---|---|
-| [`apps/sample-vue-full`](../apps/sample-vue-full) | Building a full app — routing, auth views, UI framework, state, monitoring and mocking already wired |
-| [`apps/sample-vue-minimal`](../apps/sample-vue-minimal) | Starting from scratch or building a micro-frontend — just Vue + Vite |
+| Template                                                | Use when                                                                                             |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| [`apps/sample-vue-full`](../apps/sample-vue-full)       | Building a full app — routing, auth views, UI framework, state, monitoring and mocking already wired |
+| [`apps/sample-vue-minimal`](../apps/sample-vue-minimal) | Starting from scratch or building a micro-frontend — just Vue + Vite                                 |
 
 **`sample-vue-full` includes:** Vue Router with a public/secure layout split, Pinia, Ant Design Vue, Sentry error monitoring, MSW (Mock Service Worker) for API mocking in development, PWA support, a Playwright e2e setup, and pre-built sign-in, sign-up, dashboard and OAuth callback views.
 
@@ -178,4 +178,3 @@ To create the app:
    - Component paths are relative to `setups/` (e.g. `'../views/SignIn.vue'`) or use the `@common/vue` alias (e.g. `'@common/vue/views/...'`).
 
 Never develop directly in the `sample-vue-*` templates — copy them first. Running the templates themselves: [install.md](install.md#run-minimal-vue-application).
-

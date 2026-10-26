@@ -1,6 +1,5 @@
 ## Sentinel - Easier Setup
 
-
 ```js
 import Redis from 'ioredis';
 
@@ -10,15 +9,15 @@ const redis = new Redis({
     { host: '192.168.1.2', port: 26379 },
     { host: '192.168.1.3', port: 26379 },
   ],
-  name: 'mymaster',          // must match the sentinel monitor name
-  role: 'master',            // 'master' for writes, 'slave' for reads
+  name: 'mymaster', // must match the sentinel monitor name
+  role: 'master', // 'master' for writes, 'slave' for reads
   sentinelPassword: 'secret', // if sentinels are password-protected
-  password: 'secret',         // if Redis nodes are password-protected
+  password: 'secret', // if Redis nodes are password-protected
   db: 0,
 
   // Sentinel-specific options
-  sentinelRetryStrategy: (times) => Math.min(times * 100, 3000),
-  failoverDetector: true,    // faster failover detection
+  sentinelRetryStrategy: times => Math.min(times * 100, 3000),
+  failoverDetector: true, // faster failover detection
 });
 ```
 
@@ -41,19 +40,19 @@ const redis = new Cluster(
     { host: '192.168.1.3', port: 6379 },
   ],
   {
-    clusterRetryStrategy: (times) => Math.min(times * 100, 3000),
-    
+    clusterRetryStrategy: times => Math.min(times * 100, 3000),
+
     redisOptions: {
-      password: 'secret',    // applied to all nodes
-      tls: {},               // if using TLS
+      password: 'secret', // applied to all nodes
+      tls: {}, // if using TLS
     },
 
-    scaleReads: 'slave',     // 'master' | 'slave' | 'all'
+    scaleReads: 'slave', // 'master' | 'slave' | 'all'
 
     // How long to cache the cluster topology
     slotsRefreshTimeout: 2000,
     slotsRefreshInterval: 5000,
-  }
+  },
 );
 ```
 
