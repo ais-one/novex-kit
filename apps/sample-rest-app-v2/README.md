@@ -6,19 +6,19 @@ Reference implementation of the full backend stack this repo's `.claude` skills 
 
 ## What it demonstrates
 
-| Constraint | Where |
-|---|---|
-| Controller → service → repository layering | `routes/` → `controllers/` → `services/` → `repositories/{data,external}/` |
-| Repository `data/` vs `external/` split | `repositories/data/orders.repository.ts` (PostgreSQL, via Knex) vs `repositories/external/exchange-rate.repository.ts` (a real, free, no-auth currency API) |
-| DTO boundaries | `dto/order.dto.ts` — persistence row → domain `Order` (includes `internalRiskScore`) → response DTO (never includes it) |
-| zod validation | Request body/params via `common/node/errors/validate.ts`; the external API's response validated before use |
-| `{ message, data }` response envelope | `controllers/orders.controller.ts` |
-| Structured, per-layer, injected logging | `ContextLogger` threaded from controller → service → repository via `.scope()`; nothing imports the bare global `logger` inside these layers |
+| Constraint                                  | Where                                                                                                                                                                                                                              |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Controller → service → repository layering  | `routes/` → `controllers/` → `services/` → `repositories/{data,external}/`                                                                                                                                                         |
+| Repository `data/` vs `external/` split     | `repositories/data/orders.repository.ts` (PostgreSQL, via Knex) vs `repositories/external/exchange-rate.repository.ts` (a real, free, no-auth currency API)                                                                        |
+| DTO boundaries                              | `dto/order.dto.ts` — persistence row → domain `Order` (includes `internalRiskScore`) → response DTO (never includes it)                                                                                                            |
+| zod validation                              | Request body/params via `common/node/errors/validate.ts`; the external API's response validated before use                                                                                                                         |
+| `{ message, data }` response envelope       | `controllers/orders.controller.ts`                                                                                                                                                                                                 |
+| Structured, per-layer, injected logging     | `ContextLogger` threaded from controller → service → repository via `.scope()`; nothing imports the bare global `logger` inside these layers                                                                                       |
 | Request-ID tracing, including cross-service | `requestIdMiddleware` sets `req.requestId`; the exchange-rate repository forwards `log.context.requestId` as `x-request-id` on its outbound call; `auditContext` reuses the same `req.requestId` as the audit trail's `session_id` |
-| AppError + stack/cause preservation | `NotFoundError` for a missing order; `common/node/errors/error.middleware.ts` is the single place that logs an unhandled error |
-| TypeScript, `strict: true` | `tsconfig.json` |
-| Mockable service/repository, tiered tests | `__tests__/unit/` — service test mocks both repositories, external-repository test mocks `fetch`. `__tests__/integration/` — the data repository tested against a real PostgreSQL instance. |
-| SOC2/HIPAA-style audit trail plumbing | `@apps/sample-common/express/audit/audit-context`'s `auditContext()`, wired in `src/index.ts` — see [Auditing](#auditing) |
+| AppError + stack/cause preservation         | `NotFoundError` for a missing order; `common/node/errors/error.middleware.ts` is the single place that logs an unhandled error                                                                                                     |
+| TypeScript, `strict: true`                  | `tsconfig.json`                                                                                                                                                                                                                    |
+| Mockable service/repository, tiered tests   | `__tests__/unit/` — service test mocks both repositories, external-repository test mocks `fetch`. `__tests__/integration/` — the data repository tested against a real PostgreSQL instance.                                        |
+| SOC2/HIPAA-style audit trail plumbing       | `@apps/sample-common/express/audit/audit-context`'s `auditContext()`, wired in `src/index.ts` — see [Auditing](#auditing)                                                                                                          |
 
 ## Auditing
 
@@ -42,6 +42,7 @@ auth middleware, so `req.user` is always undefined and `app.current_user_id` rec
 ## Running locally
 
 1. A running PostgreSQL instance. Locally this was developed against:
+
    ```bash
    docker run -d --name visionpostgres -e POSTGRES_USER=visionuser -e POSTGRES_PASSWORD=vision123 -e POSTGRES_DB=mydb -p 5432:5432 postgres:15
    ```

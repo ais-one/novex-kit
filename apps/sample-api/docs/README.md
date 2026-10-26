@@ -82,7 +82,7 @@ Refer to the following files for the SPA sample, which uses `fido2-lib` in the b
 
 ### CRUD Routes
 
-[* === COMPLETED, ** === TESTED]
+[* === COMPLETED, \*\* === TESTED]
 
 - POST /auth/signup
 - POST /auth/login

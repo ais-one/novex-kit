@@ -6,7 +6,7 @@
     "@ant-design/icons-vue": "^7.0.1",
     "@common/iso": "file:../../vanilla/iso",
     "@common/web": "file:../../vanilla/web",
-    "@sentry/vue": "^11.8.0",
+    "@sentry/vue": "^11.9.0",
     "ant-design-vue": "^4.2.6",
     "vue": "^3.5.44",
     "vue-router": "^5.4.0"

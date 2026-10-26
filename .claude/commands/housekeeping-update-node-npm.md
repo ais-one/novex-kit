@@ -1,4 +1,5 @@
 ---
+
 description: Check the latest Node.js LTS and npm, confirm CI and workspaces support it, report, and update on approval
 argument-hint: [node-only|npm-only, optional]
 ---
@@ -7,19 +8,31 @@ Find the current Active LTS Node.js release and the npm version that goes with i
 
 ## Hard rule: no guessing
 
-Every "latest LTS" claim, every "this version has a known serious issue" claim, and every "CI/workspace supports this" claim must come from a live lookup made *during this run* — never from training knowledge. Node.js and npm release on their own schedules and this repo's knowledge of "current" is a snapshot from whenever this command last ran; recalling what was the latest LTS or what version had a bug from memory is not an acceptable substitute for checking. If a lookup fails (network error, unexpected response shape, rate limit), stop and report the failure for that item instead of falling back to an assumed value.
+Every "latest LTS" claim, every "this version has a known serious issue" claim, and every "CI/workspace supports this" claim must come from a live lookup made _during this run_ — never from training knowledge. Node.js and npm release on their own schedules and this repo's knowledge of "current" is a snapshot from whenever this command last ran; recalling what was the latest LTS or what version had a bug from memory is not an acceptable substitute for checking. If a lookup fails (network error, unexpected response shape, rate limit), stop and report the failure for that item instead of falling back to an assumed value.
+
+## Pinning policy
+
+Every location has one of two pin styles. Keep each one in its own style when updating, and flag any location that has drifted from it:
+
+| Style                                                                | Locations                                                                                                                                                                                                                        | Example               |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **Exact** `major.minor.patch`: anything that builds or runs the code | composite action `node-version`/`npm-version` defaults, workflow `node-version`/`matrix` values, `.nvmrc`, `Dockerfile` `ARG NODE_VERSION` (and `node:<version>-alpine` references in comments), example workflows under `docs/` | `24.22.1`             |
+| **Major floor**: anything that states what's supported               | root and workspace `package.json` `engines`, prose in `.claude/CLAUDE.md`/docs                                                                                                                                                   | `>=24`, `Node.js 24+` |
+
+A major-only pin like `"24"` or `node:24-alpine` in an exact-style location counts as drift: report it and pin it exactly. Every workspace `engines` floor must match root's. Change floors only when the major changes.
 
 ## 1. Discover every place Node/npm versions are currently pinned
 
 - Root `package.json` → `engines.node`, `engines.npm`.
 - `.github/actions/setup-node-npm-install/action.yml` → `inputs.node-version.default`, `inputs.npm-version.default` (the shared composite action every workflow calls into).
 - Every `.github/workflows/*.yml` (including any under `todo/`) → grep for `node-version:` overrides passed to that composite action, and any hardcoded version in a build `matrix`.
-- `CLAUDE.md` / `README.md` / anything under `docs/` → prose mentions like "Node.js X+ required, npm X+ required".
+- `.claude/CLAUDE.md` / `README.md` / anything under `docs/` → prose mentions like "Node.js X+ required, npm X+ required".
+- Example workflows under `docs/` (e.g. `docs/cloud/cloudflare/cf_cicd_purge.yml`) → `node-version:` passed straight to `actions/setup-node`. These don't go through the composite action, so they need their own edit.
 - A repo-root `.nvmrc` or `.node-version` file, if one exists.
-- Every `Dockerfile` in the repo (currently `apps/*/Dockerfile`, e.g. `apps/sample-api/Dockerfile`; also a repo-root one if it ever exists) → `FROM node:...` / `ARG NODE_VERSION` style pins.
-- Every workspace's own `package.json` (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) → an `engines` field that overrides root (none exist as of the last run this was checked, but re-check live — don't assume that's still true).
+- Every `Dockerfile` in the repo (currently `apps/*/Dockerfile`, e.g. `apps/sample-api/Dockerfile`; also a repo-root one if it ever exists) → `FROM node:...` / `ARG NODE_VERSION` style pins, plus `node:<version>-alpine` mentions in comments.
+- Every workspace's own `package.json` (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) → an `engines` field that overrides root (currently `apps/sample-rest-app-v2` and `apps/sample-queue-consumer`; re-check live, the list changes). `package-lock.json` keeps a copy of each workspace's `engines` under `packages["<workspace path>"]`, so update those copies whenever a floor changes.
 
-Record each as: location, field, current value.
+Record each as: location, field, current value, and whether it follows the [pinning policy](#pinning-policy).
 
 ## 2. Resolve the current Active LTS Node.js version live
 
@@ -29,8 +42,8 @@ Record each as: location, field, current value.
 ## 3. Resolve the latest npm version and screen both for serious open issues
 
 - Fetch the npm registry (`npm view npm versions --json` and `npm view npm dist-tags --json`, live) to find the actual latest published npm version.
-- Fetch npm's release notes (`https://github.com/npm/cli/releases`) for versions between the repo's currently pinned npm and the latest, and flag anything a release explicitly calls out as a regression, revert, or critical bug fixed in a subsequent release — if the single newest npm version has an unresolved issue like that called out in the *next* release's notes, step back to the last version without an open flag and say why.
-- Do the same sanity pass for the candidate Node version: fetch `https://nodejs.org/en/blog/vulnerability/` (or `https://endoflife.date/api/nodejs.json` as a cross-check for support/EOL windows) and confirm the candidate is the newest *patch* in its LTS line — never propose a patch older than the newest available, and call out explicitly if the newest patch itself was a security release (that's expected and fine — it means the fix is already in).
+- Fetch npm's release notes (`https://github.com/npm/cli/releases`) for versions between the repo's currently pinned npm and the latest, and flag anything a release explicitly calls out as a regression, revert, or critical bug fixed in a subsequent release — if the single newest npm version has an unresolved issue like that called out in the _next_ release's notes, step back to the last version without an open flag and say why.
+- Do the same sanity pass for the candidate Node version: fetch `https://nodejs.org/en/blog/vulnerability/` (or `https://endoflife.date/api/nodejs.json` as a cross-check for support/EOL windows) and confirm the candidate is the newest _patch_ in its LTS line — never propose a patch older than the newest available, and call out explicitly if the newest patch itself was a security release (that's expected and fine — it means the fix is already in).
 
 ## 4. Confirm CI can actually pull the candidate Node version
 
@@ -56,7 +69,7 @@ Ask a single question: update Node to `<candidate>` and npm to `<candidate>` acr
 
 - **If declined**: make no changes, summarize what was found, stop.
 - **If approved**:
-  - Edit every location from step 1 to the new version(s) — root `package.json` engines, the composite action's defaults, any hardcoded workflow overrides, and the prose mentions in `CLAUDE.md`/docs. Keep each file's existing style (e.g. matrix arrays, quoting) — change only the version values.
+  - Edit every location from step 1 to the new version(s), following the [pinning policy](#pinning-policy). Exact-style locations get the full candidate version: the composite action's defaults, workflow overrides and matrices, `docs/` example workflows, `.nvmrc`, and Dockerfile `ARG NODE_VERSION`. Major-floor locations (root/workspace `engines` and their `package-lock.json` copies, `.claude/CLAUDE.md`/docs prose) change only when the major changes. Keep each file's existing formatting (matrix arrays, quoting) and change only the version values.
   - If a local version manager was found in step 5, install and switch to the candidate Node version, install the candidate npm globally, then run a real `npm ci` (not `--dry-run`) followed by `npm run test:workspaces`. Report pass/fail plainly — if something fails, identify what broke and let the user decide whether to keep the update or revert, don't silently revert on their behalf.
   - If no local version manager was available, say so explicitly and note that CI (`ci-tests.yml`, plus the other `ci-*.yml` workflows) is the next real verification point, since this environment couldn't run the new version directly.
 

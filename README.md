@@ -69,6 +69,7 @@ curl http://127.0.0.1/health/live
 ```
 
 ### Getting started with
+
 - Sample API backend [apps/sample-api](docs/install.md#run-sample-api)
 - Minimal Vue frontend [apps/sample-vue-minimal](docs/install.md#run-minimal-vue-application)
 - Sample Vue frontend [apps/sample-vue-full](docs/install.md#install--run-sample-vue-application)
@@ -77,6 +78,7 @@ curl http://127.0.0.1/health/live
 - Database schemas, migrations, and seeds [db](db) and mock services [scripts/service-mocks](scripts/service-mocks)
 
 ### Creating Own apps/services
+
 - API [backend](docs/create-app.md#creating-a-new-app-or-service) — `create:app` CLI or copy `sample-api`
 - Vue [frontend](docs/create-app.md#creating-a-new-frontend-app)
 - Publish common/** workspaces to [npm](docs/install.md#publishing-packages-to-npm). **for template maintainers ONLY**

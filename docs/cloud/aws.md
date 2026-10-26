@@ -42,19 +42,19 @@ aws/
 
 **AliCloud → AWS service mapping**
 
-| AliCloud | AWS | Notes |
-|---|---|---|
-| OSS | S3 | OAC replaces public bucket ACL for static sites |
-| ACR Enterprise | ECR | ECR has image scanning built-in, IMMUTABLE tags |
-| RDS PostgreSQL | RDS PostgreSQL | Multi-AZ is a flag; AliCloud needs secondary_zone_id |
-| ApsaraDB Redis | ElastiCache Redis | AWS uses auth_token; AliCloud uses password |
-| Function Compute (FC3) | Lambda | Both run containers; Lambda integrates with ALB natively |
-| SAE | ECS Fargate | ECS uses task definitions + service rolling deploys |
-| ALB | ALB | Near-identical; AWS ALB routes Lambda and ECS on same listener |
-| WAF v3 | WAFv2 | AWS has richer managed rule groups; CloudFront WAF must be in us-east-1 |
-| DCDN | CloudFront | CloudFront adds security headers policy + SPA 403/404 fallback |
-| NAT Gateway + EIP | NAT Gateway + EIP | Identical concept; AWS requires IGW for public subnets |
-| RAM OIDC | IAM OIDC | `aws-actions/configure-aws-credentials` handles the JWT exchange automatically |
+| AliCloud               | AWS               | Notes                                                                          |
+| ---------------------- | ----------------- | ------------------------------------------------------------------------------ |
+| OSS                    | S3                | OAC replaces public bucket ACL for static sites                                |
+| ACR Enterprise         | ECR               | ECR has image scanning built-in, IMMUTABLE tags                                |
+| RDS PostgreSQL         | RDS PostgreSQL    | Multi-AZ is a flag; AliCloud needs secondary_zone_id                           |
+| ApsaraDB Redis         | ElastiCache Redis | AWS uses auth_token; AliCloud uses password                                    |
+| Function Compute (FC3) | Lambda            | Both run containers; Lambda integrates with ALB natively                       |
+| SAE                    | ECS Fargate       | ECS uses task definitions + service rolling deploys                            |
+| ALB                    | ALB               | Near-identical; AWS ALB routes Lambda and ECS on same listener                 |
+| WAF v3                 | WAFv2             | AWS has richer managed rule groups; CloudFront WAF must be in us-east-1        |
+| DCDN                   | CloudFront        | CloudFront adds security headers policy + SPA 403/404 fallback                 |
+| NAT Gateway + EIP      | NAT Gateway + EIP | Identical concept; AWS requires IGW for public subnets                         |
+| RAM OIDC               | IAM OIDC          | `aws-actions/configure-aws-credentials` handles the JWT exchange automatically |
 
 **One important AWS-specific nuance**
 

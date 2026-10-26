@@ -29,7 +29,7 @@ login:
         #   schema:
         #     $ref: '#/components/schemas/LoginForm'
     responses:
-      '200':
+      "200":
         description: OK
         content:
           application/json:
@@ -44,9 +44,9 @@ login:
                 refresh_token:
                   type: string
                   example: "ey...."
-      '401':
+      "401":
         description: Unauthorized
-      '403':
+      "403":
         description: Forbidden
       default:
         description: Unexpected error
@@ -55,7 +55,7 @@ otp:
     tags:
       - "Auth"
     summary: OTP
-    description: Return access and refresh tokens 
+    description: Return access and refresh tokens
     requestBody:
       required: true
       content:
@@ -73,7 +73,7 @@ otp:
                 type: string
                 example: "111111"
     responses:
-      '200':
+      "200":
         description: OK
         content:
           application/json:
@@ -88,9 +88,9 @@ otp:
                 refresh_token:
                   type: string
                   example: "ey...."
-      '401':
+      "401":
         description: Unauthorized
-      '403':
+      "403":
         description: Forbidden
       default:
         description: Unexpected error

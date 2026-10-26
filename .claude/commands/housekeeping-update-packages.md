@@ -1,4 +1,5 @@
 ---
+
 description: Check for outdated npm packages, batch-update safe non-major bumps, and walk through major-version bumps one at a time with breaking-change review
 argument-hint: [workspace-or-package filter, optional]
 ---
@@ -7,7 +8,7 @@ Check every workspace for outdated npm packages, update the safe ones in one bat
 
 ## Hard rule: no guessing
 
-Every "latest" version, peer-dependency claim, and breaking-change summary must come from a live lookup made *during this run* — `npm outdated`/`npm view` against the real registry, or a fetched changelog/release page — never from training knowledge. Package versions change constantly, and a major version can be hours old (a recent example in this repo: pinia 4.0.0/4.0.1 were both published the same day they were investigated) — recalling "what that package's v4 usually changes" from memory is not an acceptable substitute for checking. If a lookup fails or no changelog can be found, say so explicitly rather than inventing a plausible-sounding summary.
+Every "latest" version, peer-dependency claim, and breaking-change summary must come from a live lookup made _during this run_ — `npm outdated`/`npm view` against the real registry, or a fetched changelog/release page — never from training knowledge. Package versions change constantly, and a major version can be hours old (a recent example in this repo: pinia 4.0.0/4.0.1 were both published the same day they were investigated) — recalling "what that package's v4 usually changes" from memory is not an acceptable substitute for checking. If a lookup fails or no changelog can be found, say so explicitly rather than inventing a plausible-sounding summary.
 
 ## 1. Discover outdated packages
 

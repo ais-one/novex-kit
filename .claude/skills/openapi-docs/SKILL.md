@@ -1,4 +1,5 @@
 ---
+
 name: openapi-docs
 description: Generating a per-app OpenAPI 3.1 spec from an app's zod DTOs (zod-openapi's .meta({ id }) + createDocument() in apps/<app>/src/openapi.ts), written to docs/openapi/<app>.yaml by scripts/generators/api-generator-route.ts. Every operation must document every status code its controller→service→repository chain can actually produce (every AppError subclass, 422, INVALID_JSON, the 500 fallback — see common/compiled/node/errors/AppError.ts), each with a realistic example payload and a curl in the description, a generated `**Possible errors:**` list, and `.meta({ override: { format: 'date-time' } })` on every z.date()/z.coerce.date() field. Use when adding OpenAPI docs to a REST app under apps/* (starting with sample-rest-app-v2) or enumerating an endpoint's responses. Not for apps with no HTTP business surface beyond /health, not for db/* CRUD docs (generate-openapi.ts), and not to be confused with .github/skills/api-docs-generator (Markdown reference docs).
 ---
@@ -13,11 +14,11 @@ This assumes the vocabulary from the `clean-architecture` skill (routes → cont
 
 ## Three OpenAPI mechanisms in this repo — pick the right one
 
-| Mechanism | Source | Command | Output |
-|---|---|---|---|
-| **Per-app spec (this skill)** | `apps/<app>/src/openapi.ts` (hand-assembled `createDocument()` from the app's DTOs) | `npm run docs:generate:api --workspace=scripts/generators` (`scripts/generators/api-generator-route.ts`) | `docs/openapi/<app>.yaml` |
-| CRUD-generated docs | sidecar `crud/<table>/schema.ts` in `db/<schema>/` | `npm run docs:generate` in `db/sample` or `db/iam` (not `db/audit`/`db/rag` — no script there) | `db/<schema>/openapi/openapi.yaml` |
-| Shared hand-written schemas | `common/schemas/*.schema.ts` | `npm run docs:generate` / `docs:validate` / `docs:make-html` from within `common/schemas/` | `common/schemas/docs/openapi/openapi.merged.yaml` |
+| Mechanism                     | Source                                                                              | Command                                                                                                  | Output                                            |
+| ----------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| **Per-app spec (this skill)** | `apps/<app>/src/openapi.ts` (hand-assembled `createDocument()` from the app's DTOs) | `npm run docs:generate:api --workspace=scripts/generators` (`scripts/generators/api-generator-route.ts`) | `docs/openapi/<app>.yaml`                         |
+| CRUD-generated docs           | sidecar `crud/<table>/schema.ts` in `db/<schema>/`                                  | `npm run docs:generate` in `db/sample` or `db/iam` (not `db/audit`/`db/rag` — no script there)           | `db/<schema>/openapi/openapi.yaml`                |
+| Shared hand-written schemas   | `common/schemas/*.schema.ts`                                                        | `npm run docs:generate` / `docs:validate` / `docs:make-html` from within `common/schemas/`               | `common/schemas/docs/openapi/openapi.merged.yaml` |
 
 The last two both run `scripts/generators/generate-openapi.ts`, a generic CLI (`--src`, `--schemas`, `--out`, `--prefix`, `--title`, `--version`, `--server`) that discovers schema files by convention and emits generic CRUD paths — see `scripts/generators/README.md`. It is the wrong tool for a clean-architecture app: it can't see which statuses a service actually throws, and it invents paths from table names rather than reading the app's routes. Don't extend it for that; write `src/openapi.ts` instead.
 
@@ -44,12 +45,12 @@ TODO (optional, not built): a single static multi-spec portal (e.g. Swagger UI w
 
 An operation's `responses` must have one entry per status the request can actually receive, derived by walking the exact controller → service → repository chain that route calls — never guessed from what the endpoint "feels like." The error surface is small and fully enumerable from `common/compiled/node/errors/AppError.ts`:
 
-| Class | statusCode | code | Thrown from |
-|---|---|---|---|
-| `AppError` (base) | 500 (default) | `INTERNAL_ERROR` | any layer directly |
-| `NotFoundError` | 404 | `NOT_FOUND` | a service, when a single-resource lookup returns nothing; also `notFoundHandler` for unmatched paths |
-| `ValidationError` | 422 | `VALIDATION_ERROR` | the `validate()` middleware (`common/compiled/node/errors/validate.ts`) **or** a service, for a business-rule failure |
-| `UnauthorizedError` | 401 | `UNAUTHORIZED` | nothing today — defined but not thrown by any auth middleware (see step 3) |
+| Class               | statusCode    | code               | Thrown from                                                                                                          |
+| ------------------- | ------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `AppError` (base)   | 500 (default) | `INTERNAL_ERROR`   | any layer directly                                                                                                   |
+| `NotFoundError`     | 404           | `NOT_FOUND`        | a service, when a single-resource lookup returns nothing; also `notFoundHandler` for unmatched paths                 |
+| `ValidationError`   | 422           | `VALIDATION_ERROR` | the `validate()` middleware (`common/compiled/node/errors/validate.ts`)**or** a service, for a business-rule failure |
+| `UnauthorizedError` | 401           | `UNAUTHORIZED`     | nothing today — defined but not thrown by any auth middleware (see step 3)                                           |
 
 Plus two paths that bypass `AppError` (`common/compiled/node/errors/error.middleware.ts`):
 - **Malformed JSON body** (`entity.parse.failed`) → `400 INVALID_JSON`, message `'Malformed JSON in request body'` — every route that accepts a JSON body.
@@ -60,12 +61,12 @@ Body shape: `{ error: { code, message, details?, stack? } }` — `details` only 
 Method, per operation:
 
 1. Route wrapped in `validate('body' | 'params' | 'query', schema)` → `422 VALIDATION_ERROR`. The message is `"<path>: <zod message>"` joined with `; `.
-2. Grep `throw new` in the exact controller/service/repository files that handler calls, and add one entry per distinct class. Read the actual `throw` — an unresolved reference in the *request* may be deliberately modeled as `ValidationError` (422), not `NotFoundError`. Also note what a layer *swallows*: a repository that catches and returns `null` contributes no error status.
-3. Route behind auth middleware → document what that middleware **actually sends** — none of them go through `errorHandler`, so the bodies are *not* the `{ error: { code, message } }` shape. Use a separate schema per shape, not `ErrorResponseSchema`:
+2. Grep `throw new` in the exact controller/service/repository files that handler calls, and add one entry per distinct class. Read the actual `throw` — an unresolved reference in the _request_ may be deliberately modeled as `ValidationError` (422), not `NotFoundError`. Also note what a layer _swallows_: a repository that catches and returns `null` contributes no error status.
+3. Route behind auth middleware → document what that middleware **actually sends** — none of them go through `errorHandler`, so the bodies are _not_ the `{ error: { code, message } }` shape. Use a separate schema per shape, not `ErrorResponseSchema`:
    - `authUser` (`auth/jwt.ts`) → `401 { message: 'Token Missing' | 'Token Format Error' | 'Token Expired Error' | 'Token Error' | 'Access Error' }`
    - `requireRole` (`auth/require-role.ts`) → `403` with a plain-text `Forbidden` body (`res.sendStatus(403)`)
    - `requireFga` (`auth/openfga.ts`) → `401 { error: 'Not authenticated' }` or `403 { error: 'Access denied' }`
-   There is no `ForbiddenError`; a 403 thrown from a service needs `new AppError(msg, 403, 'FORBIDDEN')`, and the entry documents that literal code.
+     There is no `ForbiddenError`; a 403 thrown from a service needs `new AppError(msg, 403, 'FORBIDDEN')`, and the entry documents that literal code.
 4. Route accepting a body → `400 INVALID_JSON`, and `413` (code `INTERNAL_ERROR`) when the body exceeds body-parser's size limit.
 5. Every operation → `500 INTERNAL_ERROR`.
 6. A list endpoint with no matches returns `200` with an empty array, never `404`.
@@ -74,7 +75,7 @@ OpenAPI allows one entry per status; if one status has several causes, use named
 
 ## Possible errors in the description, curl in the description
 
-By default, every operation's `description` includes a generated `**Possible errors:**` bullet list and one copy-pasteable curl. Renderers show `ErrorResponseSchema`'s shared generic field examples when a reader expands the schema, whatever status they are looking at; the description's Markdown is the only place the reachable codes for *this* operation are visible without clicking. Generate the list from the same `responses` object the operation uses, so the two can't drift.
+By default, every operation's `description` includes a generated `**Possible errors:**` bullet list and one copy-pasteable curl. Renderers show `ErrorResponseSchema`'s shared generic field examples when a reader expands the schema, whatever status they are looking at; the description's Markdown is the only place the reachable codes for _this_ operation are visible without clicking. Generate the list from the same `responses` object the operation uses, so the two can't drift.
 
 Curl rules:
 - Use the app's real default port from its `src/index.ts` (`API_PORT` fallback) and its real mount path — never `<host>`.
@@ -101,7 +102,7 @@ Only schemas that should become reusable `components.schemas` entries need an `i
 
 The generator imports the named export `document`. Template, written for `sample-rest-app-v2`'s real routes (`POST /orders`, `GET /orders/:id`, mounted at `/orders`, port `3200`):
 
-```ts
+````ts
 // apps/sample-rest-app-v2/src/openapi.ts (to create)
 import { createDocument } from 'zod-openapi';
 import { ApiResponseSchema } from '../../../common/schemas/api-response.schema.ts';
@@ -109,7 +110,10 @@ import { ErrorResponseSchema } from '../../../common/schemas/error.schema.ts';
 import { createOrderBodySchema, orderIdParamsSchema, orderResponseDataSchema } from './dto/order.dto.ts';
 
 type ErrorBody = { error: { code: string; message: string; details?: unknown } };
-type DocResponse = { description: string; content?: { 'application/json'?: { schema?: unknown; example?: ErrorBody } } };
+type DocResponse = {
+  description: string;
+  content?: { 'application/json'?: { schema?: unknown; example?: ErrorBody } };
+};
 
 const errorResponse = (description: string, code: string, message: string, details?: unknown) => ({
   description,
@@ -122,7 +126,11 @@ const errorResponse = (description: string, code: string, message: string, detai
 });
 
 const internalError = errorResponse('Unexpected server error', 'INTERNAL_ERROR', 'An unexpected error occurred');
-const invalidJson = errorResponse('Malformed JSON in the request body', 'INVALID_JSON', 'Malformed JSON in request body');
+const invalidJson = errorResponse(
+  'Malformed JSON in the request body',
+  'INVALID_JSON',
+  'Malformed JSON in request body',
+);
 
 const errorCodesSection = (responses: Record<number, DocResponse>): string =>
   [
@@ -130,7 +138,10 @@ const errorCodesSection = (responses: Record<number, DocResponse>): string =>
     '**Possible errors:**',
     ...Object.entries(responses)
       .filter(([status]) => Number(status) >= 400)
-      .map(([status, r]) => `- \`${status} ${r.content?.['application/json']?.example?.error.code ?? 'UNKNOWN'}\` — ${r.description}`),
+      .map(
+        ([status, r]) =>
+          `- \`${status} ${r.content?.['application/json']?.example?.error.code ?? 'UNKNOWN'}\` — ${r.description}`,
+      ),
   ].join('\n');
 
 const orderResponse = ApiResponseSchema(orderResponseDataSchema, 'OrderResponse');
@@ -148,9 +159,20 @@ const createOrderResponses = {
 const getOrderResponses = {
   200: { description: 'Order found', content: { 'application/json': { schema: orderResponse } } },
   404: errorResponse('No order exists with this id', 'NOT_FOUND', 'Order 42 not found'),
-  422: errorResponse('`id` is not a positive integer', 'VALIDATION_ERROR', 'id: Invalid input: expected number, received NaN', [
-    { expected: 'number', code: 'invalid_type', received: 'NaN', path: ['id'], message: 'Invalid input: expected number, received NaN' },
-  ]),
+  422: errorResponse(
+    '`id` is not a positive integer',
+    'VALIDATION_ERROR',
+    'id: Invalid input: expected number, received NaN',
+    [
+      {
+        expected: 'number',
+        code: 'invalid_type',
+        received: 'NaN',
+        path: ['id'],
+        message: 'Invalid input: expected number, received NaN',
+      },
+    ],
+  ),
   500: internalError,
 };
 
@@ -197,7 +219,7 @@ export const document = createDocument({
     },
   },
 });
-```
+````
 
 Verify the example `message` strings against a real run (send a bad request, copy the actual body) rather than trusting the template — zod's wording changes between versions.
 
@@ -235,10 +257,10 @@ One file per app, named after the app's folder — never one merged file across 
 
 The clean-architecture reference REST app: Express 5, `strict: true`, port default `3200`, routes mounted at `/orders` (`src/index.ts`), no auth middleware (so no `401` yet — add it if `authUser` is ever wired in). Reachable statuses, traced from the code:
 
-| Operation | Statuses | Why |
-|---|---|---|
-| `POST /orders` | 201, 400, 422, 500 | `express.json()` → `INVALID_JSON`; `validate('body', createOrderBodySchema)` → 422; `repositories/external/exchange-rate.repository.ts` catches its own failures and returns `null` (no error status); DB failure → 500 |
-| `GET /orders/:id` | 200, 404, 422, 500 | `validate('params', orderIdParamsSchema)` → 422; `services/orders.service.ts` throws `NotFoundError(\`Order ${id}\`)` → 404; DB failure → 500 |
+| Operation         | Statuses           | Why                                                                                                                                                                                                                     |
+| ----------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /orders`    | 201, 400, 422, 500 | `express.json()` → `INVALID_JSON`; `validate('body', createOrderBodySchema)` → 422; `repositories/external/exchange-rate.repository.ts` catches its own failures and returns `null` (no error status); DB failure → 500 |
+| `GET /orders/:id` | 200, 404, 422, 500 | `validate('params', orderIdParamsSchema)` → 422; `services/orders.service.ts` throws `NotFoundError(\`Order ${id}\`)` → 404; DB failure → 500                                                                           |
 
 To do: add `.meta({ id })` where wanted in `src/dto/order.dto.ts`, create `src/openapi.ts` per the template above, then run `docs:generate:api`. This is implementation work outside this skill's setup.
 

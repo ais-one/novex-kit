@@ -1,4 +1,5 @@
 ---
+
 description: Scan .github for outdated or unpinned GitHub Actions and review/apply updates one at a time
 argument-hint: [path-or-owner/repo filter, optional]
 ---
@@ -7,7 +8,7 @@ Audit every external GitHub Action referenced under `.github/` and bring each on
 
 ## Hard rule: no guessing
 
-Every version and every commit SHA proposed in this run must come from a live API call made *during this run* — never from training knowledge, memory of what a tag "usually" points to, a remembered SHA from a previous action or previous run, or a plausible-looking guess. If a lookup fails (rate-limited, network error, repo not found, unexpected API shape), stop and report the failure for that action instead of falling back to an assumed value — do not propose a change you could not verify live. Every SHA handed to the user must have been independently confirmed to resolve to a real commit via a `git/commits/<sha>` call in this same run, not just copied from a tag/release response.
+Every version and every commit SHA proposed in this run must come from a live API call made _during this run_ — never from training knowledge, memory of what a tag "usually" points to, a remembered SHA from a previous action or previous run, or a plausible-looking guess. If a lookup fails (rate-limited, network error, repo not found, unexpected API shape), stop and report the failure for that action instead of falling back to an assumed value — do not propose a change you could not verify live. Every SHA handed to the user must have been independently confirmed to resolve to a real commit via a `git/commits/<sha>` call in this same run, not just copied from a tag/release response.
 
 ## 1. Discover references
 

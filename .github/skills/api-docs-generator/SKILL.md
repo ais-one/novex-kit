@@ -1,4 +1,5 @@
 ---
+
 name: api-docs-generator
 description: Generate structured API reference documentation from source code, OpenAPI specs, or route definitions. Trigger phrases include "generate API docs", "document this API", "create API reference", "write endpoint docs", "scaffold API docs".
 ---
@@ -36,14 +37,14 @@ Read the file(s) and extract:
 
 **Framework detection hints:**
 
-| Signal | Framework |
-|--------|-----------|
-| `[ApiController]`, `[HttpGet]` | ASP.NET Core |
-| `@app.get()`, `@router.post()` | FastAPI |
-| `router.get()`, `app.use()` | Express.js |
-| `@GetMapping`, `@RestController` | Spring Boot |
-| `@Controller`, `@Get()` | NestJS |
-| `resources :users` | Rails |
+| Signal                           | Framework    |
+| -------------------------------- | ------------ |
+| `[ApiController]`, `[HttpGet]`   | ASP.NET Core |
+| `@app.get()`, `@router.post()`   | FastAPI      |
+| `router.get()`, `app.use()`      | Express.js   |
+| `@GetMapping`, `@RestController` | Spring Boot  |
+| `@Controller`, `@Get()`          | NestJS       |
+| `resources :users`               | Rails        |
 
 ### From OpenAPI/Swagger Specs
 
@@ -102,12 +103,12 @@ Authorization: Bearer {token}
 
 **Parameters**
 
-| Name | In | Type | Required | Description |
-|------|----|------|----------|-------------|
-| `id` | path | integer | ✅ | Resource ID |
-| `limit` | query | integer | ❌ | Max results (default: 20) |
+| Name    | In    | Type    | Required | Description               |
+| ------- | ----- | ------- | -------- | ------------------------- |
+| `id`    | path  | integer | ✅       | Resource ID               |
+| `limit` | query | integer | ❌       | Max results (default: 20) |
 
-**Request Body** *(POST/PUT/PATCH only)*
+**Request Body** _(POST/PUT/PATCH only)_
 
 ```json
 {
@@ -118,10 +119,10 @@ Authorization: Bearer {token}
 
 **Responses**
 
-| Status | Description |
-|--------|-------------|
-| `200 OK` | Returns the resource |
-| `404 Not Found` | Resource not found |
+| Status          | Description          |
+| --------------- | -------------------- |
+| `200 OK`        | Returns the resource |
+| `404 Not Found` | Resource not found   |
 
 ```json
 {
@@ -163,7 +164,7 @@ When you encounter these in the source, document them:
 - Use realistic fake data in examples (`jane@example.com`, `42`, `"acme-corp"` — not `"string"` or `"value"`)
 - Document both success and error responses
 - Use standard HTTP status descriptions (200 OK, 201 Created, 400 Bad Request, 401 Unauthorized, 404 Not Found, etc.)
-- Flag ambiguity with a note (e.g., *"Response schema inferred from return type; actual response may differ"*)
+- Flag ambiguity with a note (e.g., _"Response schema inferred from return type; actual response may differ"_)
 
 **Don't:**
 
@@ -207,16 +208,16 @@ Gets a user by their ID.
 
 **Parameters**
 
-| Name | In | Type | Required | Description |
-|------|----|------|----------|-------------|
-| `id` | path | integer | ✅ | The user's unique ID |
+| Name | In   | Type    | Required | Description          |
+| ---- | ---- | ------- | -------- | -------------------- |
+| `id` | path | integer | ✅       | The user's unique ID |
 
 **Responses**
 
-| Status | Description |
-|--------|-------------|
-| `200 OK` | Returns the user |
-| `404 Not Found` | User not found |
+| Status          | Description      |
+| --------------- | ---------------- |
+| `200 OK`        | Returns the user |
+| `404 Not Found` | User not found   |
 
 ```json
 {
@@ -252,11 +253,11 @@ Creates a new user.
 
 **Responses**
 
-| Status | Description |
-|--------|-------------|
-| `201 Created` | User created successfully |
-| `400 Bad Request` | Invalid request body |
-| `409 Conflict` | Email already exists |
+| Status            | Description               |
+| ----------------- | ------------------------- |
+| `201 Created`     | User created successfully |
+| `400 Bad Request` | Invalid request body      |
+| `409 Conflict`    | Email already exists      |
 
 ```json
 {

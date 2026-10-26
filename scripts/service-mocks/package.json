@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "kafkajs": "^2.2.4",
-    "oidc-provider": "^9.12.2"
+    "oidc-provider": "^9.13.0"
   },
   "devDependencies": {
     "@js-ak/kafkajs-mock": "^1.0.0",

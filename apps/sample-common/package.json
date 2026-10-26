@@ -20,15 +20,14 @@
     "test:e2e": "start-server-and-test start http://localhost:8080 test"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.134.0",
     "@db/rag": "file:../../db/rag",
     "@langchain/textsplitters": "^1.0.2",
-    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "express": "^5.3.0",
     "kafkajs": "^2.2.4",
     "knex": "^3.3.0",
     "mammoth": "^1.13.0",
-    "openai": "^7.34.0",
+    "openai": "^7.43.0",
     "pdf-parse": "^2.4.5",
     "pgvector": "^0.3.0"
   }

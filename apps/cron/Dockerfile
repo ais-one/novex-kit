@@ -1,5 +1,5 @@
 # Set Node Version - version 24
-ARG NODE_VERSION=24
+ARG NODE_VERSION=24.22.1
 ARG API_PORT=4000
 ARG APP_NAME=cron
 

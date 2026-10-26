@@ -7,20 +7,20 @@ Supported Cloud Platforms
 - AWS
 - DigitalOcean
 
-|Type|Alicloud|AWS|Digital Ocean|
-|----|--------|---|-------------|
-|IAM|RAM|IAM| ? |
-|Simplified container deployment|SAE|App Runner|app platform|
-|Serverless Function|Function Compute|Lambda|functions|
-|Object Storage|oss|s3|spaces|
-|Static Pages|oss|s3|app platform|
-|API Gateway|yes|yes|no|
-|Content delivery network|CloudFront|CDN / DCDN|spaces?|
-|Managed Redis|ElastiCache (Redis)|Tair / ApsaraDB for Redis| ? |
-|Managed relational DB|RDS (MySQL/PG)|RDS| ? |
-|Load Balancers|SLB|ALB / NLB / CLB| ? |
-|NAT Gateway for outgoing|NAT|NAT| ? |
-|Docker image registry|ACR|ECR|DOCR|
+| Type                            | Alicloud            | AWS                       | Digital Ocean |
+| ------------------------------- | ------------------- | ------------------------- | ------------- |
+| IAM                             | RAM                 | IAM                       | ?             |
+| Simplified container deployment | SAE                 | App Runner                | app platform  |
+| Serverless Function             | Function Compute    | Lambda                    | functions     |
+| Object Storage                  | oss                 | s3                        | spaces        |
+| Static Pages                    | oss                 | s3                        | app platform  |
+| API Gateway                     | yes                 | yes                       | no            |
+| Content delivery network        | CloudFront          | CDN / DCDN                | spaces?       |
+| Managed Redis                   | ElastiCache (Redis) | Tair / ApsaraDB for Redis | ?             |
+| Managed relational DB           | RDS (MySQL/PG)      | RDS                       | ?             |
+| Load Balancers                  | SLB                 | ALB / NLB / CLB           | ?             |
+| NAT Gateway for outgoing        | NAT                 | NAT                       | ?             |
+| Docker image registry           | ACR                 | ECR                       | DOCR          |
 
 ## Install CLI
 

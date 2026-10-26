@@ -68,19 +68,18 @@ npm run start
 
 4. Visit the following URLs
 
-| URL | Purpose |
-|---|---|
-| http://127.0.0.1:3000/health | Shared health check — mounted before auth, always unauthenticated |
-| http://127.0.0.1:3000/health/live | App-level liveness healthcheck (the app's own routes are mounted) |
-| http://127.0.0.1:3000 | Website served by Express with functional samples and demos |
-| http://127.0.0.1:3000/native/index.html | Unbundled Vue website sample |
+| URL                                     | Purpose                                                           |
+| --------------------------------------- | ----------------------------------------------------------------- |
+| http://127.0.0.1:3000/health            | Shared health check — mounted before auth, always unauthenticated |
+| http://127.0.0.1:3000/health/live       | App-level liveness healthcheck (the app's own routes are mounted) |
+| http://127.0.0.1:3000                   | Website served by Express with functional samples and demos       |
+| http://127.0.0.1:3000/native/index.html | Unbundled Vue website sample                                      |
 
 **Notes**
 
 - No bundler frontend
   - Imports only `vue` and `vue-router` in `index.html`, with plain JavaScript and no bundler.
   - Uses `export const statex = reactive({})` [instead of Vuex](https://pinia.vuejs.org/introduction.html#Why-should-I-use-Pinia).
-
 
 5. Running Using Docker/Podman
 
@@ -122,7 +121,7 @@ Run a more extensive sample, in `apps/sample-vue-full`, and view on `http://127.
 
 **Note For Login**
 
-Login using one of the following:  
+Login using one of the following:
 - Faked Login: [NOTE: API calls to protected Endpoints WILL FAIL!]:
   - Login: fake a user and login, no backend needed, just click button
   - Login Callback: fake a callback and set fake user and login, no backend needed, just click button
@@ -147,6 +146,7 @@ npx playwright test --browser=chromium
 # TODO: currently broken — the script points at apps/vite.config.js, which doesn't exist
 npm run dev:mocked # run locally with mock service worker (many other API calls will fail because they are not mocked)
 ```
+
 ---
 
 ## Create New Web or Vue Frontend
@@ -163,21 +163,21 @@ What each `common/*` folder is, its import name and whether it's an npm workspac
 
 Root `npm run` scripts (from the root `package.json`):
 
-| Script | What it does |
-|---|---|
-| `check` | Biome check, no writes — run before committing |
-| `check:write` | Biome check with `--write` — auto-fixes lint and format |
-| `ci:biome` | `biome ci .` — what the `format-lint` step of CI `Lint / Lint Check` runs |
-| `ci:lint-yml` | prettier check of `.github/workflows/*.yml` and `.github/actions/**/*.yml` (the `lint-github-yaml` step of CI `Lint / Lint Check`); fix with `npx prettier --write` on the same globs |
-| `ci:audit` | `npm audit --audit-level=high --omit=dev` (CI `Quality / NPM audit`) |
-| `ci:dup` | jscpd duplication check (CI `Quality / Duplication Check`) |
-| `test:workspaces` | `npm run test` in every workspace that has a `test` script |
-| `test:schemas` | zod schema export tests for a folder — `npm run test:schemas -- common/schemas` (run by the pre-commit hook) |
-| `test:e2e` | `start-server-and-test` against `http://localhost:8080` |
-| `prepare` | runs `.githooks/setup.sh` — automatic on `npm install`, re-run to re-apply the git hooks |
-| `clean:all` | **deletes every `node_modules` and every `package-lock.json`** in the repo — reinstall with `npm i` afterwards |
-| `git:hash` / `git:branch` | print the current short commit hash / branch |
-| `update-commit-hash` | write the short commit hash to a `commit-hash` file |
+| Script                    | What it does                                                                                                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `check`                   | Biome check, no writes — run before committing                                                                                                                                        |
+| `check:write`             | Biome check with `--write` — auto-fixes lint and format                                                                                                                               |
+| `ci:biome`                | `biome ci .` — what the `format-lint` step of CI `Lint / Lint Check` runs                                                                                                             |
+| `ci:lint-yml`             | prettier check of `.github/workflows/*.yml` and `.github/actions/**/*.yml` (the `lint-github-yaml` step of CI `Lint / Lint Check`); fix with `npx prettier --write` on the same globs |
+| `ci:audit`                | `npm audit --audit-level=high --omit=dev` (CI `Quality / NPM audit`)                                                                                                                  |
+| `ci:dup`                  | jscpd duplication check (CI `Quality / Duplication Check`)                                                                                                                            |
+| `test:workspaces`         | `npm run test` in every workspace that has a `test` script                                                                                                                            |
+| `test:schemas`            | zod schema export tests for a folder — `npm run test:schemas -- common/schemas` (run by the pre-commit hook)                                                                          |
+| `test:e2e`                | `start-server-and-test` against `http://localhost:8080`                                                                                                                               |
+| `prepare`                 | runs `.githooks/setup.sh` — automatic on `npm install`, re-run to re-apply the git hooks                                                                                              |
+| `clean:all`               | **deletes every `node_modules` and every `package-lock.json`** in the repo — reinstall with `npm i` afterwards                                                                        |
+| `git:hash` / `git:branch` | print the current short commit hash / branch                                                                                                                                          |
+| `update-commit-hash`      | write the short commit hash to a `commit-hash` file                                                                                                                                   |
 
 Workspace management:
 
@@ -197,7 +197,7 @@ OpenAPI docs are generated per package, not from the root: `cd common/schemas &&
 - When updating a package:
   - **IMPORTANT** before publish, bump version in each project using `npm version` command (see npm version --help for explanation)
   - npm publish --access public --workspace=<workspace>
-  
+
 **NOTE** Use `--access public` because the package is scoped and published on a free plan.
 
 Or publish using GitHub Actions with [.github/workflows/deploy-npm.yml](../.github/workflows/deploy-npm.yml). Add the npm auth token to GitHub Secrets first.
@@ -209,6 +209,7 @@ Or publish using GitHub Actions with [.github/workflows/deploy-npm.yml](../.gith
 2. Run the workflow [.github/workflows/deploy-bucket.yml](../.github/workflows/deploy-bucket.yml) and set the `env` input to `prd`.
 
 ### References
+
 - https://ideas.digitalocean.com/storage/p/deploy-static-sites-to-spacescdn
 - https://docs.digitalocean.com/products/spaces/reference/s3-compatibility
 - https://es-labs.sgp1-static.digitaloceanspaces.com

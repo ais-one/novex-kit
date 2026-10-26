@@ -33,7 +33,7 @@
 #   .
 
 # Set Node Version - version 24
-ARG NODE_VERSION=24
+ARG NODE_VERSION=24.22.1
 ARG API_PORT=3000
 ARG APP_NAME=sample-api
 
@@ -85,7 +85,7 @@ WORKDIR /app
 COPY --from=dopplerhq/cli:3 /bin/doppler /bin/doppler
 
 # USE command below to check if has CA certs so CLI can reach api.doppler.com over TLS
-# docker run --rm node:24-alpine ls -l /etc/ssl/certs/ca-certificates.crt
+# docker run --rm node:24.22.1-alpine ls -l /etc/ssl/certs/ca-certificates.crt
 # INCLUDE command below for Alpine images that don't have CA certs
 # RUN apk add --no-cache ca-certificates
 

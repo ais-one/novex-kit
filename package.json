@@ -37,6 +37,7 @@
     "ci:biome": "biome ci .",
     "ci:dup": "jscpd .",
     "ci:lint-yml": "prettier --check \".github/workflows/*.yml\" \".github/actions/**/*.yml\"",
+    "lint-yml:fix": "prettier --check --write \".github/workflows/*.yml\" \".github/actions/**/*.yml\"",
     "prepare": "sh .githooks/setup.sh || echo 'Can not set git hooks'",
     "test:schemas": "node scripts/test-schemas.ts",
     "test:workspaces": "npm run test --workspaces --if-present",
@@ -44,19 +45,19 @@
     "update-commit-hash": "git rev-parse --verify --short HEAD > commit-hash"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
+    "@biomejs/biome": "2.6.3",
     "@playwright/test": "^1.64.1",
-    "@redocly/cli": "^2.64.0",
-    "@secretlint/secretlint-rule-preset-recommend": "13.0.7",
+    "@redocly/cli": "^2.71.0",
+    "@secretlint/secretlint-rule-preset-recommend": "13.1.0",
     "@types/express": "^5.0.6",
     "@vitejs/plugin-vue": "^6.0.10",
-    "jscpd": "5.4.1",
+    "jscpd": "5.4.2",
     "msw": "^3.0.3",
     "prettier": "3.9.10",
-    "secretlint": "13.0.7",
+    "secretlint": "13.1.0",
     "start-server-and-test": "^3.0.13",
     "typescript": "^7.0.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.5"
   },
   "overrides": {
     "@openfga/sdk": {

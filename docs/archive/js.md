@@ -1,33 +1,34 @@
 ## JS Concepts
 
 ### Closures
+
 ```js
 const first = () => {
-  const greet = 'Hi'
+  const greet = 'Hi';
   const second = () => {
-    const name = 'Aa'
-    alert(greet)
-  }
-  return second
-}
-const func = first()
-func() // alert popup Hi
+    const name = 'Aa';
+    alert(greet);
+  };
+  return second;
+};
+const func = first();
+func(); // alert popup Hi
 ```
 
 ### Currying
 
 ```js
-const curriedMultiply = (a) => (b) => a * b
-curriedMultiply(3)(4)
+const curriedMultiply = a => b => a * b;
+curriedMultiply(3)(4);
 ```
 
 ### Compose
 
 ```js
-const compose = (f,g) => (a) => f(g(a))
-const inc = num => num + 1
-const x2 = num => num * 2
-compose(inc, x2)(5) // return value should be (5 * 2) + 1 = 11 
+const compose = (f, g) => a => f(g(a));
+const inc = num => num + 1;
+const x2 = num => num * 2;
+compose(inc, x2)(5); // return value should be (5 * 2) + 1 = 11
 ```
 
 ### Truthy, falsy & typeof
@@ -35,14 +36,14 @@ compose(inc, x2)(5) // return value should be (5 * 2) + 1 = 11
 - Typeof
 
 ```js
-typeof null === 'object'
-typeof [] === 'object'
-typeof {} === 'object'
-typeof '' === 'string'
-typeof function () {} === 'function'
-typeof 1 === 'number'
-typeof true === 'boolean'
-typeof undefined === 'undefined'
+typeof null === 'object';
+typeof [] === 'object';
+typeof {} === 'object';
+typeof '' === 'string';
+typeof function () {} === 'function';
+typeof 1 === 'number';
+typeof true === 'boolean';
+typeof undefined === 'undefined';
 ```
 
 - Falsy
@@ -84,7 +85,6 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects
 
 ### call / apply / bind...
 
-
 #### Function.prototype.call()
 
 The method Call invokes the function and allows you to pass in arguments one by one using commas.
@@ -94,7 +94,7 @@ let customer1 = { name: 'Leo', email: 'leo@gmail.com' };
 let customer2 = { name: 'Nat', email: 'nat@hotmail.com' };
 
 function greeting(text) {
-    console.log(`${text} ${this.name}`);
+  console.log(`${text} ${this.name}`);
 }
 
 greeting.call(customer1, 'Hello'); // Hello Leo
@@ -109,7 +109,7 @@ The method Apply invokes the function and allows you to pass in arguments as an 
 let customer1 = { name: 'Leo', email: 'leo@gmail.com' };
 let customer2 = { name: 'Nat', email: 'nat@hotmail.com' };
 function greeting(text, text2) {
-   console.log(`${text} ${this.name}, ${text2}`);
+  console.log(`${text} ${this.name}, ${text2}`);
 }
 greeting.apply(customer1, ['Hello', 'How are you?']); // output Hello Leo, How are you?
 greeting.apply(customer2, ['Hello', 'How are you?']); // output Hello Natm How are you?
@@ -123,7 +123,7 @@ The Bind method returns a new function, allowing you to pass in a this array and
 let customer1 = { name: 'Leo', email: 'leo@gmail.com' };
 let customer2 = { name: 'Nat', email: 'nat@hotmail.com' };
 function greeting(text) {
-   console.log(`${text} ${this.name}`);
+  console.log(`${text} ${this.name}`);
 }
 let helloLeo = greeting.bind(customer1);
 let helloNat = greeting.bind(customer2);
@@ -148,9 +148,9 @@ https://levelup.gitconnected.com/how-does-hoisting-work-in-javascript-es6-b0e067
 ### Global Scope
 
 ```js
-let global = 'I see global.'
-function scopeFunction(){
-    console.log(global);
+let global = 'I see global.';
+function scopeFunction() {
+  console.log(global);
 }
 
 scopeFunction(); // outputs 'I see global.'
@@ -159,9 +159,9 @@ scopeFunction(); // outputs 'I see global.'
 ### Local Scope
 
 ```js
-function myFunction(){
-    var localFunction = 'I see local';
-    console.log(localFunction); 
+function myFunction() {
+  var localFunction = 'I see local';
+  console.log(localFunction);
 }
 
 myFunction(); // outputs 'I see functional scope'
@@ -173,32 +173,31 @@ console.log(localFunction); // Outputs an error 'localFunction is not defined'
 
 ```js
 var a = 'hi';
-function myFunction(){
-    console.log(a); // undefined - var/let/const a from below is hoisted up here...
-    var a = 'hello';
-    console.log(a); // 'hello'
+function myFunction() {
+  console.log(a); // undefined - var/let/const a from below is hoisted up here...
+  var a = 'hello';
+  console.log(a); // 'hello'
 }
 myFunction();
 ```
 
 ```js
 var a = 'hi';
-function myFunction(){
-    var a; // the a in the local scope is hoisted here and a is 'undefined
-    console.log(a); // outputs 'undefined
-    a = 'hello';
-    console.log(a); // outputs 'hello'
+function myFunction() {
+  var a; // the a in the local scope is hoisted here and a is 'undefined
+  console.log(a); // outputs 'undefined
+  a = 'hello';
+  console.log(a); // outputs 'hello'
 }
 myFunction();
 console.log(a); // outputs 'hi'
 
-
 var a = 'hi';
-function myFunction(){
-    var a;
-    console.log('output 1', a);
-    a = 'hello';
-    console.log('output 2', a);
+function myFunction() {
+  var a;
+  console.log('output 1', a);
+  a = 'hello';
+  console.log('output 2', a);
 }
 myFunction();
 console.log('output 3', a);
@@ -207,22 +206,22 @@ console.log('output 3', a);
 Javascript will hoist var, const, and let variable declarations to the top of its scope. While this is true, const and let will not behave the same as var. var will hoist a declaration and initialize the variable as undefined if the definition is not provided. However, const and let will hoist the variable declaration and not initialize the variable if the definition is not provided
 
 ```js
-function myFunction(){
-    a;
-    console.log(a);
-    let a = 'hello'; // if var instead of let, we will reach here 
+function myFunction() {
+  a;
+  console.log(a);
+  let a = 'hello'; // if var instead of let, we will reach here
 }
-myFunction(); 
+myFunction();
 ```
 
 ```js
-function myFunction(){
-    let a; // a's declaration is hoisted here, but remains uninitialized
-    a; // Will get a ReferenceError: Cannot access 'a' before initialization
-    console.log(a);
-    a = 'hello'; // everything above this line of code is referenced as temporal dead zone
+function myFunction() {
+  let a; // a's declaration is hoisted here, but remains uninitialized
+  a; // Will get a ReferenceError: Cannot access 'a' before initialization
+  console.log(a);
+  a = 'hello'; // everything above this line of code is referenced as temporal dead zone
 }
-myFunction(); 
+myFunction();
 ```
 
 # Classes vs Factories
@@ -258,22 +257,22 @@ $('button').click(car.drive1) // driving 120 mph!
 ## Factory
 
 ```js
-const Car = (ms) => {
-  const maxSpeed = ms
-  
+const Car = ms => {
+  const maxSpeed = ms;
+
   return {
-    drive: () => console.log(`driving ${maxSpeed} mph!`), // Creates a copy of each method in EVERY SINGLE instence -> Memory use! 
-  } 
-}
+    drive: () => console.log(`driving ${maxSpeed} mph!`), // Creates a copy of each method in EVERY SINGLE instence -> Memory use!
+  };
+};
 ```
 
 ```js
-function greeterFactory(greeting = "Hello") {
+function greeterFactory(greeting = 'Hello') {
   return {
-    greet: () => console.log(`${greeting}!`)
-  }
+    greet: () => console.log(`${greeting}!`),
+  };
 }
-export default greeterFactory
+export default greeterFactory;
 ```
 
 # Asynchronous
@@ -290,12 +289,13 @@ async/await
 
 - Number.isNaN vs isNaN
 - destructuring
-    - const { data: newData } = await axios.get(...) // set a new name also
+  - const { data: newData } = await axios.get(...) // set a new name also
     - function calculate({operands = [1, 2], type = 'addition'} = {}) {
 
 ## ES2016
+
 - Array.prototype.includes()
-- exponentiation operator **
+- exponentiation operator \*\*
 
 ## ES2017
 
@@ -318,6 +318,7 @@ async/await
   - https://github.com/tc39/ecmascript_sharedmem/blob/master/TUTORIAL.md
 
 ## ES2018
+
 - String.raw
   - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/raw
 - s dotAll flag for regular expressions
@@ -350,7 +351,7 @@ async/await
 - Symbol.Description
 - Optional Catch BInding
   - try {} catch {}
-- JSON ⊂ ECMAScript 
+- JSON ⊂ ECMAScript
   - The unescaped line separator U+2028 and paragraph separator U+2029 characters were not accepted in the pre-ES10 era.
 - Well-Formed JSON.stringify()
   - JSON.stringify() may return characters between U+D800 and U+DFFF as values for which there are no equivalent UTF-8 characters. However, JSON format requires UTF-8 encoding. The proposed solution is to represent unpaired surrogate code points as JSON escape sequences rather than returning them as single UTF-16 code units.
@@ -382,7 +383,7 @@ async/await
 - Logical Assignment Operators (&&= ||= ??=)
   - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators
 - Numeric Separators (1_000)
-  - https://github.com/tc39/proposal-numeric-separator 
+  - https://github.com/tc39/proposal-numeric-separator
 - Promise.any & AggregateError
   - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/any
   - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AggregateError
@@ -407,16 +408,17 @@ Math.floor(Math.random() * 100) + 1 // 1 - 100
 Math.floor(Math.random() * 101) // 0 - 100
 
 - merge objects
-const object3 = {...object1, ...object2 } // If both objects have a property with the same name, then the second object property overwrites the first.
-Object.assign(tgt, ...srcs) // shallow copy of properties, if property collision src overwrite tgt
-lodash.cloneDeep, lodash.merge
+  const object3 = {...object1, ...object2 } // If both objects have a property with the same name, then the second object property overwrites the first.
+  Object.assign(tgt, ...srcs) // shallow copy of properties, if property collision src overwrite tgt
+  lodash.cloneDeep, lodash.merge
 
 
 https://javascript.plainenglish.io/5-html-tricks-nobody-is-talking-about-a0480104fe19
 - lazy loading
-```html
+````html
 <img src="image.png" loading="lazy" alt="…" width="200" height="200">```
-```
+````
+
 - picture tag
 ```html
 <picture>
@@ -425,10 +427,12 @@ https://javascript.plainenglish.io/5-html-tricks-nobody-is-talking-about-a048010
   <img src="high_flag.jpg" alt="Flags" style="width:auto;">
 </picture>
 ```
+
 - base url
 ```html
 <head><base href="https://www.twitter.com/" target="_blank"></head>
 ```
+
 - redirect after x seconds
 ```html
 <meta http-equiv="refresh" content="4; URL='https://google.com' />
@@ -437,5 +441,5 @@ https://javascript.plainenglish.io/5-html-tricks-nobody-is-talking-about-a048010
 
 https://medium.com/@rivoltafilippo/javascript-merge-arrays-without-duplicates-3fbd8f4881be
 ```js
-const result = [...new Set([...firstArr, ...secondArr])]
+const result = [...new Set([...firstArr, ...secondArr])];
 ```

@@ -17,15 +17,15 @@ cloudflare/
 
 **How it replaces AliCloud DCDN and AWS CloudFront**
 
-| Feature | DCDN / CloudFront | Cloudflare |
-|---|---|---|
-| CDN | Edge caching via ruleset | Edge caching via Cache Rules |
-| SSL | ACM cert (AWS) / CAS cert (Ali) | Free auto-issued cert, zero config |
-| WAF | WAFv2 / WAF v3 | Custom rules + Managed CRS + Bot Management |
-| Security headers | Response headers policy | Transform Rules |
-| SPA fallback | Custom error response config | Cloudflare Worker |
-| Cache purge | CLI / API | API call in CI/CD (`purge_cache`) |
-| Origin auth | OAC (AWS) / signed URL | Keep origin private; Cloudflare IPs allowlist on ALB |
+| Feature          | DCDN / CloudFront               | Cloudflare                                           |
+| ---------------- | ------------------------------- | ---------------------------------------------------- |
+| CDN              | Edge caching via ruleset        | Edge caching via Cache Rules                         |
+| SSL              | ACM cert (AWS) / CAS cert (Ali) | Free auto-issued cert, zero config                   |
+| WAF              | WAFv2 / WAF v3                  | Custom rules + Managed CRS + Bot Management          |
+| Security headers | Response headers policy         | Transform Rules                                      |
+| SPA fallback     | Custom error response config    | Cloudflare Worker                                    |
+| Cache purge      | CLI / API                       | API call in CI/CD (`purge_cache`)                    |
+| Origin auth      | OAC (AWS) / signed URL          | Keep origin private; Cloudflare IPs allowlist on ALB |
 
 **Key advantages of the Cloudflare approach**
 
