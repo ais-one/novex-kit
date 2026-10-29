@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.6.3/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -113,15 +113,6 @@
       "includes": ["db/README.md", "docs/git.md"],
       "formatter": {
         "enabled": false
-      }
-    },
-    {
-      "includes": ["apps/sample-api/**"],
-      "linter": {
-        "rules": {
-          "suspicious": { "noConsole": "off" },
-          "security": { "noGlobalEval": "error" }
-        }
       }
     }
   ]

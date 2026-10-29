@@ -1,0 +1,19 @@
+{
+  "threshold": 8,
+  "reporters": ["console"],
+  "gitignore": true,
+  "minLines": 10,
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/*.test.ts",
+    "**/*.md",
+    "**/package-lock.json",
+    "dev.db/**",
+    "migrations/**",
+    "*/migrations/**",
+    "*/drizzle/**",
+    "*/crud/*/generated/**",
+    "*/openapi/**"
+  ]
+}

@@ -7,7 +7,8 @@
 #   3. Semgrep CE        - SAST, blocking (private/internal repos only)
 #   3B. CodeQL           - SAST via code scanning (public repos only; blocks merges
 #                          only with a "Require code scanning results" ruleset)
-#   4. jscpd             - copy-paste/duplication detection (OPTIONAL - see toggle below)
+#   4. jscpd             - copy-paste/duplication detection, run as 3 checks: root, apps/, db/
+#                          (OPTIONAL - see toggle below)
 #   (Test coverage / Codecov lives in ci-tests.yml, with the unit tests it runs.)
 #
 # To leave out jscpd entirely: delete the `duplication` job below, and remove
@@ -245,13 +246,26 @@ jobs:
       - name: Set up workspace
         uses: ./.github/actions/setup-node-npm-install
 
-      - name: Run jscpd
-        run: |
-          npm run ci:dup -- --reporters "console,github"
-        # jscpd is pinned in root devDependencies (bumped by Dependabot).
-        # Threshold and ignore list live in .jscpd.json at the repo root (shared with local runs).
-        # threshold 5 fails the build if duplication exceeds 5%.
-        # Tune per-repo; migrations/generated code often need higher tolerance.
+      # jscpd is pinned in root devDependencies (bumped by Dependabot).
+      # Three separate checks, each with its own config (shared with local runs):
+      #   root - .jscpd.json       (everything except apps/ and db/)
+      #   apps - apps/.jscpd.json  (ignore paths are relative to apps/)
+      #   db   - db/.jscpd.json    (ignore paths are relative to db/)
+      # jscpd reads only one config per run - no merging or `extends` - so each
+      # config is complete on its own. `threshold` fails a check if duplication
+      # in that group exceeds it. Duplicates across groups are not detected.
+      # Tune per-repo; migrations/generated code often need higher tolerance.
+      # `if: !cancelled()` runs every check even if an earlier one fails.
+      - name: Run jscpd (root)
+        run: npm run ci:dup:root -- --reporters "console,github"
+
+      - name: Run jscpd (apps)
+        if: ${{ !cancelled() }}
+        run: npm run ci:dup:apps -- --reporters "console,github"
+
+      - name: Run jscpd (db)
+        if: ${{ !cancelled() }}
+        run: npm run ci:dup:db -- --reporters "console,github"
   # ---------------------------------------------------------------------
   # Summary gate - use this single job as your one required branch-protection check
   # ---------------------------------------------------------------------

@@ -35,7 +35,10 @@
     "check:write": "biome check --write .",
     "ci:audit": "npm audit --audit-level=high --omit=dev",
     "ci:biome": "biome ci .",
-    "ci:dup": "jscpd .",
+    "ci:dup": "npm run ci:dup:root; r=$?; npm run ci:dup:apps || r=1; npm run ci:dup:db || r=1; exit $r",
+    "ci:dup:root": "jscpd .",
+    "ci:dup:apps": "jscpd -c apps/.jscpd.json apps",
+    "ci:dup:db": "jscpd -c db/.jscpd.json db",
     "ci:lint-yml": "prettier --check \".github/workflows/*.yml\" \".github/actions/**/*.yml\"",
     "lint-yml:fix": "prettier --check --write \".github/workflows/*.yml\" \".github/actions/**/*.yml\"",
     "prepare": "sh .githooks/setup.sh || echo 'Can not set git hooks'",
@@ -45,7 +48,7 @@
     "update-commit-hash": "git rev-parse --verify --short HEAD > commit-hash"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.3",
+    "@biomejs/biome": "2.6.4",
     "@playwright/test": "^1.64.1",
     "@redocly/cli": "^2.71.0",
     "@secretlint/secretlint-rule-preset-recommend": "13.1.0",
