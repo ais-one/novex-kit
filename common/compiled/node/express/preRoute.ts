@@ -14,6 +14,41 @@ import { loggerMiddleware } from '../logger.ts';
 import * as services from '../services/index.ts';
 import { requestIdMiddleware } from './requestId.ts';
 
+type OriginMatcher = ((origin: string) => boolean) & { source: string };
+
+const escapeRe = (s: string) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Parse CORS origins from a comma-separated string, an array, or an array whose items are
+ * themselves comma-separated. Supports "*" and single-label wildcards like https://*.example.com
+ */
+function parseOrigins(raw: unknown): OriginMatcher[] {
+  const items = (Array.isArray(raw) ? raw : [raw])
+    .flatMap((item) => String(item ?? '').split(','))
+    .map((o) => o.trim())
+    .filter(Boolean)
+    // drop unresolved placeholders like "${CORS_ORIGIN_X}" left by the config loader
+    .filter((o) => !/^\$\{.*\}$/.test(o));
+
+  if (items.length === 0) {
+    console.warn('[cors] no allowed origins configured; all cross-origin requests will be rejected');
+  }
+
+  return [...new Set(items)].map((entry) => {
+    let fn: (origin: string) => boolean;
+    if (entry === '*') {
+      fn = () => true;
+    } else if (!entry.includes('*')) {
+      fn = (o) => o === entry;
+    } else {
+      // https://*.example.com -> matches exactly one subdomain label
+      const re = new RegExp(`^${escapeRe(entry).replace(/\\\*/g, '[^.]+')}$`);
+      fn = (o) => re.test(o);
+    }
+    return Object.assign(fn, { source: entry });
+  });
+}
+
 /**
  * Bootstrap the Express app: registers security, CORS, body parsing middleware and starts services.
  * @returns The configured Express app, the express module, and the underlying HTTP(S) server.
@@ -91,12 +126,37 @@ const preRoute = (opts: { skipBodyParsing?: boolean } = {}) => {
 
   // -------- CORS --------
   // Set CORS headers so client is able to communicate with this server
-  // Access-Control-Allow-Origin=*
-  // Access-Control-Allow-Methods=GET,POST,PUT,PATCH,DELETE,OPTIONS
-  // Access-Control-Allow-Headers=Content-Type, Authorization
+  // `origin` in CORS_OPTIONS may be a comma-separated string, an array, or an array of
+  // comma-separated strings. Wildcards like https://*.example.com are supported.
   try {
     const corsOptions = globalThis.__config?.CORS_OPTIONS;
-    app.use(corsOptions ? cors(corsOptions) : cors()); // default { origin: '*' }
+
+    if (!corsOptions) {
+      app.use(cors()); // default { origin: '*' }
+    } else if (corsOptions.origin === undefined) {
+      app.use(cors(corsOptions)); // no origin configured: let cors apply its default
+    } else {
+      const allowed = parseOrigins(corsOptions.origin); // runs once at startup, errors caught below
+      console.info(
+        '[cors] allowed origins:',
+        allowed.map((m) => m.source),
+      );
+
+      app.use(
+        cors({
+          ...corsOptions,
+          origin(requestOrigin, callback) {
+            // No Origin header: curl, health checks, server-to-server
+            if (!requestOrigin) return callback(null, true);
+            // Disallowed origins get no CORS headers (browser blocks it) instead of a 500
+            return callback(
+              null,
+              allowed.some((match) => match(requestOrigin)),
+            );
+          },
+        }),
+      );
+    }
   } catch (e) {
     // duplicate logging — the rethrown error is logged by shutdown.ts's uncaughtException handler (or Node's crash output)
     // logger.error('[cors options error]', String(e));
