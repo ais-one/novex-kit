@@ -19,6 +19,6 @@
   "license": "ISC",
   "dependencies": {
     "@common/node": "file:../../common/compiled/node",
-    "pgvector": "^0.3.0"
+    "pgvector": "^0.3.1"
   }
 }

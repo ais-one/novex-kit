@@ -35,7 +35,7 @@
     "@common/node": "file:../../common/compiled/node",
     "@db/audit": "file:../../db/audit",
     "@db/sample": "file:../../db/sample",
-    "fido2-lib": "^4.0.0",
+    "fido2-lib": "^4.0.1",
     "pdfkit": "^0.20.2"
   }
 }

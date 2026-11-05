@@ -3,6 +3,7 @@
 ## Services & Platforms
 
 Supported Cloud Platforms
+
 - Aliyun
 - AWS
 - DigitalOcean
@@ -64,6 +65,7 @@ TODO
 **Notes:**
 
 How to check if app is updated
+
 - Need to check if service deployed properly
 - Clean up
   - service revisions

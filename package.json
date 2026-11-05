@@ -48,9 +48,9 @@
     "update-commit-hash": "git rev-parse --verify --short HEAD > commit-hash"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.4",
+    "@biomejs/biome": "2.6.5",
     "@playwright/test": "^1.64.1",
-    "@redocly/cli": "^2.71.0",
+    "@redocly/cli": "^2.75.0",
     "@secretlint/secretlint-rule-preset-recommend": "13.1.0",
     "@types/express": "^5.0.6",
     "@vitejs/plugin-vue": "^6.0.10",
@@ -60,7 +60,7 @@
     "secretlint": "13.1.0",
     "start-server-and-test": "^3.0.13",
     "typescript": "^7.0.2",
-    "vite": "^8.3.5"
+    "vite": "^8.3.6"
   },
   "overrides": {
     "@openfga/sdk": {

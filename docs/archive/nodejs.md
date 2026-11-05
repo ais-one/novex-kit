@@ -184,9 +184,6 @@ You need to create `tag` on the github remote also by creating a new release or 
 
 - https://semaphoreci.medium.com/best-practices-for-securing-node-js-applications-in-production-d24b7c4981d
 
-
-
-
 npm version patch
 
 [package.json](https://docs.npmjs.com/cli/v7/configuring-npm/package-json)
@@ -221,7 +218,6 @@ npm prejects with no dependencies, for testing
 - zero-fill
 - padder
 - smiley
-
 
 ## Installing & Updating Dependencies
 

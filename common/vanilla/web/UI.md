@@ -3,9 +3,11 @@ bootstrap
 material UI - muicss
 
 DO NOT USE
+
 - material-components-web, semantic ui
 
 input
+
 - text (with regex)
 - number
 - date
@@ -33,13 +35,11 @@ Extended input
   - a[href]
   - button
 
-
 ## Input
 
 label: <label> innerText, additional classes
 input: <input> attrs: type, pattern, placeholder, additional classes
 helper: <p>
-
 
 {
 tag:

@@ -38,7 +38,6 @@ Little is lost: `pull_request` checks already run against a test merge of the he
 
 **Sole maintainer:** GitHub never lets a PR's author approve it, so set required approvals to `0` and turn off **Require review from Code Owners** (if you're the only code owner) — every other rule and required check stays enforced. Switch back to 1 approval + Code Owners once there's a second reviewer. Don't add yourself to the bypass list instead: bypass skips _every_ rule in the ruleset, including required checks.
 
-
 #### Ruleset - protected-branches-main
 
 - Enforcement status = Active
@@ -67,7 +66,6 @@ Little is lost: `pull_request` checks already run against a test merge of the he
   - Require code scanning results
     - CodeQL
     - on public repo, `sast-public-repo-codeql` job itself does not fail on findings, so without this rule CodeQL is report-only.
-
 
 #### Ruleset - protected-tags
 
@@ -112,6 +110,7 @@ Advanced Security [Configuration Page](https://github.com/settings/security_anal
 - Leave CodeQL **Default setup** off — code scanning is done by workflow (GitHub rejects workflow CodeQL uploads while default setup is on).
 
 **Workflow ([ci-quality.yml](../.github/workflows/ci-quality.yml))**
+
 - **Semgrep** (`sast-private-repo-semgrep`, private/internal repos only) — static analysis on PRs into `rel/[0-9]*.[0-9]*`. Fails the job on findings, so it blocks `Quality Summary`. The SARIF report is kept as a build artifact, not uploaded to the Code scanning tab.
 - **CodeQL** (`sast-public-repo-codeql`, public repos only) — scans `javascript-typescript` and `actions` (workflow files) with the `security-extended` query suite, `build-mode: none`.
   - Rule exclusions live in [.github/codeql/codeql-config.yml](../.github/codeql/codeql-config.yml), passed to the init step as `config-file:`. Currently excluded: `js/missing-rate-limiting` (rate limiting is expected at the gateway/load balancer — confirm for your deployment) and `js/missing-token-validation` (CSRF — mitigated only by the auth cookies' `sameSite: "lax"`, so never set `COOKIE_OPTS.sameSite` to `"none"` and never change state on a GET route; add a CSRF check before using cookie auth across sites).
@@ -249,10 +248,12 @@ Downstream repos created from this template pull in template updates with the [u
 Refer to the workflow script to understand what it does.
 
 Workflow Inputs are
+
 - `upstream_branch` — upstream branch to sync from (default `main`).
 - `ref` — downstream branch to base on to create `chore/sync-upstream` branch.
 
 Repo Secret required by the Workflow
+
 - `SYNC_TOKEN` — a PAT with `repo` + `workflow` scopes (fine-grained: Contents and Workflows read/write; no pull-request permission needed). The built-in `GITHUB_TOKEN` can't write `.github/workflows/` files. Setup steps are in the [workflow's](../.github/workflows/update-template.yml) header comment; secret is listed in [Repo Secrets And Variables](#repo-secrets-and-variables).
 
 If upstream has no changes, the run ends with success message, else `chore/sync-upstream` branch based on the input `ref` branch is created. Use PR to merge `chore/sync-upstream` to `ref` (e.g. `rel/1.0`) branch

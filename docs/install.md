@@ -122,6 +122,7 @@ Run a more extensive sample, in `apps/sample-vue-full`, and view on `http://127.
 **Note For Login**
 
 Login using one of the following:
+
 - Faked Login: [NOTE: API calls to protected Endpoints WILL FAIL!]:
   - Login: fake a user and login, no backend needed, just click button
   - Login Callback: fake a callback and set fake user and login, no backend needed, just click button
@@ -204,7 +205,6 @@ OpenAPI docs are generated per package, not from the root: `cd common/schemas &&
 **NOTE** Use `--access public` because the package is scoped and published on a free plan.
 
 Or publish using GitHub Actions with [.github/workflows/deploy-npm.yml](../.github/workflows/deploy-npm.yml). Add the npm auth token to GitHub Secrets first.
-
 
 ### Sample Deployment
 

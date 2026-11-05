@@ -16,7 +16,6 @@ Or edit .bashrc or .zshrc
 alias python='python3'
 ```
 
-
 ## pyenv for version and environment management
 
 Use pyenv for managing python versions

@@ -100,7 +100,6 @@ https://fetch-progress.anthum.com/fetch-enhanced/
 Avoid Like The Plugue
 https://github.com/benawad/node-graphql-benchmarks
 
-
 # Web Performance
 
 1. use HTTP2

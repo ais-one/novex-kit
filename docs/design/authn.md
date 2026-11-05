@@ -55,12 +55,12 @@ saml-idp \
 ```
 
 The IdP will be available at:
+
 | Endpoint                 | URL                              |
 | ------------------------ | -------------------------------- |
 | SSO Login                | `http://127.0.0.1:7000`          |
 | Metadata                 | `http://127.0.0.1:7000/metadata` |
 | IdP Login (SP-initiated) | `http://127.0.0.1:7000/saml/sso` |
-
 
 ## Configure Your SAML SP (Backend)
 

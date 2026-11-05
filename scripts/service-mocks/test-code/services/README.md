@@ -17,13 +17,14 @@ TCP_CLIENT_LIMIT=100
 TCP_APPNAME is the filename to be used
 
 TCP_STREAMING_MODE
+
 - event mode closes client after data is received
 - streaming mode keeps client open, it can be configured to handle a limited number of clients
 
 TCP_CLIENT_LIMIT
+
 - limits number of TCP connections
 - 0 means unlimited connections
-
 
 Run using the following command
 
@@ -36,6 +37,7 @@ $ node tcp_server.js
 ### Scaled Websockets
 
 `scaled-ws.js` is use to demonstrate horizontal scaling of websockets using Redis PubSub, it also includes
+
 - upgrade event and authentication
 - setting an id
 
@@ -87,12 +89,9 @@ pm2 start ftpd.js --time --output logs/ftpd-log.txt --error logs/ftpd-err.txt --
 pm2 stop ftpd
 pm2 delete ftpd
 
-
 device id,time from startup (s) 2 dec pl,gps time hhmmssss utc,satelites,lat,lon,kmh,roll,pitch,yaw,long accel g,lat accel g,rpm,gear ratio,gear pos,clutch,front brake,rear brake,engine brake,foot r weight,foot l weight, checksum
 162,727.75,11243960,6,1.3523782,103.7447128,0.00,0.00,0.00,0.00,0.00,0.00,0.00,,0,1,1,1,0,18.90,18.90,4964
 162,727.85,11243970,6,1.3523782,103.7447128,0.00,0.00,0.00,0.00,0.00,0.00,0.00,,0,1,1,1,0,18.90,18.90,4966
-
-
 
 const [serial, Timestamp, Time, GPS_Time, Sat, Latitude, Longitude, Speed, Roll, Pitch, Z_Rate, Accx, Accy, RPM, Gear_Ratio, Calc_gear, Clutch, Front_Brake, Rear_Brake, Engine_Brake, Foot_Right, Foot_Left, checksum] = data_str.split(',')
 
@@ -127,10 +126,6 @@ UNIQUE INDEX `Serial` (`Serial`, `Timestamp`) USING BTREE
 COLLATE='utf8mb4_0900_ai_ci'
 ENGINE=InnoDB
 ;
-
-
-
-
 
 ## Useful scripts for testing out stuff
 

@@ -63,11 +63,9 @@ Format of Commit Message
 
 https://wiki.openstack.org/wiki/GitCommitMessages
 
-
 ## Sparse Checkout
 
 https://www.baeldung.com/ops/git-clone-subdirectory
-
 
 ```bash
 git clone --depth=1 https://github.com/<org/user>/<repo>.git

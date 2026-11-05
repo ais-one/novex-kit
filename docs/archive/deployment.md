@@ -63,7 +63,6 @@ If you want to uninstall - just undo the above steps.
 
 Note: You can also point JAVA_HOME to the folder of your JDK installations and then set the PATH variable to %JAVA_HOME%\bin. So when you want to change the JDK you change only the JAVA_HOME variable and leave PATH as it is.
 
-
 # Deployment Sample
 
 The following are the environments
@@ -396,7 +395,6 @@ sudo fail2ban-client set sshd unbanip IP_ADDRESS
 ## Installation - NodeJS
 
 use nvm
-
 
 # Docker / Podman
 

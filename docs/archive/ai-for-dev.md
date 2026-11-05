@@ -5,17 +5,16 @@
 - file uploads, csv, esm, fetch, env - https://claude.ai/chat/4314f209-8d34-42a4-90d4-e3ef19b7ceb8
 - github actions, monorepo, commonjs or modeuls - https://claude.ai/chat/74af690f-45ab-44ff-b0f8-b60b0d21874d
 
-
 ## VS Code
 
 Install Copilot API Docs Generator skill
 
 https://github.com/pnp/copilot-prompts/tree/main/samples/skills/api-docs-generator
 
-
 ### Generate OpenAPI
 
 Steps:
+
 1. open file, right click on edit window for context menu
 2. select Generate Code -> Generate Docs
 3. USE PROMPT: Generate OpenAPI documentation for this file. Output documentation in YAML format
@@ -54,7 +53,6 @@ Open the file containing the API code.
 (Optional) Select the specific code (function or method) you want to test.
 Right-click in the editor and select Copilot > Generate Tests (or a similar option depending on your IDE setup).
 
-
 ### Fix Code Prompt Sample
 
 https://github.com/pnp/copilot-prompts/tree/main/samples/prompts/github-copilot-fix-code
@@ -66,7 +64,6 @@ https://code.visualstudio.com/docs/copilot/copilot-smart-actions
 ### training
 
 https://learn.microsoft.com/en-us/training/modules/generate-documentation-using-github-copilot-tools/
-
 
 ### TODO - generate JSDOC for all function
 
