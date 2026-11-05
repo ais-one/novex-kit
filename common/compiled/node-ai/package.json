@@ -1,0 +1,16 @@
+{
+  "name": "@common/node-ai",
+  "description": "AI libraries (LLM, MCP, embeddings, document parsing, pgvector) shared by apps/* and db/* workspaces",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "@langchain/textsplitters": "^1.0.2",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "mammoth": "^1.13.0",
+    "openai": "^7.51.0",
+    "pdf-parse": "^2.4.5",
+    "pgvector": "^0.3.1"
+  }
+}

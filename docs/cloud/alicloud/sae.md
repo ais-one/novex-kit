@@ -329,7 +329,6 @@ DeployApplication ← every release, pass new ImageUrl tag
 ↓
 DescribeChangeOrder ← poll until Status=2 (success) or 3 (fail)
 
-
 ### SAE Management
 
 ```bash

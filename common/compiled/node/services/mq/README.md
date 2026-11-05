@@ -40,7 +40,6 @@ Local development: run the mocked broker in `scripts/service-mocks` (`@js-ak/kaf
 2. Add its config type to `types.ts` (e.g. `SqsConfig`), next to `KafkaConfig`.
 3. In a consuming app, swap `import MqKafka from '@common/node/services/mq/kafka'` for `import MqSqs from '@common/node/services/mq/sqs'`, and point its config block at the new shape. Nothing that calls `.publish()`/`.subscribe()` needs to change — it only ever depended on `QueueDriver`.
 
-
 Need to improve on this...
 Need more research and study
 

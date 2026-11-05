@@ -1,6 +1,7 @@
 ## Read Me FIRST!
 
 **Important notes** - **TO UPDATE!**
+
 - DO NOT develop custom code using `apps/sample-vue-full` or `apps/sample-vue-minimal`. Rename it or copy it to another folder name
 - do note any conflicts to resolve when merging from upstream
 
@@ -19,6 +20,7 @@ npm run dev # run 1st sample web application in <project root>/apps/sample-vue-f
 **Note For Login**
 
 Login using one of the following:
+
 - Faked Login: [NOTE: API calls to protected Endpoints WILL FAIL!]:
   - Login: fake a user and login, no backend needed, just click button
   - Login Callback: fake a callback and set fake user and login, no backend needed, just click button
@@ -52,6 +54,7 @@ npm run local:mocked # run locally with mock service worker (many other API call
 Setting up your custom frontend
 
 **Notes:**
+
 - `apps/sample-vue-full` is a sample skeleton that can be used as scaffolding
   - `ROUTES` property
     - use kebab-case, will be converted to Capital Case in menu display
