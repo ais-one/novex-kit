@@ -68,7 +68,6 @@ await redis.mset('{user:123}:name', 'Alice', '{user:123}:age', '30');
 await redis.mget('{user:123}:name', '{user:123}:age');
 ```
 
-
 ### Read/Write Splitting Pattern (both modes)
 
 ```js

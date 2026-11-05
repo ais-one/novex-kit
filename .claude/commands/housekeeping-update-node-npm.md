@@ -59,6 +59,7 @@ Record each as: location, field, current value, and whether it follows the [pinn
 ## 6. Report — before proposing anything
 
 Present:
+
 - A table of every current pin from step 1 (location, field, current value).
 - The candidate Node.js version (with LTS codename and support/EOL window) and candidate npm version, with the reasoning from step 3 for why each was chosen over the single newest thing that exists (or confirmation there was no reason to step back).
 - The CI-support and workspace-support findings from steps 4–5.

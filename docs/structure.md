@@ -16,6 +16,7 @@ apps/                # backend and frontend apps (npm workspace)
 common/              # shared reusable code (npm workspaces)
   compiled/          # modules that need type-stripping or bundling (node: native TS, vue: built by Vite in the consuming app)
     node/            # Node.js modules, Express middleware and services (@common/node)
+    node-ai/         # AI library dependencies only for now — openai, MCP SDK, text splitters, pdf/docx parsing, pgvector (@common/node-ai)
     vue/             # Vue-specific shared modules (@common/vue)
   vanilla/           # plain JS modules, no build step
     iso/             # isomorphic utilities, runs in Node and browser (@common/iso)
@@ -40,13 +41,14 @@ scripts/             # code/OpenAPI generation tooling, service mocks (npm works
 
 Reusable shared code and schemas for the apps in this monorepo. Only the folders with their own `package.json` under `common/compiled/*` and `common/vanilla/*` are npm workspaces; the others are imported by path or Vite alias.
 
-| Folder                                          | Import                                      | What it is                                                                                                                           |
-| ----------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| [common/compiled/node](../common/compiled/node) | `@common/node` (workspace)                  | Node.js runtime modules — Express middleware, auth, logger, config, services                                                         |
-| [common/compiled/vue](../common/compiled/vue)   | `@common/vue` (workspace)                   | Vue-specific shared modules, built by Vite in the consuming app                                                                      |
-| [common/vanilla/iso](../common/vanilla/iso)     | `@common/iso` (workspace)                   | isomorphic utilities — run in Node and the browser                                                                                   |
-| [common/vanilla/web](../common/vanilla/web)     | `@common/web` (Vite alias, not a workspace) | browser-only utilities and web components                                                                                            |
-| [common/schemas](../common/schemas)             | imported by path (not a workspace)          | shared zod schemas; own `package.json` with `docs:generate` / `docs:validate` / `docs:make-html` scripts, run from inside the folder |
+| Folder                                                | Import                                      | What it is                                                                                                                             |
+| ----------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| [common/compiled/node](../common/compiled/node)       | `@common/node` (workspace)                  | Node.js runtime modules — Express middleware, auth, logger, config, services                                                           |
+| [common/compiled/node-ai](../common/compiled/node-ai) | `@common/node-ai` (workspace)               | AI library dependencies only (no code yet) — add it as a dependency to get openai, MCP SDK, text splitters, pdf/docx parsing, pgvector |
+| [common/compiled/vue](../common/compiled/vue)         | `@common/vue` (workspace)                   | Vue-specific shared modules, built by Vite in the consuming app                                                                        |
+| [common/vanilla/iso](../common/vanilla/iso)           | `@common/iso` (workspace)                   | isomorphic utilities — run in Node and the browser                                                                                     |
+| [common/vanilla/web](../common/vanilla/web)           | `@common/web` (Vite alias, not a workspace) | browser-only utilities and web components                                                                                              |
+| [common/schemas](../common/schemas)                   | imported by path (not a workspace)          | shared zod schemas; own `package.json` with `docs:generate` / `docs:validate` / `docs:make-html` scripts, run from inside the folder   |
 
 ### apps notes
 

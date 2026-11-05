@@ -1,6 +1,7 @@
 Here's the complete Cloudflare layer and how it connects to either cloud backend.
 
 **Cloudflare file structure**
+
 ```
 cloudflare/
 ├── terraform.tfvars.example
@@ -32,6 +33,7 @@ cloudflare/
 The biggest practical win is that **no ACM or CAS certificate management is needed** — Cloudflare auto-provisions and renews certs for free. You also get a single WAF and CDN layer that works identically whether your backend is on AWS, AliCloud, or both — making future cloud migrations painless.
 
 **Four GitHub secrets to add**
+
 ```
 CF_ZONE_ID       → from Cloudflare zone overview page
 CF_API_TOKEN     → scoped token with Zone:DNS:Edit + Zone:WAF:Edit

@@ -12,6 +12,7 @@
 ## TODO
 
 NEXT:
+
 - [UI] better view of audit log changes... (1. open to see details..., 2. allow for download)
 - [UI + BE] own self view / group view
 - [BE] file upload, delete, list - oss / s3
@@ -24,8 +25,6 @@ NEXT:
 - [UI] i18n
 - [BE] auto detect yaml / json
 - [BE] handle xlsx upload (including sanitize) - satria
-
-
 
 ## Learning To Use
 

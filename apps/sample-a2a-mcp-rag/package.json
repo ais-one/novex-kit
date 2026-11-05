@@ -16,6 +16,7 @@
     "test:e2e": "exit 0"
   },
   "dependencies": {
-    "@apps/sample-common": "file:../sample-common"
+    "@apps/sample-common": "file:../sample-common",
+    "@common/node-ai": "file:../../common/compiled/node-ai"
   }
 }

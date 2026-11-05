@@ -56,7 +56,6 @@ Both End-user and Contributor must read and follow the documentation below.
   - [OPTIONAL: Roadmap](docs/NOTES.md#roadmap)
   - [OPTIONAL: repo custom properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization)
 
-
 ## Quickstart
 
 ```bash

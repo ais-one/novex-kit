@@ -82,7 +82,6 @@ aa?.bb?.cc -> undefined
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/entries
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/fromEntries
 
-
 ### call / apply / bind...
 
 #### Function.prototype.call()
@@ -131,7 +130,6 @@ helloLeo('Hello'); // Hello Leo
 helloNat('Hello'); // Hello Nat
 ```
 
-
 Call and Apply are interchangeable. You can decide whether it’s easier to send in an array or a comma separated list of arguments.
 
 Bind is different. It always returns a new function. We can use Bind to curry functions like in the example. We can take a simple hello function and turn it into a helloJon or helloKelly. You can use it for events where we don’t know when they’ll be fired but know what context is.
@@ -143,7 +141,6 @@ TODO
 ## Scope
 
 https://levelup.gitconnected.com/how-does-hoisting-work-in-javascript-es6-b0e06727e071
-
 
 ### Global Scope
 
@@ -167,7 +164,6 @@ function myFunction() {
 myFunction(); // outputs 'I see functional scope'
 console.log(localFunction); // Outputs an error 'localFunction is not defined'
 ```
-
 
 ### Hoisting
 
@@ -227,8 +223,8 @@ myFunction();
 # Classes vs Factories
 
 Reference:
-- https://medium.com/javascript-in-plain-english/factories-are-still-better-than-classes-in-javascript-47f15071904e
 
+- https://medium.com/javascript-in-plain-english/factories-are-still-better-than-classes-in-javascript-47f15071904e
 
 ## Class
 
@@ -280,6 +276,7 @@ export default greeterFactory;
 callbacks
 
 promises (use to batch, parallel async operations)
+
 - Promise.all
 - Promise.any
 - Promise.allSettled
@@ -393,10 +390,10 @@ async/await
   - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakRef
   - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/FinalizationRegistry
 
-
 ## StackOverflow Recipes
 
 https://stackoverflow.com/questions/784539/how-do-i-replace-all-line-breaks-in-a-string-with-br-elements
+
 - str = str.replace(/(?:\r\n|\r|\n)/g, '<br>');
 
 https://stackoverflow.com/questions/7225407/convert-camelcasetext-to-sentence-case-text
@@ -412,8 +409,8 @@ Math.floor(Math.random() * 101) // 0 - 100
   Object.assign(tgt, ...srcs) // shallow copy of properties, if property collision src overwrite tgt
   lodash.cloneDeep, lodash.merge
 
-
 https://javascript.plainenglish.io/5-html-tricks-nobody-is-talking-about-a0480104fe19
+
 - lazy loading
 ````html
 <img src="image.png" loading="lazy" alt="…" width="200" height="200">```
@@ -438,8 +435,8 @@ https://javascript.plainenglish.io/5-html-tricks-nobody-is-talking-about-a048010
 <meta http-equiv="refresh" content="4; URL='https://google.com' />
 ```
 
-
 https://medium.com/@rivoltafilippo/javascript-merge-arrays-without-duplicates-3fbd8f4881be
+
 ```js
 const result = [...new Set([...firstArr, ...secondArr])];
 ```

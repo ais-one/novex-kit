@@ -25,6 +25,7 @@ Before doing any version lookups, show the user the full inventory of what was d
 ## 3. Classify the current ref
 
 For each occurrence, `REF` is one of:
+
 - **A full 40-char commit SHA**, usually with a trailing `# vX.Y.Z` comment (the convention already used in this repo, e.g. the gitleaks action in `.github/workflows/ci-quality.yml` and `ref-soc2-deploy-to-production.yml`).
 - **A floating tag** (`@v4`, `@v2`) or **exact semver tag** (`@v1.2.0`) — not SHA-pinned yet.
 
@@ -33,6 +34,7 @@ For each occurrence, `REF` is one of:
 For each unique `owner/repo`, query the GitHub API (`curl -s https://api.github.com/repos/OWNER/REPO/releases/latest`; if that 404s because the project doesn't use GitHub Releases, fall back to `git/refs/tags` and pick the highest semver tag, skipping pre-releases/rc/beta unless nothing else exists).
 
 Resolve the winning tag to a commit SHA — every step below is a real API call, not an assumption:
+
 - `git/ref/tags/<tag>` returns an object with `"type": "commit"` (lightweight tag — that SHA is the commit) or `"type": "tag"` (annotated tag — dereference via `git/tags/<sha>` to get the real commit SHA in its `object.sha`). Don't assume a tag is lightweight vs annotated based on other actions you've seen before — check `"type"` for this specific one.
 - Confirm the resolved SHA actually resolves via `git/commits/<sha>` before proposing it. A proposal with no successful `git/commits/<sha>` response in this run is invalid — treat that occurrence as failed/unresolved and report it as such rather than proposing anything.
 
@@ -48,6 +50,7 @@ If a `GITHUB_TOKEN`/`GH_TOKEN` env var or `gh` CLI is available, prefer authenti
 ## 6. Walk through changes one at a time
 
 For each proposed change, in order, show the user:
+
 - File and line
 - Action name and what's changing (e.g. `v3 → v4`, or "pin floating tag to commit SHA")
 - The exact old `uses:` line and the exact new `uses:` line

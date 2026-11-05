@@ -25,6 +25,7 @@ Want me to show a combined multi-cloud setup that manages both AWS and AliCloud 
 That's a solid production infrastructure stack! Let me build all the AliCloud components for you.Here's a summary of the full file structure and the key decisions made.
 
 **File structure**
+
 ```
 ├── versions.tf          # Terraform + provider versions, S3/OSS backend
 ├── variables.tf         # All input variables with sensible defaults
@@ -47,6 +48,7 @@ That's a solid production infrastructure stack! Let me build all the AliCloud co
 **Secrets** — `pg_password` and `redis_password` are marked `sensitive = true`. Inject them via `TF_VAR_pg_password` and `TF_VAR_redis_password` environment variables in CI/CD — never hardcode them. For production, consider pulling them from Alibaba Cloud KMS or HashiCorp Vault instead.
 
 **Things to customise before running:**
+
 - Set `var.project`, `var.env`, and `var.region` in a `terraform.tfvars` or via CI/CD env vars
 - Update the OSS code path in `function_compute.tf` to point to your actual function zip
 - Adjust `instance_type` for RDS and Redis to match your load requirements
@@ -59,6 +61,7 @@ Want me to add a `terraform.tfvars.example` file, or add an ALB (Application Loa
 Here's the updated file structure and what changed:
 
 **Full file structure**
+
 ```
 ├── versions.tf             # Terraform + provider, OSS backend
 ├── variables.tf            # All inputs — now includes ACR, SAE, static OSS vars
@@ -83,6 +86,7 @@ Here's the updated file structure and what changed:
 **FC updated** — switched from a zip code source to `custom_container_config` pointing at the ACR image, and updated to use the `acr-pull-role`.
 
 **Two things to do before `terraform apply`:**
+
 1. Push your container images to ACR first — Terraform will fail if the image tag doesn't exist when FC/SAE tries to start.
 2. Replace `${var.project}.example.com` in `sae.tf` with your actual domain and add the corresponding DNS record pointing to `sae_ingress_slb_ip`.
 
@@ -107,6 +111,7 @@ The `deployApplication` call uses `GrayBatchUpdate` with `totalBatchCount: 2` �
 **Polling with status codes**
 
 SAE's `DescribeChangeOrder` API returns numeric status codes. The poll loop maps them explicitly:
+
 - `2` = success → exit 0
 - `3` = failed, `6` = aborted, `10` = rolled back → exit 1 with the full response printed for debugging
 
@@ -115,6 +120,7 @@ The 10-minute timeout prevents the job hanging indefinitely if SAE gets stuck.
 **OIDC is re-run in the deploy job** — each job is an isolated runner, so credentials from `build-and-push` aren't available. Both jobs independently exchange a fresh JWT for STS credentials.
 
 **Things to fill in before running:**
+
 - `ACR_INSTANCE_ID` and `ACR_REGISTRY` — get these from `terraform output acr_instance_id`
 - `ROLE_ARN` and `OIDC_PROVIDER_ARN` — your account ID and the RAM role from `acr.tf`
 - `SAE_APP_ID` — either hardcode from `terraform output sae_app_id` or leave blank to let the workflow look it up by name
@@ -125,6 +131,7 @@ The 10-minute timeout prevents the job hanging indefinitely if SAE gets stuck.
 Here's the complete picture of everything that was added and how it connects.
 
 **Full file structure — final state**
+
 ```
 ├── .gitignore
 ├── terraform.tfvars.example   ← new
@@ -152,6 +159,7 @@ The ALB sits in both public vSwitches for availability, terminates SSL using you
 3. **Health check endpoint** — make sure your FC function responds with `2xx` or `3xx` at `/health`, otherwise the ALB will mark the backend unhealthy and drop traffic.
 
 **`terraform.tfvars.example` usage**
+
 ```bash
 cp terraform.tfvars.example terraform.tfvars
 # edit terraform.tfvars with your values, then:
@@ -167,6 +175,7 @@ Want me to add a WAF (Web Application Firewall) in front of the ALB, or a CDN (A
 Here's the complete final file structure and how WAF and CDN fit into the architecture:
 
 **Final file structure**
+
 ```
 ├── .gitignore
 ├── terraform.tfvars.example   ← updated with WAF + CDN vars

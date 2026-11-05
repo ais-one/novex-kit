@@ -122,6 +122,7 @@ Run a more extensive sample, in `apps/sample-vue-full`, and view on `http://127.
 **Note For Login**
 
 Login using one of the following:
+
 - Faked Login: [NOTE: API calls to protected Endpoints WILL FAIL!]:
   - Login: fake a user and login, no backend needed, just click button
   - Login Callback: fake a callback and set fake user and login, no backend needed, just click button
@@ -170,7 +171,10 @@ Root `npm run` scripts (from the root `package.json`):
 | `ci:biome`                | `biome ci .` — what the `format-lint` step of CI `Lint / Lint Check` runs                                                                                                             |
 | `ci:lint-yml`             | prettier check of `.github/workflows/*.yml` and `.github/actions/**/*.yml` (the `lint-github-yaml` step of CI `Lint / Lint Check`); fix with `npx prettier --write` on the same globs |
 | `ci:audit`                | `npm audit --audit-level=high --omit=dev` (CI `Quality / NPM audit`)                                                                                                                  |
-| `ci:dup`                  | jscpd duplication check (CI `Quality / Duplication Check`)                                                                                                                            |
+| `ci:dup`                  | runs `ci:dup:root`, `ci:dup:apps` and `ci:dup:db`; fails if any fails                                                                                                                 |
+| `ci:dup:root`             | jscpd on everything except `apps/` and `db/` — config `.jscpd.json` (CI `Quality / Duplication Check`)                                                                                |
+| `ci:dup:apps`             | jscpd on `apps/` — config `apps/.jscpd.json` (CI `Quality / Duplication Check`)                                                                                                       |
+| `ci:dup:db`               | jscpd on `db/` — config `db/.jscpd.json` (CI `Quality / Duplication Check`)                                                                                                           |
 | `test:workspaces`         | `npm run test` in every workspace that has a `test` script                                                                                                                            |
 | `test:schemas`            | zod schema export tests for a folder — `npm run test:schemas -- common/schemas` (run by the pre-commit hook)                                                                          |
 | `test:e2e`                | `start-server-and-test` against `http://localhost:8080`                                                                                                                               |
@@ -201,7 +205,6 @@ OpenAPI docs are generated per package, not from the root: `cd common/schemas &&
 **NOTE** Use `--access public` because the package is scoped and published on a free plan.
 
 Or publish using GitHub Actions with [.github/workflows/deploy-npm.yml](../.github/workflows/deploy-npm.yml). Add the npm auth token to GitHub Secrets first.
-
 
 ### Sample Deployment
 

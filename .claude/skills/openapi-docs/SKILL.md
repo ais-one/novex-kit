@@ -27,11 +27,13 @@ The last two both run `scripts/generators/generate-openapi.ts`, a generic CLI (`
 ## What exists today, and what doesn't
 
 **Exists:**
+
 - `zod-openapi@^6.0.2` (and `js-yaml`) — dependencies of `@common/node` (`common/compiled/node/package.json`), hoisted to the root `node_modules`, so every app can import them.
 - `scripts/generators/api-generator-route.ts` — loops `APPS = ['sample-rest-app-v2']`, dynamically imports `apps/<app>/src/openapi.ts`, and writes `yaml.dump(document)` to `docs/openapi/<app>.yaml`.
 - `common/schemas/error.schema.ts` → `ErrorResponseSchema` (`{ error: { code, message } }`, `.meta({ id: 'ErrorResponse' })`), and `common/schemas/api-response.schema.ts` → `ApiResponseSchema(dataSchema, id)` (`{ message, data }` envelope). `common/schemas` is not an npm workspace — import these by relative path.
 
 **Does not exist (to create):**
+
 - `apps/sample-rest-app-v2/src/openapi.ts` — so `docs:generate:api` **currently fails** on the missing import. Creating it is step one.
 - Any `.meta()` annotation on `apps/sample-rest-app-v2/src/dto/order.dto.ts`.
 - Any `docs/openapi/<app>.yaml` file (only `docs/openapi/README.md` is there).
@@ -53,6 +55,7 @@ An operation's `responses` must have one entry per status the request can actual
 | `UnauthorizedError` | 401           | `UNAUTHORIZED`     | nothing today — defined but not thrown by any auth middleware (see step 3)                                           |
 
 Plus two paths that bypass `AppError` (`common/compiled/node/errors/error.middleware.ts`):
+
 - **Malformed JSON body** (`entity.parse.failed`) → `400 INVALID_JSON`, message `'Malformed JSON in request body'` — every route that accepts a JSON body.
 - **Any uncaught non-`AppError`** (DB driver error, anything unwrapped) → status is `e.status` if it's a 4xx/5xx number, else `500`; `code` is `e.code` if it's a string (e.g. a pg SQLSTATE like `23505`, or `ECONNREFUSED`), else `INTERNAL_ERROR`; message replaced with `'An unexpected error occurred'` unless `NODE_ENV=development`. **A 5xx is always reachable on every operation** — document `500` unconditionally, with `INTERNAL_ERROR` as the example code (a raw driver code can leak through; wrap driver errors in an `AppError` with `{ cause }` in the repository if you want a stable code).
 
@@ -78,6 +81,7 @@ OpenAPI allows one entry per status; if one status has several causes, use named
 By default, every operation's `description` includes a generated `**Possible errors:**` bullet list and one copy-pasteable curl. Renderers show `ErrorResponseSchema`'s shared generic field examples when a reader expands the schema, whatever status they are looking at; the description's Markdown is the only place the reachable codes for _this_ operation are visible without clicking. Generate the list from the same `responses` object the operation uses, so the two can't drift.
 
 Curl rules:
+
 - Use the app's real default port from its `src/index.ts` (`API_PORT` fallback) and its real mount path — never `<host>`.
 - Realistic values with the DTO's exact field names and casing; full `-H 'Content-Type: application/json' -d '{...}'` for bodies.
 - One curl per operation showing the success call is enough. Optionally pass `-H 'x-request-id: ...'` — `requestIdMiddleware` echoes it back, and that's the only request-ID header name in this repo.
@@ -238,6 +242,7 @@ One file per app, named after the app's folder — never one merged file across 
 ## Do / Don't
 
 **Do**
+
 - Build `responses` from the actual `throw` sites in the route's own controller/service/repository files, cross-checked against the `AppError.ts` table.
 - Always include `500 INTERNAL_ERROR`; include `400 INVALID_JSON` on every body-accepting route and `422 VALIDATION_ERROR` on every `validate()`-wrapped route.
 - Reuse `ErrorResponseSchema` and `ApiResponseSchema` from `common/schemas/` instead of redefining envelopes per app.
@@ -245,6 +250,7 @@ One file per app, named after the app's folder — never one merged file across 
 - Add `.meta({ override: { format: 'date-time' } })` to every `z.date()` / `z.coerce.date()` field.
 
 **Don't**
+
 - Don't document an app through `generate-openapi.ts` — that's for `db/*` CRUD and `common/schemas`.
 - Don't document only the happy path, or assume a failed lookup is always `404`.
 - Don't mount a live docs UI in an app, or describe one as existing — none is wired today.

@@ -22,6 +22,7 @@ Want me to adapt this for GitLab CI, or show the equivalent setup for AliCloud?
 That's a full production-grade dual-cloud infrastructure. Let me build the complete AWS equivalent of everything we've set up for AliCloud.Here's the full AWS equivalent laid out side-by-side with AliCloud.
 
 **AWS file structure**
+
 ```
 aws/
 ├── terraform.tfvars.example
