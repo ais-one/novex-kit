@@ -10,7 +10,7 @@ import pathToRegexp from 'path-to-regexp';
 import * as authService from '../auth/jwt.ts';
 import * as shutdown from '../errors/shutdown.ts';
 import { healthRouter } from '../health/router.ts';
-import { loggerMiddleware } from '../logger.ts';
+import { logger, loggerMiddleware } from '../logger.ts';
 import * as services from '../services/index.ts';
 import { requestIdMiddleware } from './requestId.ts';
 
@@ -24,26 +24,26 @@ const escapeRe = (s: string) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
  */
 function parseOrigins(raw: unknown): OriginMatcher[] {
   const items = (Array.isArray(raw) ? raw : [raw])
-    .flatMap((item) => String(item ?? '').split(','))
-    .map((o) => o.trim())
+    .flatMap(item => String(item ?? '').split(','))
+    .map(o => o.trim())
     .filter(Boolean)
     // drop unresolved placeholders like "${CORS_ORIGIN_X}" left by the config loader
-    .filter((o) => !/^\$\{.*\}$/.test(o));
+    .filter(o => !/^\$\{.*\}$/.test(o));
 
   if (items.length === 0) {
-    console.warn('[cors] no allowed origins configured; all cross-origin requests will be rejected');
+    logger.warn('[cors] no allowed origins configured; all cross-origin requests will be rejected');
   }
 
-  return [...new Set(items)].map((entry) => {
+  return [...new Set(items)].map(entry => {
     let fn: (origin: string) => boolean;
     if (entry === '*') {
       fn = () => true;
     } else if (!entry.includes('*')) {
-      fn = (o) => o === entry;
+      fn = o => o === entry;
     } else {
       // https://*.example.com -> matches exactly one subdomain label
       const re = new RegExp(`^${escapeRe(entry).replace(/\\\*/g, '[^.]+')}$`);
-      fn = (o) => re.test(o);
+      fn = o => re.test(o);
     }
     return Object.assign(fn, { source: entry });
   });
@@ -137,10 +137,7 @@ const preRoute = (opts: { skipBodyParsing?: boolean } = {}) => {
       app.use(cors(corsOptions)); // no origin configured: let cors apply its default
     } else {
       const allowed = parseOrigins(corsOptions.origin); // runs once at startup, errors caught below
-      console.info(
-        '[cors] allowed origins:',
-        allowed.map((m) => m.source),
-      );
+      logger.info('[cors] allowed origins', { origins: allowed.map(m => m.source) });
 
       app.use(
         cors({
@@ -151,7 +148,7 @@ const preRoute = (opts: { skipBodyParsing?: boolean } = {}) => {
             // Disallowed origins get no CORS headers (browser blocks it) instead of a 500
             return callback(
               null,
-              allowed.some((match) => match(requestOrigin)),
+              allowed.some(match => match(requestOrigin)),
             );
           },
         }),
