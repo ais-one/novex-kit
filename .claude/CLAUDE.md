@@ -4,9 +4,9 @@
 
 A monorepo template for building full-stack JavaScript applications with Node.js, Express, and Vue. It combines backend and frontend apps in `apps/`, and shared reusable code in `common/`. Designed as an updateable template — custom code is isolated so upstream template updates can be applied cleanly.
 
-- Node.js 24+ required, npm 11+ required
+- Node.js 26.13.1 and npm 11.21.2 required (pinned exactly — see `.nvmrc`)
 - Fully ES Modules, TS/JSDoc typing rules — see [Code conventions](#code-conventions)
-- TypeScript runs natively via Node 24 (`node file.ts`) — no build step needed for scripts
+- TypeScript runs natively via Node 26 (`node file.ts`) — no build step needed for scripts
 
 ## Repository structure
 
