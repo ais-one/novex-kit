@@ -16,6 +16,6 @@
     "@common/vue": "file:../../common/compiled/vue"
   },
   "devDependencies": {
-    "redoc": "^3.0.1"
+    "redoc": "^3.1.0"
   }
 }

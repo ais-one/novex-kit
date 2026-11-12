@@ -12,14 +12,29 @@ Every "latest LTS" claim, every "this version has a known serious issue" claim, 
 
 ## Pinning policy
 
-Every location has one of two pin styles. Keep each one in its own style when updating, and flag any location that has drifted from it:
+Every location is pinned to the **exact** `major.minor.patch` version — Node and npm alike, with no ranges, floors or major-only pins anywhere:
 
-| Style                                                                | Locations                                                                                                                                                                                                                        | Example               |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| **Exact** `major.minor.patch`: anything that builds or runs the code | composite action `node-version`/`npm-version` defaults, workflow `node-version`/`matrix` values, `.nvmrc`, `Dockerfile` `ARG NODE_VERSION` (and `node:<version>-alpine` references in comments), example workflows under `docs/` | `24.22.1`             |
-| **Major floor**: anything that states what's supported               | root and workspace `package.json` `engines`, prose in `.claude/CLAUDE.md`/docs                                                                                                                                                   | `>=24`, `Node.js 24+` |
+| Locations                                                                                                                                                                                                                        | Example                                    |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| composite action `node-version`/`npm-version` defaults, workflow `node-version`/`matrix` values, `.nvmrc`, `Dockerfile` `ARG NODE_VERSION` (and `node:<version>-alpine` references in comments), example workflows under `docs/` | `24.22.1`                                  |
+| root and workspace `package.json` `engines` (and their `package-lock.json` copies)                                                                                                                                               | `"node": "24.22.1"`, `"npm": "11.18.0"`    |
+| version requirements stated in prose — `.claude/CLAUDE.md`, `README.md`, `docs/`                                                                                                                                                 | `Node.js 24.22.1 and npm 11.18.0 required` |
 
-A major-only pin like `"24"` or `node:24-alpine` in an exact-style location counts as drift: report it and pin it exactly. Every workspace `engines` floor must match root's. Change floors only when the major changes.
+All of them change on every update, patch bumps included. (A passing mention of the major that isn't a requirement — e.g. "TypeScript runs natively via Node 24" — is not a pin and can stay.)
+
+### Drift is not allowed
+
+A location has **drifted** if it is either:
+
+- **not exact** — a range or floor (`>=24`, `^24.22.0`, `~11.18`, `Node.js 24+`), a major-only or major.minor pin (`"24"`, `24.22`, `node:24-alpine`), or a tag like `lts/*`/`latest`; or
+- **out of sync** — exact, but a different version from the **baseline**: the composite action's `node-version`/`npm-version` defaults in `.github/actions/setup-node-npm-install/action.yml`.
+
+Drift is a defect this command must fix, not an observation to pass along. No run of this command may end with drift still in the repo:
+
+- Drift is fixed whether or not the version update in step 7 is approved — to the candidate version if the update is approved, otherwise to the current baseline.
+- `$ARGUMENTS` (`node-only`/`npm-only`) narrows which version is _updated_, not which drift is _fixed_ — Node and npm drift are both fixed on every run.
+- If the baseline itself isn't usable — the composite action's default is missing or not exact — don't guess one from the other locations: stop, show every value found, and ask the user which exact version is the baseline before changing anything.
+- Step 8 re-checks every location. Any drift left over is a failure of the run, and is reported as one.
 
 ## 1. Discover every place Node/npm versions are currently pinned
 
@@ -30,9 +45,9 @@ A major-only pin like `"24"` or `node:24-alpine` in an exact-style location coun
 - Example workflows under `docs/` (e.g. `docs/cloud/cloudflare/cf_cicd_purge.yml`) → `node-version:` passed straight to `actions/setup-node`. These don't go through the composite action, so they need their own edit.
 - A repo-root `.nvmrc` or `.node-version` file, if one exists.
 - Every `Dockerfile` in the repo (currently `apps/*/Dockerfile`, e.g. `apps/sample-api/Dockerfile`; also a repo-root one if it ever exists) → `FROM node:...` / `ARG NODE_VERSION` style pins, plus `node:<version>-alpine` mentions in comments.
-- Every workspace's own `package.json` (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) → an `engines` field that overrides root (currently `apps/sample-rest-app-v2` and `apps/sample-queue-consumer`; re-check live, the list changes). `package-lock.json` keeps a copy of each workspace's `engines` under `packages["<workspace path>"]`, so update those copies whenever a floor changes.
+- Every workspace's own `package.json` (`apps/*`, `common/compiled/*`, `common/vanilla/*`, `db/*`, `scripts/*`) → an `engines` field that overrides root (currently `apps/sample-rest-app-v2` and `apps/sample-queue-consumer`; re-check live, the list changes). `package-lock.json` keeps a copy of each workspace's `engines` under `packages["<workspace path>"]`, so update those copies on every version change (the root package's own copy lives under `packages[""]`).
 
-Record each as: location, field, current value, and whether it follows the [pinning policy](#pinning-policy).
+Record each as: location, field, current value, and status — **OK**, **drift: not exact**, or **drift: out of sync** (see [Drift is not allowed](#drift-is-not-allowed)). Also look beyond the known list: grep the whole repo (excluding `node_modules`) for `node-version`, `npm-version`, `NODE_VERSION`, `node:<digits>`, `"engines"`, `.nvmrc`/`.node-version`, and "Node.js <n>"/"npm <n>" requirement wording, so a new pin that nobody added to this list still gets caught.
 
 ## 2. Resolve the current Active LTS Node.js version live
 
@@ -60,20 +75,22 @@ Record each as: location, field, current value, and whether it follows the [pinn
 
 Present:
 
-- A table of every current pin from step 1 (location, field, current value).
+- A table of every current pin from step 1 (location, field, current value, status), with drifted rows listed first, and what each will be changed to.
 - The candidate Node.js version (with LTS codename and support/EOL window) and candidate npm version, with the reasoning from step 3 for why each was chosen over the single newest thing that exists (or confirmation there was no reason to step back).
 - The CI-support and workspace-support findings from steps 4–5.
 
 ## 7. Ask once, then apply on approval
 
-Ask a single question: update Node to `<candidate>` and npm to `<candidate>` across every location found in step 1? (Respect `$ARGUMENTS` if it was `node-only`/`npm-only` — only ask about, and only touch, that one.)
+Ask a single question: update Node to `<candidate>` and npm to `<candidate>` across every location found in step 1? (Respect `$ARGUMENTS` if it was `node-only`/`npm-only` — only ask about that one version update. Drift in both is still fixed, see below.) If there is drift, the question also says it will be fixed either way, and lists to which version.
 
-- **If declined**: make no changes, summarize what was found, stop.
+- **If declined**: don't update any version. Still fix every drifted location to the current baseline (exact version, same as the composite action's defaults), then go to step 8.
 - **If approved**:
-  - Edit every location from step 1 to the new version(s), following the [pinning policy](#pinning-policy). Exact-style locations get the full candidate version: the composite action's defaults, workflow overrides and matrices, `docs/` example workflows, `.nvmrc`, and Dockerfile `ARG NODE_VERSION`. Major-floor locations (root/workspace `engines` and their `package-lock.json` copies, `.claude/CLAUDE.md`/docs prose) change only when the major changes. Keep each file's existing formatting (matrix arrays, quoting) and change only the version values.
+  - Edit every location from step 1 to the new version(s), following the [pinning policy](#pinning-policy). Every location gets the full candidate version, patch bumps included: the composite action's defaults, workflow overrides and matrices, `docs/` example workflows, `.nvmrc`, Dockerfile `ARG NODE_VERSION`, root/workspace `engines` and their `package-lock.json` copies, and version requirements in `.claude/CLAUDE.md`/docs prose. Keep each file's existing formatting (matrix arrays, quoting) and change only the version values.
   - If a local version manager was found in step 5, install and switch to the candidate Node version, install the candidate npm globally, then run a real `npm ci` (not `--dry-run`) followed by `npm run test:workspaces`. Report pass/fail plainly — if something fails, identify what broke and let the user decide whether to keep the update or revert, don't silently revert on their behalf.
   - If no local version manager was available, say so explicitly and note that CI (`ci-tests.yml`, plus the other `ci-*.yml` workflows) is the next real verification point, since this environment couldn't run the new version directly.
 
-## 8. Summarize
+## 8. Verify zero drift, then summarize
 
-Report what changed (or didn't), what was verified locally versus deferred to CI, and any findings the user should keep an eye on next time this runs (e.g. an LTS line approaching maintenance/EOL soon).
+Re-run the discovery from step 1, repo-wide grep included, against the files as they are now. Every location must be exact and equal to the baseline (the candidate if the update was approved). If any location still drifts, fix it and check again. If it can't be fixed — e.g. a file this command shouldn't edit — report the run as **failed** and name the location. Don't call the run done while drift remains.
+
+Then report what changed (or didn't), including which drifted locations were fixed and from what values, what was verified locally versus deferred to CI, and any findings the user should keep an eye on next time this runs (e.g. an LTS line approaching maintenance/EOL soon).
