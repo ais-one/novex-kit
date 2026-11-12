@@ -24,8 +24,8 @@
     "typescript"
   ],
   "engines": {
-    "node": "24.22.1",
-    "npm": "11.18.0"
+    "node": "26.13.1",
+    "npm": "11.21.2"
   },
   "scripts": {
     "clean:all": "find . -name node_modules -type d -prune -exec rm -rf '{}' + && find . -name package-lock.json -type f -delete",
@@ -48,19 +48,19 @@
     "update-commit-hash": "git rev-parse --verify --short HEAD > commit-hash"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.6",
+    "@biomejs/biome": "2.6.7",
     "@playwright/test": "^1.65.0",
     "@redocly/cli": "^2.77.0",
     "@secretlint/secretlint-rule-preset-recommend": "13.1.0",
     "@types/express": "^5.0.6",
     "@vitejs/plugin-vue": "^6.0.10",
     "jscpd": "5.4.3",
-    "msw": "^3.0.4",
+    "msw": "^3.0.5",
     "prettier": "3.9.10",
     "secretlint": "13.1.0",
     "start-server-and-test": "^3.0.13",
     "typescript": "^7.0.2",
-    "vite": "^8.3.7"
+    "vite": "^8.3.8"
   },
   "overrides": {
     "@openfga/sdk": {

@@ -20,7 +20,7 @@
     "@common/node": "file:../../common/compiled/node"
   },
   "engines": {
-    "node": "24.22.1",
-    "npm": "11.18.0"
+    "node": "26.13.1",
+    "npm": "11.21.2"
   }
 }
