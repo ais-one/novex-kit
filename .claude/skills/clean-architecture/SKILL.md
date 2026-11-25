@@ -300,7 +300,7 @@ Either idiom must satisfy the same rule: **a service never imports a concrete DB
 ### Test tiers
 
 - **Unit tests** (`__tests__/unit/*.test.ts` — copy `apps/sample-rest-app-v2`'s layout and `test:unit`/`test:integration` scripts specifically; `sample-queue-consumer` keeps tests flat in `src/__tests__/` and its `test:unit` glob would not pick up a `unit/` subfolder): mock every repository a service depends on; mock the underlying driver (`fetch`, the DB client) for any repository test that has non-trivial mapping/error-handling logic worth covering. Never touch a real DB or network.
-- **Integration tests** (`__tests__/integration/*.test.ts` — matches the `test:integration` script pattern already used in `apps/sample-rest-app-v2`): allowed to hit a real or sandboxed dependency. Use `@common/node/tests/http-request` for real HTTP calls and `@common/node/tests/http-mocks` for Express req/res stubs when you want a unit-style test of a controller without spinning up a server.
+- **Integration tests** (`__tests__/integration/*.test.ts` — matches the `test:integration` script pattern already used in `apps/sample-rest-app-v2`): allowed to hit a real or sandboxed dependency. Use `@common/node/utils-tests/http-request` for real HTTP calls and `@common/node/utils-tests/http-mocks` for Express req/res stubs when you want a unit-style test of a controller without spinning up a server.
 - All tests use `describe.only()` / `it.only()` — see `.claude/CLAUDE.md` → Testing. A test written without `.only()` silently never runs.
 
 ## Directory layout template
@@ -370,7 +370,7 @@ Hosts `services/mq/` (the Kafka-backed `QueueDriver` — see its `README.md`) an
 - `.claude/CLAUDE.md` → "Clean architecture (controller → service → repository)" (short policy), "Testing" (`.only()`, `mock.module()`, shared test utilities).
 - `common/compiled/node/auth/store.ts` — real named-export repository, mocked via `mock.module()` in the `.claude/CLAUDE.md` example.
 - `common/compiled/node/health/{controller,router}.ts` — real thin controller + router split.
-- `common/compiled/node/tests/{http-mocks,http-request}.ts` — shared test utilities for controller-level and integration tests.
+- `common/compiled/node/utils-tests/{http-mocks,http-request}.ts` — shared test utilities for controller-level and integration tests.
 - `apps/sample-common/services/mq/{types,kafka}.ts` + `__tests__/unit/kafka.test.ts` — real strict-mode TypeScript repository-layer driver, with a real crash bug (a caught failure in `open()` left state that made an uncaught failure in `subscribe()` possible) found by actually booting it, not just by the unit tests.
 - `apps/sample-queue-consumer` — real controller(consumer)/service/repository split for a message-driven (non-HTTP) app; its `tsconfig.json`/`global.d.ts` are the copy-paste strict-mode template referenced above.
 - `common/compiled/node/errors/{AppError,error.middleware,validate}.ts` — real, already-wired-in error hierarchy and request-validation middleware (used from `postRoute()` in every real app).

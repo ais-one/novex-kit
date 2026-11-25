@@ -29,7 +29,7 @@ Every route goes through `req.dbTransaction()` (attached by `auditContext(getDb(
 `SET LOCAL` session variables (`app.current_user_id`, `app.current_tenant_id`,
 `app.session_id`, `app.transaction_id`) that a Postgres `audit_trigger_func()` trigger would
 read to attribute row changes. The database side — the `audit_log` table, the trigger
-functions, and the triggers themselves (design doc §2-§4) — isn't provisioned by this sample;
+functions, and the triggers themselves (design doc [§2](../../docs/design/pg-audit-implementation.md#2-tables)-[§4](../../docs/design/pg-audit-implementation.md#4-triggers)) — isn't provisioned by this sample;
 wiring the app-layer plumbing through is what's demonstrated here. This sample also has no
 auth middleware, so `req.user` is always undefined and `app.current_user_id` records as `''`
 — a real app runs its auth middleware before `auditContext` so `req.user` is populated.

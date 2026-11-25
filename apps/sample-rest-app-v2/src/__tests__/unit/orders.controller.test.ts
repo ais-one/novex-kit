@@ -2,7 +2,7 @@ import '@common/node/logger';
 import assert from 'node:assert/strict';
 import { describe, it, mock } from 'node:test';
 import { NotFoundError } from '@common/node/errors/AppError';
-import { createRequest, createResponse } from '@common/node/tests/http-mocks';
+import { createRequest, createResponse } from '@common/node/utils-tests/http-mocks';
 import type { Request, Response } from 'express';
 import type { Order } from '../../dto/order.dto.ts';
 

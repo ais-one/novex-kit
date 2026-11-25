@@ -1,0 +1,20 @@
+# SkillSpector baseline — accepted findings for the `skill-scan` job in
+# .github/workflows/ci-quality.yml (scans .claude/skills/* and .github/skills/*).
+#
+# Suppressed findings don't count toward a skill's risk score, but are still
+# listed with `--show-suppressed`. Every rule needs a `reason`. Prefer narrow
+# rules (id + path + message) over suppressing a rule id everywhere.
+# Format reference: https://github.com/NVIDIA/skillspector/blob/main/docs/SUPPRESSION.md
+#
+# Run locally (Python 3.12+ via uv; use the same commit as SKILLSPECTOR_REF in ci-quality.yml):
+#   uvx --python 3.12 --from git+https://github.com/NVIDIA/skillspector.git@<ref> \
+#     skillspector scan .claude/skills/<skill> --no-llm --baseline .skillspector-baseline.yaml
+
+version: 2
+
+rules:
+  - id: "P9"
+    reason: >-
+      Whitespace padding: Biome aligns markdown table columns with long runs of
+      spaces, which this rule reads as content hidden off-screen. Reviewed: the
+      padding in our SKILL.md tables hides nothing.

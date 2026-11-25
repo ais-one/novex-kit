@@ -38,6 +38,8 @@ Verify a change before finishing: `npm run check` (Biome, no writes — `npm run
 
 ## Testing
 
+Follow [docs/TEST_STRATEGY.md](../docs/TEST_STRATEGY.md) for all test work. Implement in the order of its [§12 checklist](../docs/TEST_STRATEGY.md#12-implementation-checklist-in-order). Do not implement items marked `[DECIDE]` until resolved; ask instead.
+
 All tests use Node's built-in test runner (`node --test`).
 
 ### Why every test uses `.only()`
@@ -71,10 +73,10 @@ mock.module('@common/node/auth/store.ts', { namedExports: { findUser: mockFn } }
 
 ### Shared test utilities
 
-| Package                           | Path                                         | Purpose                                |
-| --------------------------------- | -------------------------------------------- | -------------------------------------- |
-| `@common/node/tests/http-mocks`   | `common/compiled/node/tests/http-mocks.ts`   | Express req/res stubs for unit tests   |
-| `@common/node/tests/http-request` | `common/compiled/node/tests/http-request.ts` | Real HTTP client for integration tests |
+| Package                                 | Path                                               | Purpose                                |
+| --------------------------------------- | -------------------------------------------------- | -------------------------------------- |
+| `@common/node/utils-tests/http-mocks`   | `common/compiled/node/utils-tests/http-mocks.ts`   | Express req/res stubs for unit tests   |
+| `@common/node/utils-tests/http-request` | `common/compiled/node/utils-tests/http-request.ts` | Real HTTP client for integration tests |
 
 ### Running a single test file
 
@@ -181,7 +183,7 @@ Single source of truth [](../docs/git.md#branching-and-workflow)
 
 ## Updating from upstream template
 
-`apps/**`, `db/**` and `local-`-prefixed workflows/actions are protected from the upstream sync; everything else is template-owned and gets replaced — so downstream-only code and workflows must live in those paths. How the sync works (it force-pushes `chore/sync-upstream`; you open the PR yourself), and how to protect more paths: `docs/github.md#sync-upstream-template` (the single source of truth).
+`apps/**`, `db/**` and `local-`-prefixed workflows/actions are protected from the upstream sync; everything else is template-owned and gets replaced — so downstream-only code and workflows must live in those paths. This includes Claude Code skills: root `.claude/` is template-owned, so downstream-only skills go in `apps/.claude/skills/` or `apps/<app>/.claude/skills/` (template: `apps/.claude/skills/example-app-skill`). How the sync works (it force-pushes `chore/sync-upstream`; you open the PR yourself), and how to protect more paths: `docs/github.md#sync-upstream-template` (the single source of truth).
 
 ## Docker / Podman
 
@@ -221,6 +223,7 @@ Route middleware available after `authUser`:
 | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `.github/CONTRIBUTING.md`                    | Contributor guide — issue reporting and security disclosure (PR rules: `docs/git.md#pull-requests`)                                                                                                            |
 | `docs/conventions.md`                        | Coding, tooling, commit, and runtime standards                                                                                                                                                                 |
+| `docs/TEST_STRATEGY.md`                      | Test strategy — follow for all test work; [§12](../docs/TEST_STRATEGY.md#12-implementation-checklist-in-order) is the implementation order, `[DECIDE]` items wait for a decision                               |
 | `docs/structure.md`                          | Repo layout — every app, `common/*` package (import name, workspace or not) and `db/*` schema; imported under Repository structure                                                                             |
 | `docs/create-app.md`                         | Creating apps — `create:app` CLI (backend templates, naming rules, post-create steps, adding a template), copying `sample-api`, and creating a Vue frontend                                                    |
 | `docs/git.md`                                | Git hooks (setup via `npm install` → `.githooks/setup.sh`, what each hook checks), branch/tag naming, merge flow, hotfix flow, commit messages, pull requests                                                  |
@@ -237,5 +240,6 @@ Route middleware available after `authUser`:
 | `docs/github.md#troubleshooting`             | Troubleshooting the manual Release workflow (`release.yml`, git-cliff)                                                                                                                                         |
 | `docs/NOTES.md`                              | Design decisions, caveats, open questions, TODOs                                                                                                                                                               |
 | `docs/housekeeping.md`                       | Dependency/Actions updates — Dependabot config plus the `/housekeeping-scan-actions`, `/housekeeping-update-packages`, `/housekeeping-update-node-npm` and `/housekeeping-check-tsconfig` Claude Code commands |
+| `.claude/commands/housekeeping-clean-*`      | Code cleanup — `/housekeeping-clean-template` (all but `apps/`, `db/`) and `/housekeeping-clean-apps` (`apps/`, `db/`); see `docs/housekeeping.md`                                                             |
 | `scripts/generators/README.md`               | `generate-crud.ts` / `generate-openapi.ts` flags, config file, override recipes                                                                                                                                |
 | `db/README.md`                               | Local PGlite multi-schema DB server, migrations, seeding, reset                                                                                                                                                |

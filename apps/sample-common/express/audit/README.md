@@ -10,7 +10,7 @@ whichever apps chose a Postgres+Knex stack, not template-wide (a Drizzle-based a
 
 **The database side is out of scope here.** Tables (`audit_log`, `hard_delete_log`,
 `audit_registry`), trigger functions, the triggers themselves, and `pgaudit` config are a
-per-database migration concern — see the design doc §2-§5. This module only guarantees the
+per-database migration concern — see the design doc [§2](../../../../docs/design/pg-audit-implementation.md#2-tables)-[§5](../../../../docs/design/pg-audit-implementation.md#5-configuration). This module only guarantees the
 four `SET LOCAL` values those triggers read are actually set before a query runs.
 
 ## `auditContext(db)` — `audit-context.ts`
@@ -41,7 +41,7 @@ app.patch('/orders/:id', async (req, res) => {
 ```
 
 Multiple statements inside one `req.dbTransaction()` call share the same `transaction_id`,
-letting `audit_log` reconstruct exactly what changed atomically — see the design doc §6.4.
+letting `audit_log` reconstruct exactly what changed atomically — see the design doc [§6.4](../../../../docs/design/pg-audit-implementation.md#64-route-examples).
 
 ## `hardDelete()` — `hard-delete.ts`
 

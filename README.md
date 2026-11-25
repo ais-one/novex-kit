@@ -52,7 +52,7 @@ Both End-user and Contributor must read and follow the documentation below.
   - [Design Features](docs/NOTES.md#design-features)
   - [Engineering standards](docs/conventions.md) format, lint, commit message, language, tooling, etc.
   - [Housekeeping](docs/housekeeping.md) dependency and GitHub Actions updates — Dependabot plus on-demand Claude Code commands
-  - [Testing](docs/testing.md)
+  - [Testing](docs/TEST_STRATEGY.md)
   - [OPTIONAL: Roadmap](docs/NOTES.md#roadmap)
   - [OPTIONAL: repo custom properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization)
 

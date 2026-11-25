@@ -7,7 +7,7 @@ import type http from 'node:http';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
-import { type HttpResponse, httpRequest } from '@common/node/tests/http-request';
+import { type HttpResponse, httpRequest } from '@common/node/utils-tests/http-request';
 import express from 'express';
 
 // ─── Constants ────────────────────────────────────────────────────────────────

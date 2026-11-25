@@ -4,6 +4,7 @@ The single source of truth for the repo layout — what each folder, app, packag
 
 ```
 apps/                # backend and frontend apps (npm workspace)
+  .claude/skills/    # downstream-only Claude Code skills shared by all apps (survive upstream sync; per-app: apps/<app>/.claude/skills/)
   sample-api/        # sample backend app — copy and rename, do not develop here directly
   base-iam/          # sample IAM service — auth, RBAC/FGA, user management (SAML/OIDC)
   cron/              # HTTP-triggered cron microservice — Express app built on the shared preRoute/postRoute, no internal scheduler; an external scheduler hits routes like `POST /cron/process-outbox`. Auth is a separate bearer-token scheme (`CRON_API_KEY`), not the main JWT/RBAC/FGA system

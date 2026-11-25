@@ -36,6 +36,6 @@
     "@db/audit": "file:../../db/audit",
     "@db/sample": "file:../../db/sample",
     "fido2-lib": "^4.0.1",
-    "pdfkit": "^0.20.2"
+    "pdfkit": "^0.21.0"
   }
 }

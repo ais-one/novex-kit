@@ -2,7 +2,7 @@
 import '@common/node/logger';
 import assert from 'node:assert';
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
-import { createRequest, createResponse } from '@common/node/tests/http-mocks';
+import { createRequest, createResponse } from '@common/node/utils-tests/http-mocks';
 
 // Spread real config into mutable object, override OAuth fields
 // biome-ignore lint/suspicious/noExplicitAny: test setup for globalThis

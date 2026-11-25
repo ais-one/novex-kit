@@ -41,7 +41,7 @@ This document is for `design preferences`, `open questions`, `caveats`, `migrati
   - Typescript to zod, convert code to TS for node runtime...
   - audit_logs
 - **BACKLOG**
-  - re-enable E2E tests — uncomment the `e2e-tests` job in `.github/workflows/ci-tests.yml` and add a `test:e2e` step to `.githooks/pre-push` (both marked `TODO`); needs servers/ports handled in CI (e.g. `sample-api` / `sample-common` start on 8080)
+  - E2E tests — planned in [TEST_STRATEGY.md](TEST_STRATEGY.md) [§12 step 8](TEST_STRATEGY.md#12-implementation-checklist-in-order) (Playwright against staging after `deploy-sae.yml`), which replaces the commented-out `e2e` step in `.github/workflows/ci-tests.yml`
 - **REVIEW**
   - visualize package sizes with rollup-plugin-visualizer
   - revisit biome when vueJS support is available

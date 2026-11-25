@@ -63,18 +63,18 @@ A tenant represents a top-level customer or organisation in a multi-tenant SaaS 
 
 #### Component Summary
 
-| Component                         | Purpose                                                                                                                  |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `audit_log` table                 | Stores one row per INSERT or UPDATE on audited tables                                                                    |
-| `hard_delete_log` table           | Stores explicit records of hard deletes with an optional reason                                                          |
-| `audit_registry` table            | Documents which tables are audited and why — for auditors                                                                |
-| `audit_trigger_func()`            | Reads SET LOCAL context, writes to `audit_log`                                                                           |
-| `enforce_append_only()`           | Blocks UPDATE/DELETE on immutable tables at DB level                                                                     |
-| `enforce_hard_delete_log()`       | BEFORE DELETE trigger — snapshots the row to `hard_delete_log`, recording a reason when one is set                       |
-| `auditContext` middleware         | Injects user identity into every transaction via `set_config`                                                            |
-| `hardDelete()` helper             | Sets an optional delete reason via `set_config` before deleting                                                          |
-| pgaudit                           | Captures SELECT, DDL, and direct DB access — config only                                                                 |
-| `api_role` / `audit_reader` roles | Least-privilege separation — the app can never rewrite its own audit trail; reads are a separate, revocable grant (§1.4) |
+| Component                         | Purpose                                                                                                                                        |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `audit_log` table                 | Stores one row per INSERT or UPDATE on audited tables                                                                                          |
+| `hard_delete_log` table           | Stores explicit records of hard deletes with an optional reason                                                                                |
+| `audit_registry` table            | Documents which tables are audited and why — for auditors                                                                                      |
+| `audit_trigger_func()`            | Reads SET LOCAL context, writes to `audit_log`                                                                                                 |
+| `enforce_append_only()`           | Blocks UPDATE/DELETE on immutable tables at DB level                                                                                           |
+| `enforce_hard_delete_log()`       | BEFORE DELETE trigger — snapshots the row to `hard_delete_log`, recording a reason when one is set                                             |
+| `auditContext` middleware         | Injects user identity into every transaction via `set_config`                                                                                  |
+| `hardDelete()` helper             | Sets an optional delete reason via `set_config` before deleting                                                                                |
+| pgaudit                           | Captures SELECT, DDL, and direct DB access — config only                                                                                       |
+| `api_role` / `audit_reader` roles | Least-privilege separation — the app can never rewrite its own audit trail; reads are a separate, revocable grant ([§1.4](#14-database-roles)) |
 
 ### 1.3 Compliance Coverage
 
@@ -94,13 +94,13 @@ A tenant represents a top-level customer or organisation in a multi-tenant SaaS 
 
 Three Postgres roles appear throughout this guide, referenced by name well before they're all defined. None needs `SUPERUSER` — they're ordinary roles distinguished purely by what's granted to them.
 
-| Role                                                                                                                                                      | Used by                                                                      | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `api_role`                                                                                                                                                | The application's own DB connection (`DATABASE_URL` / the Knex pool in §6.1) | Normal CRUD on business tables. Has `UPDATE`/`DELETE` revoked on `audit_log` and all access revoked on `hard_delete_log` (§2.1, §2.2), so the application itself can never rewrite or erase its own audit trail — even a compromised app connection can't cover its tracks.                                                                                                                                                                                                                                                                                                                                                                      |
-| `audit_reader`                                                                                                                                            | Auditors / compliance reviewers only — never the application                 | Read-only: `SELECT` on `audit_log` and `hard_delete_log`. Created in §2.1. Kept separate from `api_role` so read access to the audit trail can be granted/revoked per person without touching the application's own credentials.                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| The role that runs your migrations (e.g. `postgres`, or a dedicated non-superuser owner role — whichever executes the `CREATE FUNCTION` statements in §3) | Nobody at runtime — relevant only at DDL time                                | Becomes the **owner** of the `SECURITY DEFINER` trigger functions (`audit_trigger_func()`, `enforce_hard_delete_log()`) simply by virtue of creating them. `SECURITY DEFINER` makes those functions execute with this owner's privileges, which is how they can write to `audit_log`/`hard_delete_log` even though `api_role` has no `INSERT` grant there. No separate `CREATE ROLE` step is needed for this one — just be deliberate about which role runs your migrations, and prefer a role scoped to schema ownership over a true Postgres superuser if your provider allows it (e.g. RDS's `rds_superuser` rather than a real `SUPERUSER`). |
+| Role                                                                                                                                                                      | Used by                                                                                                        | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `api_role`                                                                                                                                                                | The application's own DB connection (`DATABASE_URL` / the Knex pool in [§6.1](#61-knex-instance--srcdbknexjs)) | Normal CRUD on business tables. Has `UPDATE`/`DELETE` revoked on `audit_log` and all access revoked on `hard_delete_log` ([§2.1](#21-audit_log), [§2.2](#22-hard_delete_log)), so the application itself can never rewrite or erase its own audit trail — even a compromised app connection can't cover its tracks.                                                                                                                                                                                                                                                                                                                              |
+| `audit_reader`                                                                                                                                                            | Auditors / compliance reviewers only — never the application                                                   | Read-only: `SELECT` on `audit_log` and `hard_delete_log`. Created in [§2.1](#21-audit_log). Kept separate from `api_role` so read access to the audit trail can be granted/revoked per person without touching the application's own credentials.                                                                                                                                                                                                                                                                                                                                                                                                |
+| The role that runs your migrations (e.g. `postgres`, or a dedicated non-superuser owner role — whichever executes the `CREATE FUNCTION` statements in [§3](#3-functions)) | Nobody at runtime — relevant only at DDL time                                                                  | Becomes the **owner** of the `SECURITY DEFINER` trigger functions (`audit_trigger_func()`, `enforce_hard_delete_log()`) simply by virtue of creating them. `SECURITY DEFINER` makes those functions execute with this owner's privileges, which is how they can write to `audit_log`/`hard_delete_log` even though `api_role` has no `INSERT` grant there. No separate `CREATE ROLE` step is needed for this one — just be deliberate about which role runs your migrations, and prefer a role scoped to schema ownership over a true Postgres superuser if your provider allows it (e.g. RDS's `rds_superuser` rather than a real `SUPERUSER`). |
 
-`api_role` is referenced by every `REVOKE ... FROM api_role` in this guide (§2.1) and by the gap-detection query in §9, but is never created elsewhere — provision it first:
+`api_role` is referenced by every `REVOKE ... FROM api_role` in this guide ([§2.1](#21-audit_log)) and by the gap-detection query in [§9](#9--gap-detection), but is never created elsewhere — provision it first:
 
 ```sql
 -- The application's own connection role. Adjust LOGIN/PASSWORD/CONNECTION LIMIT to your
@@ -125,7 +125,7 @@ REVOKE UPDATE, DELETE ON audit_log FROM api_role;
 REVOKE ALL ON hard_delete_log FROM api_role;
 ```
 
-> **Note:** run this before §2's `CREATE TABLE` statements, or re-run the two `REVOKE`s afterward — `GRANT ... ON ALL TABLES IN SCHEMA public` only affects tables that already exist at the time it runs, and `audit_log`/`hard_delete_log` must end up locked down regardless of ordering.
+> **Note:** run this before [§2](#2-tables)'s `CREATE TABLE` statements, or re-run the two `REVOKE`s afterward — `GRANT ... ON ALL TABLES IN SCHEMA public` only affects tables that already exist at the time it runs, and `audit_log`/`hard_delete_log` must end up locked down regardless of ordering.
 
 ---
 
@@ -179,7 +179,7 @@ GRANT SELECT ON audit_log TO audit_reader;
 
 ### 2.2 hard_delete_log
 
-Hard deletes are rare and controlled. A `BEFORE DELETE` trigger (`enforce_hard_delete_log()`, see §3.3) snapshots the row and writes to `hard_delete_log` automatically — the same DB-enforced pattern already used for INSERT/UPDATE audit. This closes a gap in relying on application code alone: a raw `DELETE` issued outside the app — a migration, a psql session, a different service sharing the database — previously left no trace at all, since the audit trigger only fires on INSERT/UPDATE. The trigger also records a justification via `app.delete_reason` when the caller sets one, but doesn't require it — a hard delete without a reason is still snapshotted, just with `reason` recorded as `NULL`.
+Hard deletes are rare and controlled. A `BEFORE DELETE` trigger (`enforce_hard_delete_log()`, see [§3.3](#33-enforce_hard_delete_log)) snapshots the row and writes to `hard_delete_log` automatically — the same DB-enforced pattern already used for INSERT/UPDATE audit. This closes a gap in relying on application code alone: a raw `DELETE` issued outside the app — a migration, a psql session, a different service sharing the database — previously left no trace at all, since the audit trigger only fires on INSERT/UPDATE. The trigger also records a justification via `app.delete_reason` when the caller sets one, but doesn't require it — a hard delete without a reason is still snapshotted, just with `reason` recorded as `NULL`.
 
 ```sql
 CREATE TABLE hard_delete_log (
@@ -404,7 +404,7 @@ For append-only tables, the registry entry explains why there is no row-level UP
 
 ### 4.4 Hard-Deletable Tables — Hard Delete Trigger
 
-Attach to any table where hard deletes are permitted, in addition to its regular audit trigger from §4.1. The two triggers are independent: `audit_trigger_func()` covers INSERT/UPDATE, `enforce_hard_delete_log()` covers DELETE.
+Attach to any table where hard deletes are permitted, in addition to its regular audit trigger from [§4.1](#41-mutable-tables--audit-trigger). The two triggers are independent: `audit_trigger_func()` covers INSERT/UPDATE, `enforce_hard_delete_log()` covers DELETE.
 
 ```sql
 CREATE TRIGGER hard_delete_users
@@ -578,7 +578,7 @@ app.post('/orders/:id/confirm', async (req, res) => {
 
 ### 6.5 Hard Delete Helper — src/db/hardDelete.js
 
-The snapshot and log write now happen in `enforce_hard_delete_log()` (§3.3), not in application code. The helper's only job is to set the reason for the transaction, if one was given, before issuing the delete — the trigger records it on the `hard_delete_log` row it writes but never blocks the delete for lacking one.
+The snapshot and log write now happen in `enforce_hard_delete_log()` ([§3.3](#33-enforce_hard_delete_log)), not in application code. The helper's only job is to set the reason for the transaction, if one was given, before issuing the delete — the trigger records it on the `hard_delete_log` row it writes but never blocks the delete for lacking one.
 
 ```js
 // src/db/hardDelete.js
@@ -608,14 +608,14 @@ app.delete('/users/:id', async (req, res) => {
 
 The audit system is set-and-forget. The only recurring tasks when adding new tables or features are:
 
-| Task                     | Action required                                                                                 |
-| ------------------------ | ----------------------------------------------------------------------------------------------- |
-| New mutable table        | Attach audit trigger + insert row in `audit_registry`                                           |
-| New append-only table    | Attach `enforce_append_only` trigger + insert row in `audit_registry`                           |
-| New hard-deletable table | Attach `enforce_hard_delete_log` trigger (§4.4) + note it in `audit_registry`                   |
-| New write route          | Use `req.dbTransaction()` — no other change needed                                              |
-| Hard delete needed       | Use `hardDelete()` helper, optionally with a documented reason — the trigger logs it when given |
-| New tenant field on user | Update `auditContext.js` to read the new field                                                  |
+| Task                     | Action required                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| New mutable table        | Attach audit trigger + insert row in `audit_registry`                                                                           |
+| New append-only table    | Attach `enforce_append_only` trigger + insert row in `audit_registry`                                                           |
+| New hard-deletable table | Attach `enforce_hard_delete_log` trigger ([§4.4](#44-hard-deletable-tables--hard-delete-trigger)) + note it in `audit_registry` |
+| New write route          | Use `req.dbTransaction()` — no other change needed                                                                              |
+| Hard delete needed       | Use `hardDelete()` helper, optionally with a documented reason — the trigger logs it when given                                 |
+| New tenant field on user | Update `auditContext.js` to read the new field                                                                                  |
 
 > **Note:** Do not export the `db` instance directly into route files. Keeping all writes behind `req.dbTransaction` ensures the audit context is always set.
 

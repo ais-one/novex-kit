@@ -1,6 +1,6 @@
 # .github/workflows/ci-quality.yml
 #
-# Wires together 6 quality/security checks, summarised by one required PR status check:
+# Wires together 7 quality/security checks, summarised by one required PR status check:
 #   1. Gitleaks          - secret scanning
 #   2. npm audit         - known CVEs in production npm dependencies
 #   2B. Dependency review - blocks PRs that introduce vulnerable dependencies (PRs, public repos only)
@@ -9,6 +9,9 @@
 #                          only with a "Require code scanning results" ruleset)
 #   4. jscpd             - copy-paste/duplication detection, run as 3 checks: root, apps/, db/
 #                          (OPTIONAL - see toggle below)
+#   5. SkillSpector      - security scan of AI agent skills (.claude/skills, .github/skills,
+#                          apps/.claude/skills, apps/*/.claude/skills),
+#                          blocking when a skill's risk score is over 50
 #   (Test coverage / Codecov lives in ci-tests.yml, with the unit tests it runs.)
 #
 # To leave out jscpd entirely: delete the `duplication` job below, and remove
@@ -266,6 +269,149 @@ jobs:
       - name: Run jscpd (db)
         if: ${{ !cancelled() }}
         run: npm run ci:dup:db -- --reporters "console,github"
+
+  # ---------------------------------------------------------------------
+  # 5. SkillSpector - security scan of AI agent skills
+  # ---------------------------------------------------------------------
+  # Scans every skill folder (one with a SKILL.md) under .claude/skills,
+  # .github/skills, apps/.claude/skills and apps/*/.claude/skills for prompt injection, data exfiltration, unsafe commands
+  # and supply-chain risks. https://github.com/NVIDIA/skillspector
+  #
+  # Blocking: a skill fails the job when its risk score is over 50 (SkillSpector's
+  # default gate); lower-risk findings are listed in the job summary and the
+  # JSON reports artifact without failing it. Accepted false positives live in
+  # .skillspector-baseline.yaml. A baseline can't be used on a multi-skill
+  # (--recursive) scan, so each skill is scanned on its own.
+  #
+  # LLM analysis: with the ANTHROPIC_API_KEY secret set, the skills' file contents
+  # are sent to Anthropic for semantic analysis; without it (and on fork PRs, which
+  # get no secrets) the scan is static only (--no-llm). Static mode still sends
+  # declared dependency names - not file contents - to OSV.dev for CVE lookups.
+  #
+  # SkillSpector isn't on PyPI and Dependabot can't track it: it's installed from
+  # git at the commit SHA of a release tag. Bump SKILLSPECTOR_REF by hand.
+  # Commands (.claude/commands) and agents (.claude/agents) aren't skill folders,
+  # so they aren't scanned.
+  skill-scan:
+    name: Skill scan (SkillSpector)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SKILLSPECTOR_REF: 54824463814a0be01360792523ec7245a69190fc # v2.13.4
+      # `secrets` can't be used in a step `if:` - expose it via env instead.
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }} # optional - enables LLM analysis
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Install SkillSpector
+        run: uv tool install --python 3.12 "git+https://github.com/NVIDIA/skillspector.git@${SKILLSPECTOR_REF}"
+
+      - name: Scan skills
+        shell: bash
+        run: |
+          set -uo pipefail # no -e: scan every skill, then fail once at the end
+          shopt -s nullglob
+          if [[ -n "${ANTHROPIC_API_KEY}" ]]; then
+            export SKILLSPECTOR_PROVIDER=anthropic
+            llm_flag=()
+            echo "::notice title=SkillSpector::LLM analysis enabled (anthropic)"
+          else
+            llm_flag=(--no-llm)
+            echo "::notice title=SkillSpector::ANTHROPIC_API_KEY not set - static scan only (--no-llm)"
+          fi
+
+          mkdir -p skillspector-reports
+          failed=0
+          scanned=0
+          for manifest in .claude/skills/*/SKILL.md .github/skills/*/SKILL.md \
+            apps/.claude/skills/*/SKILL.md apps/*/.claude/skills/*/SKILL.md; do
+            skill_dir="$(dirname "$manifest")"
+            report_name="${skill_dir#.}"          # .claude/skills/x -> claude/skills/x (no dotfile)
+            report="skillspector-reports/${report_name//\//_}.json"
+            echo "::group::${skill_dir}"
+            skillspector scan "$skill_dir" "${llm_flag[@]}" \
+              --baseline .skillspector-baseline.yaml \
+              --format json --output "$report"
+            status=$?
+            echo "::endgroup::"
+            scanned=$((scanned + 1))
+            # exit 1 = risk score over 50, exit 2 = scan error - both fail the job
+            if [[ $status -ne 0 ]]; then
+              echo "::error title=SkillSpector::${skill_dir} failed (exit ${status})"
+              failed=1
+            fi
+          done
+
+          echo "Scanned ${scanned} skill(s)."
+          exit "$failed"
+
+      # Renders the reports as tables on the run's Summary page, so they can be
+      # read without downloading the artifact. python3 ships on ubuntu-latest.
+      - name: Write findings to job summary
+        if: always()
+        env:
+          BLOB_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.event.pull_request.head.sha || github.sha }}
+        shell: python3 {0}
+        run: |
+          import glob, json, os
+
+          out = open(os.environ["GITHUB_STEP_SUMMARY"], "a")
+          out.write("## SkillSpector\n\n")
+          reports = sorted(glob.glob("skillspector-reports/*.json"))
+          if not reports:
+              out.write("No reports were produced - check the scan step log.\n")
+              raise SystemExit(0)
+
+          def cell(text):
+              return " ".join(str(text).split()).replace("|", "\\|")
+
+          skills, findings = [], []
+          for path in reports:
+              data = json.load(open(path))
+              for s in data.get("skills") or [data]:
+                  risk = s.get("risk_assessment", {})
+                  cov = s.get("analysis_completeness", {})
+                  source = os.path.relpath(s.get("skill", {}).get("source", "."), os.getcwd())
+                  name = source if source != "." else os.path.basename(path)[:-5]
+                  issues = s.get("issues", [])
+                  skills.append((name, risk.get("score", s.get("risk_score", "?")),
+                                 risk.get("recommendation", "?"), len(issues),
+                                 s.get("suppressed_count", 0), cov.get("coverage_percent", "?")))
+                  for i in issues:
+                      loc = i.get("location", {})
+                      file = f"{source}/{loc.get('file', '?')}"
+                      line = loc.get("start_line") or 1
+                      findings.append((i.get("severity", "?"), name, file, line,
+                                       i.get("id", "?"), i.get("pattern") or i.get("category", ""),
+                                       i.get("explanation", "")))
+
+          out.write("A skill fails the job when its risk score is over 50. Full reports are in the `skillspector-reports` artifact.\n\n")
+          out.write("| Skill | Risk score | Recommendation | Active findings | Suppressed | Coverage % |\n|---|---|---|---|---|---|\n")
+          for row in skills:
+              out.write("| " + " | ".join(cell(c) for c in row) + " |\n")
+
+          if findings:
+              order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+              findings.sort(key=lambda f: (order.get(f[0], 5), f[1], f[2], f[3]))
+              out.write(f"\n### {len(findings)} active finding(s)\n\n")
+              out.write("| Severity | Location | Rule | Explanation |\n|---|---|---|---|\n")
+              for sev, _, file, line, rule, pattern, why in findings:
+                  link = f"[{cell(file)}:{line}]({os.environ['BLOB_URL']}/{file}#L{line})"
+                  out.write(f"| {sev} | {link} | `{cell(rule)}` {cell(pattern)} | {cell(why)[:300]} |\n")
+
+      - name: Upload reports as artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: skillspector-reports
+          path: skillspector-reports/
+          retention-days: 90
+
   # ---------------------------------------------------------------------
   # Summary gate - use this single job as your one required branch-protection check
   # ---------------------------------------------------------------------
@@ -279,6 +425,7 @@ jobs:
         sast-private-repo-semgrep,
         sast-public-repo-codeql,
         duplication,
+        skill-scan,
       ] # remove `duplication` here if you drop that job
     # dependency-audit and the two sast-* jobs may be `skipped` (repo visibility) - `skipped` passes;
     # `failure` and `cancelled` fail the gate

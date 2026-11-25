@@ -168,6 +168,7 @@ Root `npm run` scripts (from the root `package.json`):
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `check`                   | Biome check, no writes — run before committing                                                                                                                                        |
 | `check:write`             | Biome check with `--write` — auto-fixes lint and format                                                                                                                               |
+| `docs:check-links`        | checks relative links and `#anchors` in the repo's Markdown files; prints each broken link and exits 1 — `npm run docs:check-links -- docs` to check one folder                       |
 | `ci:biome`                | `biome ci .` — what the `format-lint` step of CI `Lint / Lint Check` runs                                                                                                             |
 | `ci:lint-yml`             | prettier check of `.github/workflows/*.yml` and `.github/actions/**/*.yml` (the `lint-github-yaml` step of CI `Lint / Lint Check`); fix with `npx prettier --write` on the same globs |
 | `ci:audit`                | `npm audit --audit-level=high --omit=dev` (CI `Quality / NPM audit`)                                                                                                                  |

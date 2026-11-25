@@ -3,7 +3,7 @@ import '@common/node/logger';
 import assert from 'node:assert';
 import http from 'node:http';
 import { after, before, describe, it } from 'node:test';
-import { type HttpResponse, httpRequest } from '@common/node/tests/http-request';
+import { type HttpResponse, httpRequest } from '@common/node/utils-tests/http-request';
 import express from 'express';
 import { Provider } from 'oidc-provider';
 

@@ -8,9 +8,9 @@
     "serve": "node serve-db.ts"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.5.16",
-    "@electric-sql/pglite-pgmq": "^0.0.14",
-    "@electric-sql/pglite-pgvector": "^0.0.17",
-    "@electric-sql/pglite-socket": "^0.2.19"
+    "@electric-sql/pglite": "^0.6.0",
+    "@electric-sql/pglite-pgmq": "^0.1.0",
+    "@electric-sql/pglite-pgvector": "^0.1.0",
+    "@electric-sql/pglite-socket": "^0.3.0"
   }
 }
