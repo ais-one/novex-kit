@@ -18,6 +18,7 @@ const store =
         accessKeyId: OSS_ACCESS_ID,
         accessKeySecret: OSS_ACCESS_KEY,
         bucket: OSS_BUCKET,
+        secure: true,
       })
     : null;
 
